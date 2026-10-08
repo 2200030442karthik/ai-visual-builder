@@ -1,58 +1,61 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AI Visual Builder - starter</title>
-  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-  <style>
-    body { font-family: Arial,sans-serif; margin: 18px; color:#253244; }
-    textarea { box-sizing:border-box; width:100%; height:120px; padding:10px; border:1px solid #bac5d0; border-radius:8px; }
-    button { margin-top:12px; background:#1769aa; border:0; color:white; border-radius:8px; padding:12px; width:100%; cursor:pointer; }
-    small {display:block;color:#58677b;margin-top:12px;line-height:1.5}
-    #status {white-space:pre-wrap; margin-top:14px; font-size:13px}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Visual Builder - Stage 2</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+*{box-sizing:border-box}body{font:14px/1.45 Arial,sans-serif;margin:16px;color:#24364b}h2{font-size:20px;margin:0 0 5px}p{margin:5px 0 12px;color:#53657a}label{display:block;font-weight:600;margin-bottom:6px}textarea{width:100%;min-height:140px;resize:vertical;padding:10px;border:1px solid #afbecd;border-radius:7px;font:14px Arial}button{border:0;border-radius:7px;padding:11px 12px;cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}.primary{width:100%;background:#1769aa;color:white;font-weight:bold;margin-top:12px}.secondary{background:#eef5fb;color:#163e60;margin:7px 0 0;width:100%;text-align:left;border:1px solid #c8d9e7}.secondary.selected{border:2px solid #1769aa;background:#dceffc;padding:10px 11px}.hint{color:#5c6e81;font-size:12px;margin-top:9px}.status{white-space:pre-wrap;background:#f3f6f9;border-radius:6px;padding:9px;margin-top:12px;font-size:12px}.pill{display:inline-block;padding:3px 8px;border-radius:99px;background:#e3f1fc;color:#15578b;font-size:12px;margin:2px 0 10px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}.grid button{margin:0;font-size:12px;min-height:63px;display:flex;align-items:center;justify-content:center;text-align:center}.section{font-weight:600;margin-top:15px}.divider{border-top:1px solid #e0e7ec;margin-top:14px}
+</style>
 </head>
 <body>
-  <h2>AI Visual Builder</h2>
-  <p>Prototype 1: editable PowerPoint elements</p>
-  <label for="content">Enter a heading or short concept</label>
-  <textarea id="content">AI in manufacturing</textarea>
-  <button id="insert" disabled>Insert editable visual</button>
-  <div id="status">Loading Office...</div>
-  <small>This prototype is not AI-powered yet. It creates editable native PowerPoint objects.</small>
-  <script>
-    const statusEl = document.getElementById('status');
-    Office.onReady((info) => {
-      if(info.host !== Office.HostType.PowerPoint) {
-        statusEl.textContent = 'Open this add-in inside PowerPoint.';
-        return;
-      }
-      document.getElementById('insert').disabled = false;
-      statusEl.textContent = 'Ready. Select a slide, then click Insert.';
-    });
-    document.getElementById('insert').addEventListener('click', async () => {
-      const text = document.getElementById('content').value.trim() || 'Your concept';
-      try {
-        statusEl.textContent = 'Inserting...';
-        await PowerPoint.run(async context => {
-          const slide = context.presentation.getSelectedSlides().getItemAt(0);
-          const box = slide.shapes.addGeometricShape(PowerPoint.GeometricShapeType.roundRectangle, {
-            left: 75, top: 110, width: 400, height: 150
-          });
-          box.fill.setSolidColor('#DCEFFC');
-          const label = slide.shapes.addTextBox(text, {
-            left: 95, top: 150, width: 355, height: 70
-          });
-          label.textFrame.textRange.fontSize = 24;
-          label.textFrame.textRange.fontColor = '#173A5E';
-          await context.sync();
-        });
-        statusEl.textContent = 'Inserted! Click the text or shape on your slide to edit it.';
-      } catch(error) {
-        statusEl.textContent = 'Could not insert: ' + (error && error.message ? error.message : String(error));
-      }
-    });
-  </script>
+<h2>AI Visual Builder</h2>
+<span class="pill">Stage 2 - editable diagrams</span>
+<p>Paste keywords, bullet points, or a paragraph. Choose a suggested layout.</p>
+<label for="content">Your content</label>
+<textarea id="content">AI in manufacturing
+Quality inspection
+Predictive maintenance
+Production optimization
+Safety monitoring</textarea>
+<button id="analyze" class="primary" type="button">Suggest visual layouts</button>
+<div id="summary" class="hint">This version recommends layouts using simple rules; it does not yet use an AI model.</div>
+<div id="suggestions" class="grid"></div>
+<button id="insert" class="primary" type="button" disabled>Insert selected editable diagram</button>
+<div id="status" class="status">Waiting for PowerPoint...</div>
+<div class="divider"></div>
+<div class="hint">All diagram text and main shapes are native PowerPoint elements. Existing slide content is not deleted. For best results, use a blank slide and 2-6 short points. Public GitHub Pages should only be used with non-confidential test text.</div>
+<script>
+(function(){
+'use strict';
+const area=document.getElementById('content'), status=document.getElementById('status'), summary=document.getElementById('summary'), holder=document.getElementById('suggestions'), insert=document.getElementById('insert');
+let chosen='cards', officeReady=false, lastData=null;
+const designs=[['cards','Infographic cards'],['steps','Step-by-step flow'],['cycle','Cycle diagram'],['hub','Hub-and-spoke'],['compare','Comparison columns']];
+function parse(){
+ const raw=area.value.trim();if(!raw)return {title:'Your concept',items:['Key point 1','Key point 2','Key point 3']};
+ let lines=raw.split(/\n+/).map(x=>x.replace(/^\s*(?:[-*•]|\d+[.)])\s*/,'').trim()).filter(Boolean);
+ if(lines.length===1){let chunks=raw.split(/(?<=[.!?])\s+/).map(x=>x.trim()).filter(Boolean);if(chunks.length>1){return {title:'Key ideas',items:chunks.slice(0,6).map(x=>x.length>125?x.slice(0,122)+'...':x)};}return{title:raw.length>62?raw.slice(0,59)+'...':raw,items:[raw.length>100?raw.slice(0,97)+'...':raw]};}
+ return {title:lines[0].slice(0,90),items:lines.slice(1,7).map(x=>x.length>125?x.slice(0,122)+'...':x)};
+}
+function rank(raw){let s=raw.toLowerCase();if(/first|next|finally|then|step|process|workflow|phase|stage/.test(s))return ['steps','cycle','cards','hub','compare'];if(/versus| vs\.?|compare|difference|pros|cons|traditional/.test(s))return ['compare','cards','hub','steps','cycle'];if(/cycle|repeat|iterate|continuous|feedback/.test(s))return ['cycle','steps','hub','cards','compare'];if(/center|ecosystem|applications|types|benefits|features|ai\b/.test(s))return ['hub','cards','steps','cycle','compare'];return ['cards','steps','hub','cycle','compare'];}
+function suggest(){lastData=parse();let order=rank(area.value);chosen=order[0];holder.replaceChildren();for(const id of order){const name=designs.find(x=>x[0]===id)[1];const b=document.createElement('button');b.type='button';b.className='secondary'+(id===chosen?' selected':'');b.textContent=name;b.addEventListener('click',()=>{chosen=id;for(const node of holder.children)node.classList.remove('selected');b.classList.add('selected');});holder.appendChild(b);}summary.textContent='Detected '+lastData.items.length+' content item(s). Recommended: '+designs.find(x=>x[0]===chosen)[1]+'. Select any layout to override.';}
+function rect(slide,x,y,w,h,color,round){const shape=slide.shapes.addGeometricShape(round?PowerPoint.GeometricShapeType.roundRectangle:PowerPoint.GeometricShapeType.rectangle,{left:x,top:y,width:w,height:h});shape.fill.setSolidColor(color);return shape;}
+function text(slide,str,x,y,w,h,size,color){const sh=slide.shapes.addTextBox(str,{left:x,top:y,width:w,height:h});sh.textFrame.textRange.fontSize=size;sh.textFrame.textRange.fontColor=color;return sh;}
+function ellipse(slide,x,y,w,h,color){const sh=slide.shapes.addGeometricShape(PowerPoint.GeometricShapeType.ellipse,{left:x,top:y,width:w,height:h});sh.fill.setSolidColor(color);return sh;}
+function make(slide,data,kind){const colors=['#DCEFFC','#D7F1E8','#FCEBCC','#E8E1FA','#FBE1EA','#E5ECF5'];const ink='#173A5E', W=720;
+ let points=data.items.slice(0,6);if(points.length===0)points=[data.title];
+ text(slide,data.title,32,20,W-64,54,27,ink);
+ if(kind==='cards'){const n=points.length, cols=n===1?1:n===2?2:3,rows=Math.ceil(n/cols),gap=12,cw=(W-68-(cols-1)*gap)/cols,ch=Math.min(145,(390-(rows-1)*gap)/rows);points.forEach((p,i)=>{const c=i%cols,r=Math.floor(i/cols),x=34+c*(cw+gap),y=98+r*(ch+gap);rect(slide,x,y,cw,ch,colors[i],true);text(slide,p,x+14,y+20,cw-28,ch-29,17,ink);});}
+ else if(kind==='steps'){let n=points.length,gap=9,h=Math.min(69,(405-(n-1)*gap)/n);points.forEach((p,i)=>{let y=89+i*(h+gap);rect(slide,48,y,615,h,colors[i],true);ellipse(slide,54,y+8,39,39,'#1769AA');text(slide,String(i+1),66,y+14,20,25,18,'#FFFFFF');text(slide,p,106,y+12,536,h-15,17,ink);});}
+ else if(kind==='cycle'){let n=points.length,r=n<4?140:160,cx=355,cy=279;points.forEach((p,i)=>{let theta=-Math.PI/2+2*Math.PI*i/n,x=cx+r*Math.cos(theta)-85,y=cy+r*Math.sin(theta)-38;rect(slide,x,y,170,76,colors[i],true);text(slide,p,x+11,y+10,148,60,15,ink);});ellipse(slide,300,229,110,100,'#1769AA');text(slide,'CYCLE',313,265,90,32,19,'#FFFFFF');}
+ else if(kind==='hub'){ellipse(slide,282,207,155,130,'#1769AA');text(slide,data.title.length>38?'Main topic':data.title,300,246,120,65,16,'#FFFFFF');let n=points.length,r=n<4?190:202,cx=358,cy=272;points.forEach((p,i)=>{let a=-Math.PI/2+i*2*Math.PI/n,x=cx+r*Math.cos(a)-81,y=cy+r*Math.sin(a)-32;x=Math.max(13,Math.min(548,x));y=Math.max(90,Math.min(425,y));rect(slide,x,y,162,64,colors[i],true);text(slide,p,x+9,y+8,144,54,15,ink);});}
+ else if(kind==='compare'){let half=Math.ceil(points.length/2),left=points.slice(0,half),right=points.slice(half);rect(slide,40,99,306,49,'#1769AA',true);rect(slide,375,99,306,49,'#236F77',true);text(slide,'Group A',128,112,150,30,19,'#FFFFFF');text(slide,'Group B',463,112,150,30,19,'#FFFFFF');const max=Math.max(left.length,right.length);for(let i=0;i<max;i++){let h=Math.min(110,310/max-9),y=157+i*(h+9);if(left[i]){rect(slide,40,y,306,h,colors[i],true);text(slide,left[i],52,y+9,282,h-14,16,ink);}if(right[i]){rect(slide,375,y,306,h,colors[i+3],true);text(slide,right[i],387,y+9,282,h-14,16,ink);}}}
+}
+document.getElementById('analyze').addEventListener('click',suggest);
+insert.addEventListener('click',async()=>{if(!officeReady){status.textContent='Open this page as an add-in inside PowerPoint.';return;}insert.disabled=true;status.textContent='Creating editable PowerPoint objects...';try{const data=lastData||parse();await PowerPoint.run(async context=>{const selected=context.presentation.getSelectedSlides();selected.load('items');await context.sync();if(!selected.items.length)throw Error('Select a slide first.');make(selected.items[0],data,chosen);await context.sync();});status.textContent='Success! Select the shapes or text on your slide to edit them.';}catch(e){status.textContent='Insertion failed: '+(e&&e.message?e.message:String(e));}finally{insert.disabled=false;}});
+suggest();if(typeof Office==='undefined'){status.textContent='Open the page inside PowerPoint to insert. You can preview layout suggestions here.';}else{Office.onReady(info=>{if(info.host===Office.HostType.PowerPoint){officeReady=true;insert.disabled=false;status.textContent='Ready. Select a blank slide, choose a layout and click Insert.';}else{status.textContent='Open as a PowerPoint add-in to insert. Suggestions work in any browser.';}});}
+})();
+</script>
 </body>
 </html>
