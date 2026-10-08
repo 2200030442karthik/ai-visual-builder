@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Visual Builder - starter</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <style>
+    body { font-family: Arial,sans-serif; margin: 18px; color:#253244; }
+    textarea { box-sizing:border-box; width:100%; height:120px; padding:10px; border:1px solid #bac5d0; border-radius:8px; }
+    button { margin-top:12px; background:#1769aa; border:0; color:white; border-radius:8px; padding:12px; width:100%; cursor:pointer; }
+    small {display:block;color:#58677b;margin-top:12px;line-height:1.5}
+    #status {white-space:pre-wrap; margin-top:14px; font-size:13px}
+  </style>
+</head>
+<body>
+  <h2>AI Visual Builder</h2>
+  <p>Prototype 1: editable PowerPoint elements</p>
+  <label for="content">Enter a heading or short concept</label>
+  <textarea id="content">AI in manufacturing</textarea>
+  <button id="insert" disabled>Insert editable visual</button>
+  <div id="status">Loading Office...</div>
+  <small>This prototype is not AI-powered yet. It creates editable native PowerPoint objects.</small>
+  <script>
+    const statusEl = document.getElementById('status');
+    Office.onReady((info) => {
+      if(info.host !== Office.HostType.PowerPoint) {
+        statusEl.textContent = 'Open this add-in inside PowerPoint.';
+        return;
+      }
+      document.getElementById('insert').disabled = false;
+      statusEl.textContent = 'Ready. Select a slide, then click Insert.';
+    });
+    document.getElementById('insert').addEventListener('click', async () => {
+      const text = document.getElementById('content').value.trim() || 'Your concept';
+      try {
+        statusEl.textContent = 'Inserting...';
+        await PowerPoint.run(async context => {
+          const slide = context.presentation.getSelectedSlides().getItemAt(0);
+          const box = slide.shapes.addGeometricShape(PowerPoint.GeometricShapeType.roundRectangle, {
+            left: 75, top: 110, width: 400, height: 150
+          });
+          box.fill.setSolidColor('#DCEFFC');
+          const label = slide.shapes.addTextBox(text, {
+            left: 95, top: 150, width: 355, height: 70
+          });
+          label.textFrame.textRange.fontSize = 24;
+          label.textFrame.textRange.fontColor = '#173A5E';
+          await context.sync();
+        });
+        statusEl.textContent = 'Inserted! Click the text or shape on your slide to edit it.';
+      } catch(error) {
+        statusEl.textContent = 'Could not insert: ' + (error && error.message ? error.message : String(error));
+      }
+    });
+  </script>
+</body>
+</html>
