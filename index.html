@@ -1,72 +1,896 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AI Visual Builder - Stage 4A</title><script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script><style>*{box-sizing:border-box}body{font:14px/1.45 Arial,sans-serif;margin:15px;color:#21344b}h2{font-size:21px;margin:0 0 6px}.pill{display:inline-block;background:#e0f2ff;color:#11538a;padding:4px 9px;border-radius:15px;font-size:12px}p{color:#53657a;margin:10px 0}label{display:block;font-weight:bold;margin:12px 0 5px}textarea,input,select{width:100%;padding:10px;border:1px solid #b4c2d0;border-radius:6px;font:14px Arial}textarea{min-height:140px;resize:vertical}button{cursor:pointer;border-radius:7px;border:1px solid #c4d4e3;padding:10px;background:#f2f7fc;color:#17476e}button:disabled{opacity:.5;cursor:not-allowed}.primary{background:#156bad;color:white;border:0;font-weight:bold;width:100%;margin-top:10px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.option{text-align:left;min-height:75px;font-size:12px}.selected{background:#dceffc;border:2px solid #1769aa}.option strong{display:block;font-size:13px}.muted{font-size:12px;color:#5a6e83}.status{white-space:pre-wrap;background:#eff4f8;padding:10px;border-radius:6px;margin-top:12px;font-size:12px}.panel{padding:10px;border:1px solid #d7e1e9;border-radius:7px;margin:10px 0}.panel p{margin:4px 0}.row{display:flex;gap:8px}.row>*{flex:1}.notice{font-size:12px;border-left:3px solid #d4a64d;padding-left:8px;margin:10px 0}.small-btn{width:100%;margin-top:7px}.preview{border:1px solid #cfd9e5;background:#fff;border-radius:8px;min-height:170px;margin:10px 0;padding:12px}.preview-title{font-weight:bold;margin:0 0 9px;font-size:13px}.preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.preview-item{background:#dceffc;border:1px solid #8fb9d8;color:#173a5e;border-radius:6px;padding:10px 7px;font-size:12px;overflow-wrap:anywhere;min-height:45px}.preview-item:nth-child(3n + 2){background:#d7f1e8}.preview-item:nth-child(3n){background:#fcebcf}.preview-steps{display:flex;flex-direction:column;gap:6px}.preview-steps .preview-item::before{content:"↓  ";font-weight:bold}.preview-hub{text-align:center;font-weight:bold;color:#156bad;padding:7px}.preview-note{font-size:11px;color:#586b81;margin-top:8px}</style></head><body>
-<h2>AI Visual Builder</h2><span class="pill">Stage 4A · smarter suggestions</span>
-<p>Paste keywords, points or a paragraph. Review the extracted text, then pick an editable visualization.</p>
-<label for="content">Input content</label><textarea id="content">AI applications in manufacturing
-Quality inspection
-Predictive maintenance
-Production optimization
-Safety monitoring</textarea>
-<button class="primary" id="analyze">Analyze and suggest visuals</button>
-<div id="analysis" class="panel" aria-live="polite"></div>
-<label for="title">Editable slide heading</label><input id="title" maxlength="110">
-<label for="points">Editable diagram labels (one per line)</label><textarea id="points" style="min-height:120px"></textarea>
-<div class="muted" id="count"></div><label>Suggested layout options</label><div class="grid" id="choices"></div><label>Live layout preview</label><div id="preview" class="preview" aria-live="polite"></div>
-<button class="primary" id="insert" disabled>Insert editable diagram into selected slide</button>
-<button class="small-btn" id="reset" type="button">Restore demonstration content</button>
-<div id="status" class="status" role="status">Initializing…</div>
-<div class="notice">Stage 4A recommendations use local text rules, not an AI model. No text is sent to an AI service. All diagram text and basic shapes are editable. Use a blank slide; new content is added without deleting existing objects. Do not put confidential company text on a public test page.</div>
-<script>
-(function(){'use strict';const $=id=>document.getElementById(id);let ready=false,choice='cards',lastRank=[];const MAX=6;const L=[['cards','Infographic cards','Distinct ideas or applications'],['steps','Process flow','Sequential actions'],['cycle','Cycle diagram','Repeating steps and feedback'],['hub','Hub and spoke','One theme with related concepts'],['compare','Comparison','Two contrasting sets'],['timeline','Timeline','Events and milestones'],['pyramid','Pyramid','Levels, priority or hierarchy'],['matrix','2 × 2 matrix','Two dimensions or classification'],['layers','Layered stack','Architecture or components'],['roadmap','Roadmap','Phases, plans and progress'],['funnel','Funnel','Filtering or narrowing stages'],['iso','Isometric-style blocks','Structured 3D-inspired cards']];
-const rules={steps:/\b(first|second|next|finally|then|step|steps|workflow|process|collect|prepare|analy[sz]e|deploy|capture|verify)\b/i,cycle:/\b(cycle|repeat|feedback|continuous|iterate|iteration|loop)\b/i,compare:/\b(vs\.?|versus|compare|comparison|different|difference|traditional|advantages|disadvantages)\b/i,timeline:/\b(timeline|history|year|milestone|evolution|chronology|decade)\b/i,pyramid:/\b(priority|hierarchy|levels|level|foundation|tier|pyramid)\b/i,matrix:/\b(matrix|quadrant|risk|impact|effort|urgency|importance)\b/i,layers:/\b(layer|architecture|stack|components|infrastructure|frontend|backend|database|platform)\b/i,roadmap:/\b(roadmap|plan|phases|release|sprint|milestones|journey|strategy)\b/i,funnel:/\b(funnel|filter|conversion|qualify|screen|narrow|select|recruitment)\b/i,hub:/\b(application|applications|benefits|types|ecosystem|features|capabilities|areas|uses|ai)\b/i,iso:/\b(isometric|3d|factory|manufacturing|building|systems|modules)\b/i};
-function clean(x){return x.replace(/^\s*(?:[-*•–]|\d+[.)])\s*/,'').replace(/\s+/g,' ').trim()}function sentences(s){return(s.match(/[^.!?]+[.!?]?/g)||[]).map(clean).filter(Boolean)}
-function compactLabel(v){let t=clean(v).replace(/^[,;:.\s]+|[,;:.\s]+$/g,'');t=t.replace(/^(?:and|also|which|that|these|those)\s+/i,'').replace(/^(?:helps?|enables?|allows?|can|could|may|will)\s+/i,'');return t.length>95?t.slice(0,92).replace(/\s+\S*$/,'')+'…':t}
-function extract(s){
- let lines=s.split(/\r?\n/).map(clean).filter(Boolean),paragraph=lines.length<=2&&s.length>130;
- let heading='',items=[];
- if(paragraph){
-  let arr=sentences(s);let first=arr[0]||'';
-  heading=first.split(/\b(?:helps?|enables?|allows?|uses?|improves?|supports?|provides?|are|is)\b/i)[0].trim().replace(/[,:;.]+$/,'');
-  if(heading.length<4||heading.length>65)heading='Key concepts';
-  // Split on idea boundaries, not commas inside unrelated phrases. No AI rewriting takes place.
-  let clauses=arr.flatMap(a=>a.split(/;|,\s+(?=(?:and\s+)?[a-z])/i));
-  items=clauses.flatMap(a=>a.split(/\s+and\s+(?=(?:improve|predict|optimize|monitor|reduce|support|analy[sz]e|automate|detect|manage|track|identify|generate)\b)/i))
-   .map(compactLabel).filter(x=>x.length>=9);
-  if(items.length<2)items=arr.map(compactLabel);
- }else if(lines.length>1){heading=lines[0];items=lines.slice(1)}
- else{heading=lines[0]||'Your topic';items=[heading]}
- if(!items.length)items=[heading];
- // Preserve the original pasted text above, allowing the user to review every extraction.
- return{heading:heading.slice(0,110),items:items.slice(0,MAX),omitted:Math.max(0,items.length-MAX),paragraph};
-}
-function rank(s){let a=L.map(([id])=>({id,score:id==='cards'?2:0}));for(let v of a)if(rules[v.id]?.test(s))v.score+=v.id==='iso'?3:5; if(/\b(after|before|finally|next)\b/i.test(s))a.find(x=>x.id==='steps').score+=3;if(/\b(to|through|into)\b/i.test(s))a.find(x=>x.id==='steps').score+=1;return a.sort((x,y)=>y.score-x.score).map(x=>x.id)}
-function display(){const s=$('content').value.trim();if(!s){$('status').textContent='Please enter content first.';return;}const d=extract(s);$('title').value=d.heading;$('points').value=d.items.join('\n');lastRank=rank(s);choice=lastRank[0];$('analysis').textContent='Input: '+(d.paragraph?'paragraph':'keywords or points')+' · '+d.items.length+' diagram label(s) extracted'+(d.omitted?' · '+d.omitted+' additional item(s) not included':'')+'. Review and edit the labels below before inserting.';makeChoices();showCount();updatePreview();}
-function makeChoices(){const c=$('choices');c.replaceChildren();for(const id of lastRank){const o=L.find(t=>t[0]===id),b=document.createElement('button');b.type='button';b.className='option'+(choice===id?' selected':'');const strong=document.createElement('strong');strong.textContent=o[1];const small=document.createElement('span');small.className='muted';small.textContent=o[2];b.append(strong,small);b.addEventListener('click',()=>{choice=id;makeChoices();updatePreview()});c.appendChild(b)}}function getData(){return{title:$('title').value.trim()||'Your topic',items:$('points').value.split(/\r?\n/).map(clean).filter(Boolean).slice(0,MAX)}}function showCount(){let n=$('points').value.split(/\r?\n/).map(clean).filter(Boolean).length;$('count').textContent=n+' labels. First '+MAX+' will be inserted. Edit labels here; keep them concise to avoid overflow.';updatePreview()}
-function updatePreview(){
- const p=$('preview');if(!p)return;p.replaceChildren();let d=getData();
- let title=document.createElement('div');title.className='preview-title';title.textContent=d.title;p.appendChild(title);
- const ordered=['steps','roadmap','timeline','funnel','cycle'].includes(choice);
- if(choice==='hub'||choice==='cycle'){let hub=document.createElement('div');hub.className='preview-hub';hub.textContent=choice==='hub'?'CORE TOPIC':'REPEATING CYCLE';p.appendChild(hub)}
- let grid=document.createElement('div');grid.className=ordered?'preview-steps':'preview-grid';
- d.items.forEach((item,i)=>{let b=document.createElement('div');b.className='preview-item';b.textContent=item;grid.appendChild(b)});p.appendChild(grid);
- let note=document.createElement('div');note.className='preview-note';
- note.textContent='Simplified text preview · '+L.find(x=>x[0]===choice)[1]+' · final placement appears in PowerPoint';p.appendChild(note);
-}
-function rect(slide,x,y,w,h,color,round){let sh=slide.shapes.addGeometricShape(round?PowerPoint.GeometricShapeType.roundRectangle:PowerPoint.GeometricShapeType.rectangle,{left:x,top:y,width:w,height:h});sh.fill.setSolidColor(color);return sh}
-function circle(slide,x,y,w,h,color){let sh=slide.shapes.addGeometricShape(PowerPoint.GeometricShapeType.ellipse,{left:x,top:y,width:w,height:h});sh.fill.setSolidColor(color);return sh}
-function txt(slide,str,x,y,w,h,size=15,color='#173A5E'){let sh=slide.shapes.addTextBox(str,{left:x,top:y,width:w,height:h});sh.textFrame.textRange.font.size=size;sh.textFrame.textRange.font.color=color;sh.textFrame.wordWrap=true;return sh}
-function line(slide,x1,y1,x2,y2){let sh=slide.shapes.addLine(PowerPoint.ConnectorType.straight,{left:x1,top:y1,width:x2-x1,height:y2-y1});sh.lineFormat.color='#6F8CA8';sh.lineFormat.weight=1.5;return sh}
-const colors=['#DCEFFC','#D7F1E8','#FCEBCC','#E8E1FA','#FBE1EA','#E5ECF5'];function block(slide,text,x,y,w,h,i,size=14){rect(slide,x,y,w,h,colors[i%6],true);txt(slide,text,x+9,y+8,w-18,h-14,size)}
-function draw(slide,d,id){let P=d.items.length?d.items:[d.title],n=P.length,W=720;txt(slide,d.title,30,13,660,48,25);if(id==='cards'||id==='iso'){let cols=n===1?1:n===2?2:3,rows=Math.ceil(n/cols),gap=12,cw=(650-gap*(cols-1))/cols,ch=Math.min(146,(350-gap*(rows-1))/rows);P.forEach((p,i)=>{let x=35+(i%cols)*(cw+gap),y=95+Math.floor(i/cols)*(ch+gap);if(id==='iso')rect(slide,x+10,y+10,cw,ch,'#AAC9DD',true);block(slide,p,x,y,cw,ch,i,15)})}
-else if(id==='steps'||id==='roadmap'){let h=Math.min(62,345/n-8);P.forEach((p,i)=>{let x=id==='steps'?63:(i%2?125:55),y=93+i*(h+8);block(slide,p,x,y,560,h,i,16);if(i<n-1)line(slide,x+10,y+h,x+10,y+h+8)})}
-else if(id==='cycle'||id==='hub'){let cx=360,cy=270,r=n<=3?135:175;P.forEach((p,i)=>{let a=-Math.PI/2+(2*Math.PI*i/n),x=Math.max(20,Math.min(540,cx+r*Math.cos(a)-89)),y=Math.max(75,Math.min(412,cy+r*Math.sin(a)-34));block(slide,p,x,y,178,68,i,13)});circle(slide,312,225,96,90,'#1769AA');txt(slide,id==='hub'?'TOPIC':'CYCLE',328,259,72,26,17,'#FFFFFF')}
-else if(id==='compare'){let half=Math.ceil(n/2);rect(slide,38,85,312,47,'#1769AA',true);rect(slide,369,85,312,47,'#236F77',true);txt(slide,'Group A',125,97,130,28,19,'#FFFFFF');txt(slide,'Group B',456,97,130,28,19,'#FFFFFF');P.forEach((p,i)=>{let col=i<half?0:1,idx=col===0?i:i-half,x=38+col*331,y=147+idx*95;block(slide,p,x,y,312,83,i,15)})}
-else if(id==='timeline'){line(slide,73,275,650,275);P.forEach((p,i)=>{let x=50+i*(600/Math.max(1,n-1));circle(slide,x+16,266,18,18,'#1769AA');let top=i%2===0?113:306;block(slide,p,Math.max(20,Math.min(555,x-47)),top,143,83,i,13)})}
-else if(id==='pyramid'||id==='funnel'){P.forEach((p,i)=>{let k=id==='pyramid'?n-i:i+1,w=170+Math.round((k/n)*410),x=(720-w)/2,y=88+i*(350/n);block(slide,p,x,y,w,Math.max(40,340/n-7),i,15)})}
-else if(id==='matrix'){let positions=[[42,94],[370,94],[42,264],[370,264]];positions.forEach((pos,i)=>{block(slide,P[i]||('Category '+(i+1)),pos[0],pos[1],305,152,i,16)});}
-else if(id==='layers'){P.forEach((p,i)=>{let x=42+i*11,w=630-i*22;block(slide,p,x,90+i*60,w,52,i,16)})}}
-// Keep matrix to four cells, and display additional labels below its grid.
-function normalizeForLayout(d,id){if(id!=='matrix')return d;return{title:d.title,items:d.items.slice(0,4)}}
-$('analyze').addEventListener('click',display);$('points').addEventListener('input',showCount);$('title').addEventListener('input',updatePreview);$('reset').addEventListener('click',()=>{$('content').value='AI applications in manufacturing\nQuality inspection\nPredictive maintenance\nProduction optimization\nSafety monitoring';display()});$('insert').addEventListener('click',async()=>{if(!ready){$('status').textContent='Open the panel inside PowerPoint to insert.';return;}const d=getData();if(!d.items.length){$('status').textContent='Enter at least one diagram label.';return;}if(choice==='matrix'&&d.items.length>4){$('status').textContent='The matrix supports up to four labels. Remove extra labels or choose another layout.';return;}const btn=$('insert');btn.disabled=true;$('status').textContent='Inserting editable PowerPoint elements…';try{await PowerPoint.run(async context=>{let s=context.presentation.getSelectedSlides();s.load('items');await context.sync();if(!s.items.length)throw Error('Select a slide first.');draw(s.items[0],normalizeForLayout(d,choice),choice);await context.sync()});$('status').textContent='Inserted! Select a text box or shape on the slide to edit it.'}catch(e){$('status').textContent='Insertion error: '+(e&&e.message?e.message:String(e))}finally{btn.disabled=false}});
-// Fix initialization: Office.js is only needed for insertion, not analysis.
-display();if(typeof Office==='undefined'){$('status').textContent='Preview mode: Open the add-in in PowerPoint to insert shapes.'}else{Office.onReady(info=>{if(info.host===Office.HostType.PowerPoint){ready=true;$('insert').disabled=false;$('status').textContent='Ready in PowerPoint. Select a blank slide and choose a layout.'}else{$('status').textContent='Preview mode: Open from PowerPoint to insert.'}})}
-})();</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Visual Builder</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <style>
+    :root { --ink:#1f2937; --muted:#5b6575; --line:#d8dee6; --accent:#1769aa; --bg:#f4f6f9; }
+    * { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    body { margin:0; padding:14px 14px 104px; font:13px/1.45 "Segoe UI",Aptos,Arial,sans-serif; color:var(--ink); background:var(--bg); }
+    h1 { font-size:17px; margin:0; }
+    .sub { margin:2px 0 12px; color:var(--muted); }
+    .panel { background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:12px; }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
+    label, .label { font-weight:600; }
+    select { font:inherit; padding:3px 6px; border:1px solid var(--line); border-radius:6px; background:#fff; max-width:60%; min-width:0; }
+    body > * { max-width:100%; }
+    textarea { width:100%; height:150px; resize:vertical; padding:9px; border:1px solid #bac5d0; border-radius:8px; font:12.5px/1.45 Consolas,"Cascadia Mono",monospace; color:var(--ink); }
+    .hint { color:var(--muted); font-size:12px; margin-top:6px; }
+    button { font:inherit; cursor:pointer; }
+    .secondary { margin-top:8px; width:100%; padding:7px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); }
+    .secondary:disabled { opacity:.5; cursor:default; }
+    .swatches { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 10px; }
+    .swatch { display:flex; border:2px solid transparent; border-radius:8px; padding:3px; background:#fff; box-shadow:0 0 0 1px var(--line); }
+    .swatch.sel { border-color:var(--accent); }
+    .swatch i { width:12px; height:18px; display:block; }
+    .swatch i:first-child { border-radius:4px 0 0 4px; } .swatch i:last-child { border-radius:0 4px 4px 0; }
+    .check { display:flex; gap:6px; align-items:center; font-weight:400; margin-top:4px; }
+    .analysis { color:var(--muted); font-size:12px; margin:0 2px 10px; }
+    .analysis b { color:var(--ink); }
+    .analysis .note { display:block; margin-top:4px; color:#8a5a00; }
+    .preview { background:#fff; border:1px solid var(--line); border-radius:10px; padding:8px; margin-bottom:12px; }
+    .preview-head { display:flex; justify-content:space-between; margin:0 2px 6px; }
+    .preview svg, .card svg { width:100%; height:auto; display:block; border-radius:6px; box-shadow:0 0 0 1px #e6eaf0; }
+    .section-title { font-weight:600; margin:0 2px 8px; }
+    .grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+    .card { position:relative; min-width:0; border:2px solid transparent; background:#fff; border-radius:10px; padding:6px; text-align:left; box-shadow:0 0 0 1px var(--line); color:var(--ink); }
+    .card:hover { box-shadow:0 0 0 1px var(--accent); }
+    .card.sel { border-color:var(--accent); }
+    .meta { display:flex; justify-content:space-between; gap:4px; margin-top:5px; font-size:12px; }
+    .tag, .preview-head span { color:var(--muted); }
+    .badge { position:absolute; top:10px; left:10px; background:var(--accent); color:#fff; font-size:10px; font-weight:600; padding:1px 6px; border-radius:10px; }
+    .empty { color:var(--muted); }
+    footer { position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid var(--line); padding:10px 14px; }
+    #insert { width:100%; background:var(--accent); border:0; color:#fff; border-radius:8px; padding:11px; font-weight:600; }
+    #insert:disabled { background:#9db6cc; cursor:default; }
+    #status { margin-top:6px; font-size:12px; color:var(--muted); white-space:pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>AI Visual Builder</h1>
+  <p class="sub">Step 1 · Turn your text into editable slide visuals</p>
+
+  <div class="panel">
+    <div class="row">
+      <label for="content">Your content</label>
+      <select id="examples" aria-label="Load an example"><option value="">Try an example…</option></select>
+    </div>
+    <textarea id="content" spellcheck="false"></textarea>
+    <div class="hint">First line = title, then one point per line. Indent a line, or put it under a “Heading:” line, to make it a sub-point. A paragraph also works.</div>
+    <button id="useSelection" class="secondary" type="button" disabled>Use text from selected shape</button>
+  </div>
+
+  <div class="panel">
+    <div class="label">Colours</div>
+    <div id="palettes" class="swatches"></div>
+    <label class="check"><input type="checkbox" id="showTitle" checked> Show title above the visual</label>
+    <label class="check" id="groupWrap" hidden><input type="checkbox" id="groupShapes" checked> Group shapes after inserting</label>
+  </div>
+
+  <div id="analysis" class="analysis"></div>
+  <div id="preview" class="preview" hidden></div>
+  <div id="gridTitle" class="section-title"></div>
+  <div id="grid" class="grid"></div>
+
+  <footer>
+    <button id="insert" type="button" disabled>Insert visual</button>
+    <div id="status">Loading Office…</div>
+  </footer>
+
+  <!-- Engine: text analysis, layouts and preview rendering. No Office dependency. -->
+  <script id="engine">
+    const INK = '#1F2937', MUTED = '#4B5563', CONNECTOR = '#C7CDD6';
+    const FONT = "Aptos, Calibri, 'Segoe UI', Arial, sans-serif";
+
+    const PALETTES = [
+      { id: 'ocean',  name: 'Ocean',     colors: ['#1769AA', '#0F9D9A', '#3A7BD5', '#5B5FC7', '#0B7285', '#2B8A3E'] },
+      { id: 'ai',     name: 'AI Violet', colors: ['#6D28D9', '#4F46E5', '#2563EB', '#0891B2', '#9333EA', '#DB2777'] },
+      { id: 'sunset', name: 'Sunset',    colors: ['#E76F51', '#E9A23B', '#2A9D8F', '#264653', '#C2410C', '#D62828'] },
+      { id: 'forest', name: 'Forest',    colors: ['#2D6A4F', '#40916C', '#1B4332', '#52796F', '#B7791F', '#386641'] },
+      { id: 'corp',   name: 'Corporate', colors: ['#1F3A5F', '#2E5984', '#3E7CB1', '#4A6FA5', '#5C7C99', '#C0392B'] },
+    ];
+
+    /* ---------- colour helpers ---------- */
+    function hexToRgb(h) { h = h.replace('#', ''); return [0, 2, 4].map(i => parseInt(h.substr(i, 2), 16)); }
+    function rgbToHex(c) { return '#' + c.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('').toUpperCase(); }
+    function mix(a, b, t) { const x = hexToRgb(a), y = hexToRgb(b); return rgbToHex(x.map((v, i) => v + (y[i] - v) * t)); }
+    const tint = (c, t) => mix(c, '#FFFFFF', t);
+    const shade = (c, t) => mix(c, '#000000', t);
+    function luminance(c) {
+      const [r, g, b] = hexToRgb(c).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+    const textOn = c => luminance(c) > 0.22 ? INK : '#FFFFFF';
+    const accentText = c => luminance(c) > 0.2 ? shade(c, 0.4) : c;
+    const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    const bullets = arr => arr.map(k => '• ' + k).join('\n');
+
+    /* ---------- text fitting (approximate, PowerPoint default insets 7.2pt / 3.6pt) ---------- */
+    function fitsAt(text, w, h, size) {
+      const cw = size * 0.55, aw = w - 14.4, ah = h - 7.2;
+      if (aw <= 0 || ah <= 0) return false;
+      let lines = 0;
+      for (const para of String(text).split('\n')) {
+        let cur = 0; lines++;
+        for (const word of para.split(/\s+/).filter(Boolean)) {
+          const len = word.length * cw;
+          if (len > aw) return false;
+          const next = cur ? cur + cw + len : len;
+          if (next <= aw) cur = next; else { lines++; cur = len; }
+        }
+      }
+      return lines * size * 1.2 <= ah;
+    }
+    function fit(text, w, h, max, min) {
+      min = min || 9;
+      for (let s = max; s > min; s--) if (fitsAt(text, w, h, s)) return s;
+      return min;
+    }
+
+    /* Area inside a preset shape where PowerPoint places its text (approximation). */
+    function textRect(g, x, y, w, h) {
+      const m = Math.min(w, h);
+      switch (g) {
+        case 'chevron':   { const d = m * 0.5; return { x: x + d * 0.5, y, w: w - d, h }; }
+        case 'homePlate': { const d = m * 0.5; return { x, y, w: w - d * 0.5, h }; }
+        case 'ellipse':   return { x: x + w * 0.146, y: y + h * 0.146, w: w * 0.708, h: h * 0.708 };
+        case 'triangle':  return { x: x + w * 0.25, y: y + h * 0.5, w: w * 0.5, h: h * 0.5 };
+        case 'cube':      { const d = m * 0.25; return { x, y: y + d, w: w - d, h: h - d }; }
+        case 'trapezoid': { const d = m * 0.25; return { x: x + d * 0.66, y: y + h * 0.33, w: w - d * 1.33, h: h * 0.67 }; }
+        default:          return { x, y, w, h };
+      }
+    }
+
+    /* ---------- primitives: the only things layouts produce ---------- */
+    function box(g, x, y, w, h, o) { return Object.assign({ t: 'shape', g, x, y, w, h, fill: null, line: null }, o); }
+    function label(x, y, w, h, str, o) { return Object.assign({ t: 'text', x, y, w, h, text: str, size: 14, color: INK, align: 'left', valign: 'top' }, o); }
+    function rule(x, y, w, h, color) { return box('rect', x, y, w, h, { fill: color }); }
+    function tile(g, x, y, w, h, fill, str, o) {
+      o = o || {};
+      const r = textRect(g, x, y, w, h);
+      return box(g, x, y, w, h, Object.assign({
+        fill, text: str, size: fit(str, r.w, r.h, o.max || 20, o.min || 9),
+        color: textOn(fill), bold: true, align: 'center', valign: 'middle',
+      }, o));
+    }
+
+    /* Optional title row; returns the content area below it. */
+    function frame(c) {
+      const out = [], left = c.M, cw = c.W - 2 * c.M;
+      let top = c.M * 0.7;
+      if (c.showTitle && c.title) {
+        out.push(label(left, c.M * 0.5, cw, 54, c.title, { size: fit(c.title, cw, 54, 30, 18), bold: true, valign: 'middle' }));
+        top = c.M * 0.5 + 72;
+      }
+      return { out, top, bottom: c.H - c.M * 0.7, left, right: c.W - c.M, cw };
+    }
+
+    /* ---------- layouts ---------- */
+    const LAYOUTS = [
+      { id: 'process', name: 'Process flow', tag: 'Flow', min: 2, max: 7,
+        score: (d, s) => 50 + (s.sequence ? 35 : 0) + (s.time ? 5 : 0) - (d.avgLen > 40 ? 15 : 0) - (d.n > 5 ? 10 : 0) - (d.hasChildren ? 10 : 0),
+        build(c) {
+          const f = frame(c), out = f.out, n = c.items.length;
+          const ch = n <= 4 ? 110 : n <= 5 ? 96 : 84, d = ch * 0.5, gap = 8;
+          const w = (f.cw + (n - 1) * (d - gap)) / n;
+          const r = textRect('chevron', 0, 0, w, ch);
+          const inside = c.items.every(it => fitsAt(it.text, r.w, r.h, 13));
+          const below = !inside || c.items.some(it => it.children.length);
+          const y = below ? f.top + 12 : f.top + (f.bottom - f.top - ch) / 2;
+          c.items.forEach((it, i) => {
+            const x = f.left + i * (w - d + gap), col = c.color(i);
+            out.push(tile(i === 0 ? 'homePlate' : 'chevron', x, y, w, ch, col,
+              inside ? it.text : String(i + 1).padStart(2, '0'), { max: inside ? 20 : 28 }));
+            if (!below) return;
+            const lx = x + (i ? d * 0.5 : 0), lw = w - d + gap - 6;
+            let ly = y + ch + 14;
+            if (!inside) {
+              out.push(label(lx, ly, lw, 56, it.text, { size: fit(it.text, lw, 56, 18, 10), bold: true, color: accentText(col) }));
+              ly += 60;
+            }
+            if (it.children.length) {
+              const t = bullets(it.children), lh = f.bottom - ly;
+              out.push(label(lx, ly, lw, lh, t, { size: fit(t, lw, lh, 15, 9), color: MUTED }));
+            }
+          });
+          return out;
+        } },
+
+      { id: 'steps', name: 'Numbered steps', tag: 'List', min: 2, max: 10,
+        score: (d, s) => 52 + (s.sequence ? 20 : 0) + (d.avgLen > 35 ? 15 : 0) + (d.hasChildren ? 5 : 0),
+        build(c) {
+          const f = frame(c), out = f.out, n = c.items.length;
+          const rowH = (f.bottom - f.top) / n, h = rowH - Math.min(12, rowH * 0.18), D = Math.min(h, 58);
+          c.items.forEach((it, i) => {
+            const y = f.top + i * rowH, col = c.color(i), bx = f.left + D + 16, bw = f.cw - D - 16;
+            out.push(tile('ellipse', f.left, y + (h - D) / 2, D, D, col, String(i + 1), { max: 24 }));
+            const t = it.text + (it.children.length ? '\n' + it.children.join(' · ') : '');
+            out.push(box('roundRect', bx, y, bw, h, { fill: tint(col, 0.86), text: t, size: fit(t, bw, h, 20, 9), color: INK, align: 'left', valign: 'middle' }));
+          });
+          return out;
+        } },
+
+      { id: 'cycle', name: 'Cycle', tag: 'Cycle', min: 3, max: 8,
+        score: (d, s) => 40 + (s.cycle ? 50 : 0) + (s.sequence ? 8 : 0) - (d.avgLen > 40 ? 15 : 0),
+        build(c) {
+          const out = [], n = c.items.length, top = c.M * 0.5, bottom = c.H - c.M * 0.5;
+          const cx = c.W / 2, cy = (top + bottom) / 2, c0 = c.color(0);
+          const nw = n <= 5 ? 170 : 150, nh = n <= 5 ? 80 : 68;
+          const Ry = (bottom - top) / 2 - nh / 2, Rx = Math.min(c.W / 2 - c.M - nw / 2, Ry * 1.9);
+          out.push(box('ellipse', cx - Rx, cy - Ry, 2 * Rx, 2 * Ry, { line: tint(c0, 0.55), lineW: 5 }));
+          if (c.title) {
+            const ew = Math.min(2 * Rx - nw - 40, 280), eh = Math.min(2 * Ry - nh - 30, 140);
+            out.push(tile('ellipse', cx - ew / 2, cy - eh / 2, ew, eh, tint(c0, 0.88), c.title, { max: 26, color: INK }));
+          }
+          c.items.forEach((it, i) => {
+            const a = -Math.PI / 2 + i * 2 * Math.PI / n;
+            out.push(tile('roundRect', cx + Rx * Math.cos(a) - nw / 2, cy + Ry * Math.sin(a) - nh / 2, nw, nh, c.color(i), it.text, { max: 18 }));
+          });
+          return out;
+        } },
+
+      { id: 'hub', name: 'Hub & spoke', tag: 'Concept', min: 3, max: 8,
+        score: (d, s) => 45 + (s.center ? 25 : 0) + (d.title ? 12 : -20) - (s.sequence ? 10 : 0),
+        build(c) {
+          const out = [], n = c.items.length, top = c.M * 0.5, bottom = c.H - c.M * 0.5;
+          const cx = c.W / 2, cy = (top + bottom) / 2, c0 = c.color(0);
+          const nw = n <= 6 ? 180 : 160, nh = n <= 6 ? 76 : 66;
+          const Ry = (bottom - top) / 2 - nh / 2, Rx = Math.min(c.W / 2 - c.M - nw / 2, Ry * 1.9);
+          out.push(box('ellipse', cx - Rx, cy - Ry, 2 * Rx, 2 * Ry, { fill: tint(c0, 0.93) }));
+          const D = Math.min(2 * Ry - nh - 20, 190), ew = D * 1.3;
+          out.push(tile('ellipse', cx - ew / 2, cy - D / 2, ew, D, c0, c.title || 'Key ideas', { max: 26 }));
+          c.items.forEach((it, i) => {
+            const a = -Math.PI / 2 + i * 2 * Math.PI / n;
+            out.push(tile('roundRect', cx + Rx * Math.cos(a) - nw / 2, cy + Ry * Math.sin(a) - nh / 2, nw, nh, '#FFFFFF', it.text,
+              { max: 17, line: c.color(i), lineW: 2.5, color: INK }));
+          });
+          return out;
+        } },
+
+      { id: 'mindmap', name: 'Mind map', tag: 'Concept', min: 2, max: 10,
+        score: (d, s) => 42 + (d.hasChildren ? 30 : 0) + (s.center ? 8 : 0) + (d.title ? 5 : -15),
+        build(c) {
+          const out = [], n = c.items.length, top = c.M * 0.5, bottom = c.H - c.M * 0.5;
+          const cx = c.W / 2, cy = (top + bottom) / 2, bw0 = 200, bh0 = 96, trunk = 36, stub = 24, T = 3;
+          out.push(tile('roundRect', cx - bw0 / 2, cy - bh0 / 2, bw0, bh0, c.color(0), c.title || 'Main idea', { max: 24 }));
+          const half = Math.ceil(n / 2);
+          [[c.items.slice(0, half), 1, 0], [c.items.slice(half), -1, half]].forEach(([arr, dir, offset]) => {
+            if (!arr.length) return;
+            const rowH = (bottom - top) / arr.length, busX = cx + dir * (bw0 / 2 + trunk);
+            const bx = dir > 0 ? busX + stub : c.M, bw = dir > 0 ? c.W - c.M - bx : busX - stub - c.M;
+            const centers = [];
+            arr.forEach((it, j) => {
+              const col = c.color(offset + j), rt = top + j * rowH, kids = it.children.length;
+              const bh = Math.min(kids ? 54 : 64, rowH - 12);
+              const kh = kids ? Math.min(rowH - bh - 16, kids * 18 + 10) : 0, by = rt + (rowH - bh - kh) / 2;
+              out.push(box('roundRect', bx, by, bw, bh, { fill: tint(col, 0.85), line: col, lineW: 2, text: it.text,
+                size: fit(it.text, bw, bh, 18, 9), bold: true, color: INK, align: 'center', valign: 'middle' }));
+              if (kids) {
+                const t = bullets(it.children), ty = by + bh + 2, th = kh;
+                if (th > 16) out.push(label(bx + 8, ty, bw - 8, th, t, { size: fit(t, bw - 8, th, 14, 8), color: MUTED }));
+              }
+              centers.push(by + bh / 2);
+              out.push(rule(dir > 0 ? busX : busX - stub, by + bh / 2 - T / 2, stub, T, CONNECTOR));
+            });
+            out.push(rule(dir > 0 ? cx + bw0 / 2 : busX, cy - T / 2, trunk, T, CONNECTOR));
+            const y0 = Math.min(cy, ...centers), y1 = Math.max(cy, ...centers);
+            out.push(rule(busX - T / 2, y0 - T / 2, T, y1 - y0 + T, CONNECTOR));
+          });
+          return out;
+        } },
+
+      { id: 'hierarchy', name: 'Hierarchy', tag: 'Structure', min: 2, max: 6,
+        score: (d, s) => 38 + (d.hasChildren ? 38 : 0) + (s.hierarchy ? 12 : 0) + (d.title ? 5 : -10),
+        build(c) {
+          const out = [], n = c.items.length, top = c.M * 0.5, bottom = c.H - c.M * 0.5, T = 3;
+          const rw = Math.min(320, c.W * 0.34), rh = 64;
+          out.push(tile('roundRect', c.W / 2 - rw / 2, top, rw, rh, c.color(0), c.title || 'Overview', { max: 24 }));
+          const busY = top + rh + 28, ly = busY + 28, gap = 18, w = (c.W - 2 * c.M - (n - 1) * gap) / n, lh = 62;
+          const xs = c.items.map((_, i) => c.M + i * (w + gap));
+          out.push(rule(c.W / 2 - T / 2, top + rh, T, busY - top - rh + T / 2, CONNECTOR));
+          out.push(rule(xs[0] + w / 2, busY - T / 2, xs[n - 1] - xs[0], T, CONNECTOR));
+          c.items.forEach((it, i) => {
+            const col = c.color(i + 1), x = xs[i], k = it.children.length;
+            out.push(rule(x + w / 2 - T / 2, busY, T, ly - busY, CONNECTOR));
+            out.push(tile('roundRect', x, ly, w, lh, col, it.text, { max: 18 }));
+            if (!k) return;
+            const y0 = ly + lh + 14, ch = Math.min(46, (bottom - y0 - (k - 1) * 8) / k);
+            out.push(rule(x + 3, ly + lh, T, y0 + (k - 1) * (ch + 8) + ch / 2 - ly - lh, tint(col, 0.5)));
+            it.children.forEach((kid, j) => out.push(box('roundRect', x + 12, y0 + j * (ch + 8), w - 12, ch,
+              { fill: tint(col, 0.86), text: kid, size: fit(kid, w - 12, ch, 15, 8), color: INK, align: 'left', valign: 'middle' })));
+          });
+          return out;
+        } },
+
+      { id: 'timeline', name: 'Timeline', tag: 'Time', min: 2, max: 8,
+        score: (d, s) => 35 + (s.time ? 50 : 0) + (s.sequence ? 12 : 0) - (d.avgLen > 60 ? 10 : 0),
+        build(c) {
+          const f = frame(c), out = f.out, n = c.items.length;
+          const mid = (f.top + f.bottom) / 2, slot = f.cw / n, lw = Math.min(2 * slot - 16, 230), D = 24;
+          const hasDates = c.items.some(it => it.date);
+          out.push(rule(f.left, mid - 3, f.cw, 6, tint(c.color(0), 0.7)));
+          c.items.forEach((it, i) => {
+            const col = c.color(i), x = f.left + slot * (i + 0.5), up = i % 2 === 0;
+            const lx = Math.max(f.left, Math.min(x - lw / 2, f.right - lw));
+            const tag = it.date || (hasDates ? '' : String(i + 1).padStart(2, '0'));
+            const body = it.text + (it.children.length ? '\n' + it.children.join('\n') : '');
+            out.push(rule(x - 1, up ? mid - 44 : mid + 12, 2, 32, col));
+            if (up) {
+              if (tag) out.push(label(lx, mid - 80, lw, 32, tag, { size: fit(tag, lw, 32, 18, 10), bold: true, color: accentText(col), align: 'center', valign: 'bottom' }));
+              const bh = mid - 82 - f.top;
+              out.push(label(lx, f.top, lw, bh, body, { size: fit(body, lw, bh, 18, 9), align: 'center', valign: 'bottom' }));
+            } else {
+              if (tag) out.push(label(lx, mid + 48, lw, 32, tag, { size: fit(tag, lw, 32, 18, 10), bold: true, color: accentText(col), align: 'center' }));
+              const bh = f.bottom - mid - 82;
+              out.push(label(lx, mid + 82, lw, bh, body, { size: fit(body, lw, bh, 18, 9), align: 'center' }));
+            }
+            out.push(box('ellipse', x - D / 2, mid - D / 2, D, D, { fill: col, line: '#FFFFFF', lineW: 3 }));
+          });
+          return out;
+        } },
+
+      { id: 'pyramid', name: 'Pyramid', tag: 'Structure', min: 3, max: 6,
+        score: (d, s) => 35 + (s.hierarchy ? 45 : 0) + (d.title ? 3 : 0),
+        build(c) {
+          const f = frame(c), out = f.out, n = c.items.length, gap = 6;
+          const pw = f.cw * 0.44, lh = (f.bottom - f.top - (n - 1) * gap) / n, pcx = f.left + pw / 2, lx = f.left + pw + 44, lw = f.right - lx;
+          c.items.forEach((it, i) => {
+            const col = c.color(i), y = f.top + i * (lh + gap), wB = pw * (i + 1) / n;
+            out.push(tile(i === 0 ? 'triangle' : 'trapezoid', pcx - wB / 2, y, wB, lh, col, String(i + 1), { max: 22 }));
+            const ex = pcx + (i === 0 ? wB / 4 : wB / 2 - Math.min(wB, lh) * 0.125) + 8;
+            out.push(rule(ex, y + lh / 2 - 1, lx - ex - 8, 2, tint(col, 0.4)));
+            const t = it.text + (it.children.length ? '\n' + it.children.join(' · ') : '');
+            out.push(box('roundRect', lx, y, lw, lh, { fill: tint(col, 0.86), text: t, size: fit(t, lw, lh, 20, 9), color: INK, align: 'left', valign: 'middle' }));
+          });
+          return out;
+        } },
+
+      { id: 'funnel', name: 'Funnel', tag: 'Flow', min: 3, max: 6,
+        score: (d, s) => 32 + (s.funnel ? 55 : 0),
+        build(c) {
+          const f = frame(c), out = f.out, n = c.items.length, gap = 8, h = (f.bottom - f.top - (n - 1) * gap) / n;
+          c.items.forEach((it, i) => {
+            const w = f.cw * (0.92 - 0.56 * i / (n - 1));
+            out.push(tile('roundRect', c.W / 2 - w / 2, f.top + i * (h + gap), w, h, c.color(i), it.text, { max: 22 }));
+          });
+          return out;
+        } },
+
+      { id: 'cards', name: 'Infographic cards', tag: 'Cards', min: 2, max: 12,
+        score: (d, s) => 55 + (s.center ? 10 : 0) + (d.hasChildren ? 5 : 0),
+        build(c) {
+          const f = frame(c), out = f.out, n = c.items.length;
+          const cols = n <= 4 ? n : (n <= 6 || n === 9) ? 3 : 4, rows = Math.ceil(n / cols), gap = 18;
+          const cw = (f.cw - (cols - 1) * gap) / cols, chh = (f.bottom - f.top - (rows - 1) * gap) / rows;
+          c.items.forEach((it, i) => {
+            const col = c.color(i), r = Math.floor(i / cols), k = i % cols, inRow = Math.min(cols, n - r * cols);
+            const x = f.left + (cols - inRow) * (cw + gap) / 2 + k * (cw + gap), y = f.top + r * (chh + gap);
+            const kids = it.children.length ? bullets(it.children) : '';
+            out.push(box('rect', x, y, cw, chh, { fill: tint(col, 0.9) }));
+            out.push(rule(x, y, cw, 6, col));
+            if (chh >= 170) {
+              const D = 44, ty = y + 22 + D + 10, th = kids ? Math.min(64, (y + chh - ty) * 0.45) : y + chh - ty - 12;
+              out.push(tile('ellipse', x + 16, y + 22, D, D, col, String(i + 1), { max: 18 }));
+              out.push(label(x + 12, ty, cw - 24, th, it.text, { size: fit(it.text, cw - 24, th, 22, 10), bold: true }));
+              if (kids) {
+                const ky = ty + th + 4, kh = y + chh - ky - 10;
+                out.push(label(x + 12, ky, cw - 24, kh, kids, { size: fit(kids, cw - 24, kh, 15, 8), color: MUTED }));
+              }
+            } else {
+              const D = Math.min(44, chh - 30), t = it.text + (kids ? '\n' + kids : ''), tx = x + D + 24, tw = cw - D - 34;
+              out.push(tile('ellipse', x + 14, y + 6 + (chh - 6 - D) / 2, D, D, col, String(i + 1), { max: 18 }));
+              out.push(label(tx, y + 10, tw, chh - 16, t, { size: fit(t, tw, chh - 16, 20, 9), valign: 'middle' }));
+            }
+          });
+          return out;
+        } },
+
+      { id: 'matrix', name: '2 × 2 matrix', tag: 'Compare', min: 4, max: 4,
+        score: (d, s) => 45 + (s.compare ? 15 : 0) + (s.center ? 5 : 0),
+        build(c) {
+          const f = frame(c), out = f.out, gap = 14, w = (f.cw - gap) / 2, h = (f.bottom - f.top - gap) / 2;
+          c.items.forEach((it, i) => {
+            const kids = it.children.length, t = it.text + (kids ? '\n' + it.children.join('\n') : '');
+            out.push(tile('roundRect', f.left + (i % 2) * (w + gap), f.top + Math.floor(i / 2) * (h + gap), w, h, c.color(i), t, { max: 24, bold: !kids }));
+          });
+          return out;
+        } },
+
+      { id: 'compare', name: 'Comparison', tag: 'Compare', min: 2, max: 2,
+        score: (d, s) => 45 + (s.compare ? 40 : 0) + (d.hasChildren ? 15 : 0),
+        build(c) {
+          const f = frame(c), out = f.out, mid = c.W / 2, gapC = 80, colW = (f.cw - gapC) / 2;
+          const anyKids = c.items.some(it => it.children.length), hh = anyKids ? 64 : f.bottom - f.top;
+          c.items.forEach((it, i) => {
+            const col = c.color(i), x = i ? mid + gapC / 2 : f.left;
+            out.push(tile('roundRect', x, f.top, colW, hh, col, it.text, { max: anyKids ? 22 : 32 }));
+            const k = it.children.length, y0 = f.top + hh + 14;
+            if (!k) return;
+            const rh = Math.min(80, (f.bottom - y0 - (k - 1) * 10) / k);
+            it.children.forEach((kid, j) => out.push(box('roundRect', x, y0 + j * (rh + 10), colW, rh,
+              { fill: tint(col, 0.88), text: kid, size: fit(kid, colW, rh, 18, 9), color: INK, align: 'left', valign: 'middle' })));
+          });
+          const D = 62;
+          out.push(tile('ellipse', mid - D / 2, f.top + hh / 2 - D / 2, D, D, INK, 'VS', { max: 18 }));
+          return out;
+        } },
+
+      { id: 'isometric', name: 'Isometric steps', tag: '3D', min: 2, max: 6,
+        score: (d, s) => 40 + (s.sequence ? 12 : 0) + (s.hierarchy ? 10 : 0) + (s.time ? 5 : 0),
+        build(c) {
+          const f = frame(c), out = f.out, n = c.items.length, slot = f.cw / n, cw = Math.min(slot * 0.62, 150);
+          const floor = f.bottom - 10, minH = 90, maxH = Math.max(minH + 20, f.bottom - f.top - 110);
+          out.push(rule(f.left, floor + 4, f.cw, 4, '#E5E7EB'));
+          c.items.forEach((it, i) => {
+            const h = minH + (maxH - minH) * i / (n - 1), x = f.left + slot * i + (slot - cw) / 2, y = floor - h;
+            out.push(tile('cube', x, y, cw, h, c.color(i), String(i + 1), { max: 28 }));
+            const t = it.text + (it.children.length ? '\n' + it.children.join(' · ') : ''), lh = y - 8 - f.top;
+            out.push(label(f.left + slot * i + 4, f.top, slot - 8, lh, t, { size: fit(t, slot - 8, lh, 18, 9), bold: true, align: 'center', valign: 'bottom' }));
+          });
+          return out;
+        } },
+
+      { id: 'pillars', name: 'Pillars', tag: 'Structure', min: 3, max: 6,
+        score: (d, s) => 38 + (s.center ? 22 : 0) + (d.title ? 8 : -10) + (s.hierarchy ? 5 : 0),
+        build(c) {
+          const out = [], n = c.items.length, top = c.M * 0.5, bottom = c.H - c.M * 0.5, L = c.M, cw = c.W - 2 * c.M;
+          const c0 = c.color(0), dark = shade(c0, 0.25), roofH = 100, baseH = 26;
+          out.push(tile('triangle', L, top, cw, roofH, c0, c.title || '', { max: 24 }));
+          out.push(rule(L, top + roofH + 6, cw, 14, dark));
+          out.push(rule(L, bottom - baseH, cw, baseH, dark));
+          const py = top + roofH + 30, ph = bottom - baseH - 8 - py, gap = 22, pw = (cw - 40 - (n - 1) * gap) / n;
+          c.items.forEach((it, i) => {
+            const t = it.text + (it.children.length ? '\n\n' + it.children.join('\n') : '');
+            out.push(tile('rect', L + 20 + i * (pw + gap), py, pw, ph, c.color(i), t, { max: 20 }));
+          });
+          return out;
+        } },
+
+      { id: 'statement', name: 'Key message', tag: 'Text', min: 0, max: 99,
+        score: d => d.n <= 1 ? 90 : (d.mode === 'paragraph' ? 40 : 18),
+        build(c) {
+          const out = [], top = c.M, bottom = c.H - c.M, L = c.M, cw = c.W - 2 * c.M, c0 = c.color(0);
+          const head = c.title || (c.items[0] && c.items[0].text) || 'Your message';
+          const rest = (c.title ? c.items : c.items.slice(1)).map(it => it.text);
+          const bx = L + 48, bw = cw - 80;
+          out.push(box('rect', L, top, cw, bottom - top, { fill: tint(c0, 0.92) }));
+          out.push(rule(L, top, 12, bottom - top, c0));
+          if (rest.length) {
+            const hh = (bottom - top) * 0.38, body = bullets(rest), by = top + 30 + hh + 16, bh = bottom - 24 - by;
+            out.push(label(bx, top + 30, bw, hh, head, { size: fit(head, bw, hh, 40, 18), bold: true, color: accentText(c0), valign: 'bottom' }));
+            out.push(label(bx, by, bw, bh, body, { size: fit(body, bw, bh, 22, 10) }));
+          } else {
+            const hh = bottom - top - 60;
+            out.push(label(bx, top + 30, bw, hh, head, { size: fit(head, bw, hh, 48, 18), bold: true, color: accentText(c0), valign: 'middle' }));
+          }
+          return out;
+        } },
+    ];
+
+    /* ---------- text analysis (rule-based for Step 1; AI replaces this in Step 2) ---------- */
+    const BULLET = /^\s*(?:[-*•▪◦·–—>✓✔➢►]|\(?\d{1,2}[.)]|[a-zA-Z][.)])\s+/;
+    const DATE = /^((?:19|20)\d{2}(?:\s*[-–]\s*(?:19|20)?\d{2})?|Q[1-4](?:\s*(?:19|20)\d{2})?|(?:Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+(?:19|20)\d{2}|(?:Phase|Stage|Step|Week|Month|Day|Year|Sprint)\s*\d+)\s*[:\-–—]\s*(.+)$/i;
+    const SIGNALS = {
+      sequence:  /\b(steps?|first|second|third|then|next|finally|after|before|phases?|stages?|process|workflow|procedure|pipeline|onboarding|how to)\b|->|→/i,
+      time:      /\b(19|20)\d{2}\b|\bq[1-4]\b|\b(timeline|roadmap|history|milestones?)\b|\b(week|month|quarter|year|day)\s*\d+/i,
+      cycle:     /\b(cycle|cyclic|loop|life ?cycle|continuous|iterat\w*|repeat\w*|recurring|feedback|circular|pdca|agile|sprints?)\b/i,
+      hierarchy: /\b(levels?|layers?|foundation|tiers?|basic|intermediate|advanced|priorit\w*|maslow|hierarchy)\b/i,
+      funnel:    /\b(funnel|leads?|prospects?|awareness|interest|consideration|conversion|purchase|retention|narrow\w*|filter\w*)\b/i,
+      compare:   /\b(vs\.?|versus|compare|comparison|pros|cons|advantages?|disadvantages?|traditional|modern|manual|automated)\b/i,
+      center:    /\b(components?|elements?|pillars?|applications?|benefits?|features?|types?|uses?|areas?|capabilities|key|core|principles?|values?)\b/i,
+    };
+
+    function shorten(s) {
+      s = s.replace(/\s+/g, ' ').replace(/[.!?]+$/, '').trim()
+        .replace(/^(?:however|meanwhile|moreover|furthermore|additionally|in addition|also|finally|overall|together|as a result|therefore|thus)\b,?\s*/i, '');
+      s = s.charAt(0).toUpperCase() + s.slice(1);
+      if (s.length <= 70) return s;
+      const cut = s.search(/,\s|;\s|\s(?:which|that|because|while|so that|in order to)\s/);
+      if (cut >= 20 && cut <= 70) return s.slice(0, cut);
+      let r = '';
+      for (const w of s.split(' ')) { if ((r + ' ' + w).trim().length > 66) break; r = (r + ' ' + w).trim(); }
+      return r + '…';
+    }
+
+    function analyse(raw) {
+      const out = { title: null, items: [], mode: 'list', notes: [], signals: {} };
+      const lines = String(raw || '').replace(/\t/g, '    ').split(/\r?\n/).filter(l => l.trim());
+      const indent = l => l.match(/^\s*/)[0].length;
+      const clean = l => l.replace(BULLET, '').trim().replace(/\s+/g, ' ');
+      const isBul = l => BULLET.test(l);
+      const endsColon = l => /:\s*$/.test(l);
+
+      if (lines.length) {
+        const hasLong = lines.some(l => l.trim().length > 140);
+        const paragraph = (lines.length <= 3 && hasLong) ||
+          (lines.length === 1 && lines[0].length > 90 && /[.!?]["')\]]?\s+[A-Z]/.test(lines[0]));
+        if (paragraph) {
+          out.mode = 'paragraph';
+          let body = lines;
+          if (lines.length > 1 && lines[0].trim().length <= 80 && !/[.!?]\s*$/.test(lines[0])) {
+            out.title = clean(lines[0]).replace(/:\s*$/, '');
+            body = lines.slice(1);
+          }
+          const sentences = (body.join(' ').match(/[^.!?]+(?:[.!?]+|$)/g) || []).map(s => s.trim()).filter(s => s.length > 3);
+          out.items = sentences.slice(0, 8).map(s => ({ text: shorten(s), children: [] }));
+          out.notes.push('Paragraph detected: each sentence became a point. Proper AI summarising comes in Step 2.');
+          if (sentences.length > 8) out.notes.push(`Only the first 8 of ${sentences.length} sentences are used.`);
+        } else {
+          let rest = lines;
+          if (lines.length > 1) {
+            const first = lines[0], others = lines.slice(1);
+            const deeper = Math.min(...others.map(indent)) > indent(first), headers = others.some(endsColon);
+            const dated = others.every(l => DATE.test(clean(l))) && !DATE.test(clean(first));
+            if (!isBul(first) && (others.some(isBul) || deeper || dated || (endsColon(first) && !headers) || (headers && !endsColon(first)))) {
+              out.title = clean(first).replace(/:\s*$/, '');
+              rest = others;
+            }
+          }
+          if (rest.length === 1) {
+            const l = clean(rest[0]);
+            let parts = l.split(/\s+(?:vs\.?|versus)\s+/i);
+            if (parts.length < 2) parts = l.split(/\s*(?:→|->|=>)\s*/);
+            if (parts.length < 2) parts = l.split(/\s*[,;|]\s*/);
+            out.items = parts.map(t => t.trim()).filter(Boolean).map(t => ({ text: t, children: [] }));
+          } else {
+            const base = Math.min(...rest.map(indent)), hasHeaders = rest.some(l => indent(l) === base && endsColon(l));
+            out.numbered = rest.filter(l => /^\s*\(?\d{1,2}[.)]\s/.test(l)).length >= 2;
+            let cur = null;
+            for (const l of rest) {
+              const ind = indent(l), header = ind === base && endsColon(l), t = clean(l).replace(/:\s*$/, '');
+              if (!t) continue;
+              if (cur && !header && (ind > base || (hasHeaders && cur.header))) cur.children.push(t);
+              else { cur = { text: t, children: [], header }; out.items.push(cur); }
+            }
+          }
+        }
+      }
+
+      out.items.forEach(it => {
+        const m = DATE.exec(it.text);
+        if (m) { it.date = m[1]; it.text = m[2]; }
+        else if (!it.header) {
+          const c = /^([^:]{2,40}):\s+(.{3,})$/.exec(it.text);
+          if (c) { it.text = c[1]; it.children.unshift(c[2]); }
+        }
+        delete it.header;
+        if (it.children.length > 6) it.children = it.children.slice(0, 6);
+      });
+      if (out.items.length > 10) {
+        out.notes.push(`Using the first 10 of ${out.items.length} points.`);
+        out.items = out.items.slice(0, 10);
+      }
+      for (const k in SIGNALS) out.signals[k] = SIGNALS[k].test(raw || '');
+      if (out.items.some(it => it.date)) out.signals.time = true;
+      if (out.numbered) out.signals.sequence = true;
+      delete out.numbered;
+      return out;
+    }
+
+    function stats(data) {
+      const n = data.items.length, total = data.items.reduce((a, it) => a + it.text.length, 0);
+      return { n, avgLen: n ? total / n : 0, hasChildren: data.items.some(it => it.children.length), title: !!data.title, mode: data.mode };
+    }
+
+    function suggest(data) {
+      const d = stats(data);
+      return LAYOUTS.filter(L => d.n >= L.min && d.n <= L.max)
+        .map(L => ({ L, score: Math.round(L.score(d, data.signals)) }))
+        .sort((a, b) => b.score - a.score);
+    }
+
+    /* ---------- SVG preview renderer (mirrors what gets inserted) ---------- */
+    const pts = a => a.map(q => q.map(v => +v.toFixed(1)).join(',')).join(' ');
+    function shapeSVG(p) {
+      const { x, y, w, h } = p, m = Math.min(w, h);
+      const st = p.line ? ` stroke="${p.line}" stroke-width="${p.lineW || 1.5}"` : '';
+      const a = `fill="${p.fill || 'none'}"${st}`;
+      const poly = list => `<polygon points="${pts(list)}" ${a}/>`;
+      switch (p.g) {
+        case 'roundRect': return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${m * 0.1667}" ${a}/>`;
+        case 'ellipse':   return `<ellipse cx="${x + w / 2}" cy="${y + h / 2}" rx="${w / 2}" ry="${h / 2}" ${a}/>`;
+        case 'chevron':   { const d = m * 0.5; return poly([[x, y], [x + w - d, y], [x + w, y + h / 2], [x + w - d, y + h], [x, y + h], [x + d, y + h / 2]]); }
+        case 'homePlate': { const d = m * 0.5; return poly([[x, y], [x + w - d, y], [x + w, y + h / 2], [x + w - d, y + h], [x, y + h]]); }
+        case 'triangle':  return poly([[x + w / 2, y], [x + w, y + h], [x, y + h]]);
+        case 'trapezoid': { const d = m * 0.25; return poly([[x + d, y], [x + w - d, y], [x + w, y + h], [x, y + h]]); }
+        case 'cube': {
+          const d = m * 0.25, f = p.fill || '#CCCCCC';
+          return `<polygon points="${pts([[x, y + d], [x + w - d, y + d], [x + w - d, y + h], [x, y + h]])}" fill="${f}"${st}/>` +
+                 `<polygon points="${pts([[x, y + d], [x + d, y], [x + w, y], [x + w - d, y + d]])}" fill="${tint(f, 0.3)}"${st}/>` +
+                 `<polygon points="${pts([[x + w - d, y + d], [x + w, y], [x + w, y + h - d], [x + w - d, y + h]])}" fill="${shade(f, 0.25)}"${st}/>`;
+        }
+        default: return `<rect x="${x}" y="${y}" width="${w}" height="${h}" ${a}/>`;
+      }
+    }
+    function textSVG(p) {
+      const r = p.t === 'text' ? p : textRect(p.g, p.x, p.y, p.w, p.h);
+      const jc = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }[p.valign || 'middle'];
+      return `<foreignObject x="${r.x}" y="${r.y}" width="${Math.max(r.w, 1)}" height="${Math.max(r.h, 1)}">` +
+        `<div xmlns="http://www.w3.org/1999/xhtml" style="box-sizing:border-box;height:100%;padding:3.6px 7.2px;display:flex;flex-direction:column;` +
+        `justify-content:${jc};text-align:${p.align || 'center'};font-family:${FONT};font-size:${p.size}px;line-height:1.2;` +
+        `font-weight:${p.bold ? 700 : 400};color:${p.color || INK};white-space:pre-wrap">${esc(p.text)}</div></foreignObject>`;
+    }
+    function toSVG(prims, W, H) {
+      let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img"><rect width="${W}" height="${H}" fill="#FFFFFF"/>`;
+      for (const p of prims) {
+        if (p.t === 'shape') s += shapeSVG(p);
+        if (p.text) s += textSVG(p);
+      }
+      return s + '</svg>';
+    }
+  </script>
+
+  <!-- UI and PowerPoint insertion -->
+  <script>
+    const EXAMPLES = [
+      { name: 'Key points', text: 'AI in manufacturing\n- Quality inspection\n- Predictive maintenance\n- Production optimisation\n- Safety monitoring' },
+      { name: 'Process', text: 'How we onboard a client\n1. Discovery call\n2. Proposal\n3. Contract signed\n4. Kick-off workshop\n5. Delivery' },
+      { name: 'Timeline', text: 'Product roadmap\n2023: Research\n2024: Pilot launch\n2025: Scale to 10 sites\n2026: Global rollout' },
+      { name: 'Cycle', text: 'Continuous improvement cycle\n- Plan\n- Do\n- Check\n- Act' },
+      { name: 'Comparison', text: 'Manual vs AI inspection\nManual:\n  Slow and costly\n  Human fatigue\n  Sample-based checks\nAI-powered:\n  Real-time\n  Consistent accuracy\n  100% coverage' },
+      { name: 'Sub-points', text: 'Digital transformation\nPeople:\n  Training\n  Change management\nProcess:\n  Automation\n  Lean workflows\nTechnology:\n  Cloud\n  AI and analytics' },
+      { name: 'Funnel', text: 'Sales funnel\n- Awareness\n- Interest\n- Consideration\n- Purchase\n- Retention' },
+      { name: 'Keywords', text: 'Cloud, Security, Data, AI, Automation' },
+      { name: 'Paragraph', text: 'Artificial intelligence is transforming how factories operate. Machine vision systems inspect products for defects in real time. Predictive models analyse sensor data to forecast equipment failures before they happen. Meanwhile, optimisation algorithms schedule production to reduce waste and energy use. Together these capabilities make manufacturing safer, faster and more sustainable.' },
+    ];
+
+    const $ = id => document.getElementById(id);
+    const state = { palette: PALETTES[0], selected: null, suggestions: [], inOffice: false, canGroup: false };
+    let SLIDE = { w: 960, h: 540 };
+
+    function setStatus(msg) { $('status').textContent = msg; }
+
+    function makeCtx(data) {
+      const colors = state.palette.colors;
+      return { W: SLIDE.w, H: SLIDE.h, M: Math.round(SLIDE.w * 0.05), title: data.title, showTitle: $('showTitle').checked,
+        items: data.items, color: i => colors[i % colors.length] };
+    }
+
+    function refresh() {
+      const data = analyse($('content').value);
+      const ctx = makeCtx(data);
+      state.suggestions = suggest(data).map(s => {
+        try { return Object.assign(s, { prims: s.L.build(ctx) }); }
+        catch (e) { console.error('Layout failed:', s.L.id, e); return null; }
+      }).filter(Boolean);
+      if (!state.suggestions.some(s => s.L.id === state.selected)) state.selected = state.suggestions.length ? state.suggestions[0].L.id : null;
+      renderAnalysis(data);
+      renderGrid();
+      renderPreview();
+      updateInsertButton();
+    }
+
+    function renderAnalysis(data) {
+      const el = $('analysis');
+      if (!data.items.length && !data.title) { el.innerHTML = ''; return; }
+      const found = Object.keys(data.signals).filter(k => data.signals[k]);
+      const kids = data.items.reduce((a, it) => a + it.children.length, 0);
+      el.innerHTML = (data.title ? `Title: <b>${esc(data.title)}</b> · ` : '') +
+        `<b>${data.items.length}</b> point${data.items.length === 1 ? '' : 's'}` +
+        (kids ? ` · <b>${kids}</b> sub-point${kids === 1 ? '' : 's'}` : '') +
+        (found.length ? ` · looks like: ${found.join(', ')}` : '') +
+        data.notes.map(n => `<span class="note">${esc(n)}</span>`).join('');
+    }
+
+    function renderGrid() {
+      const grid = $('grid');
+      grid.innerHTML = '';
+      $('gridTitle').textContent = state.suggestions.length ? `${state.suggestions.length} suggested visuals` : '';
+      if (!state.suggestions.length) { grid.innerHTML = '<p class="empty">Type or paste some text above to see suggestions.</p>'; return; }
+      state.suggestions.forEach((s, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'card' + (s.L.id === state.selected ? ' sel' : '');
+        b.dataset.id = s.L.id;
+        b.title = 'Click to preview, double-click to insert';
+        b.innerHTML = toSVG(s.prims, SLIDE.w, SLIDE.h) +
+          `<span class="meta"><span>${esc(s.L.name)}</span><span class="tag">${esc(s.L.tag)}</span></span>` +
+          (i === 0 ? '<span class="badge">Best match</span>' : '');
+        b.addEventListener('click', () => select(s.L.id));
+        b.addEventListener('dblclick', () => { select(s.L.id); insertSelected(); });
+        grid.appendChild(b);
+      });
+    }
+
+    function select(id) {
+      state.selected = id;
+      document.querySelectorAll('.card').forEach(c => c.classList.toggle('sel', c.dataset.id === id));
+      renderPreview();
+      updateInsertButton();
+    }
+
+    function current() { return state.suggestions.find(s => s.L.id === state.selected); }
+
+    function renderPreview() {
+      const el = $('preview'), s = current();
+      el.hidden = !s;
+      if (s) el.innerHTML = `<div class="preview-head"><strong>${esc(s.L.name)}</strong><span>Preview</span></div>` + toSVG(s.prims, SLIDE.w, SLIDE.h);
+    }
+
+    function updateInsertButton() {
+      const s = current(), btn = $('insert');
+      btn.disabled = !s || !state.inOffice;
+      btn.textContent = s ? `Insert “${s.L.name}”` : 'Insert visual';
+    }
+
+    function renderPalettes() {
+      const wrap = $('palettes');
+      PALETTES.forEach(p => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'swatch' + (p === state.palette ? ' sel' : '');
+        b.title = p.name;
+        b.setAttribute('aria-label', p.name + ' colours');
+        b.innerHTML = p.colors.slice(0, 4).map(c => `<i style="background:${c}"></i>`).join('');
+        b.addEventListener('click', () => {
+          state.palette = p;
+          wrap.querySelectorAll('.swatch').forEach(x => x.classList.toggle('sel', x === b));
+          refresh();
+        });
+        wrap.appendChild(b);
+      });
+    }
+
+    /* ---------- PowerPoint ---------- */
+    const GEO = { rect: 'rectangle', roundRect: 'roundRectangle', ellipse: 'ellipse', chevron: 'chevron', homePlate: 'homePlate',
+      triangle: 'triangle', trapezoid: 'trapezoid', cube: 'cube' };
+    const VALIGN = { top: 'Top', middle: 'Middle', bottom: 'Bottom' };
+    const HALIGN = { left: 'Left', center: 'Center', right: 'Right' };
+    const r1 = v => Math.round(v * 10) / 10;
+
+    function geomType(g) {
+      const key = GEO[g] || 'rectangle';
+      return (PowerPoint.GeometricShapeType && PowerPoint.GeometricShapeType[key]) || key.charAt(0).toUpperCase() + key.slice(1);
+    }
+
+    function drawPrim(shapes, p) {
+      const opts = { left: r1(p.x), top: r1(p.y), width: Math.max(r1(p.w), 1), height: Math.max(r1(p.h), 1) };
+      let s;
+      if (p.t === 'text') {
+        s = shapes.addTextBox(p.text, opts);
+      } else {
+        s = shapes.addGeometricShape(geomType(p.g), opts);
+        if (p.fill) s.fill.setSolidColor(p.fill); else s.fill.clear();
+        if (p.line) { s.lineFormat.color = p.line; s.lineFormat.weight = p.lineW || 1.5; }
+        else s.lineFormat.visible = false;
+        if (p.text) s.textFrame.textRange.text = p.text;
+      }
+      if (p.text) {
+        const tr = s.textFrame.textRange;
+        s.textFrame.verticalAlignment = VALIGN[p.valign || 'middle'];
+        tr.font.size = p.size;
+        tr.font.color = p.color || INK;
+        tr.font.bold = !!p.bold;
+        tr.paragraphFormat.horizontalAlignment = HALIGN[p.align || 'center'];
+      }
+      return s;
+    }
+
+    async function insertSelected() {
+      const sel = current();
+      if (!sel) return;
+      if (!state.inOffice) { setStatus('Open this add-in inside PowerPoint to insert visuals.'); return; }
+      const btn = $('insert');
+      btn.disabled = true;
+      setStatus('Inserting…');
+      try {
+        let grouped = false;
+        await PowerPoint.run(async context => {
+          const slides = context.presentation.getSelectedSlides();
+          slides.load('items');
+          await context.sync();
+          if (!slides.items.length) throw new Error('Select a slide in the slide thumbnails first.');
+          const shapes = slides.items[0].shapes;
+          const made = sel.prims.map(p => drawPrim(shapes, p));
+          await context.sync();
+
+          // Keep text boxes at their designed size so top/bottom alignment holds (best effort).
+          try {
+            made.forEach((s, i) => {
+              const p = sel.prims[i];
+              if (p.t !== 'text') return;
+              s.textFrame.autoSizeSetting = 'AutoSizeNone';
+              s.top = r1(p.y);
+              s.height = Math.max(r1(p.h), 1);
+            });
+            await context.sync();
+          } catch (e) { console.warn('Could not fix text box sizes', e); }
+
+          if (state.canGroup && $('groupShapes').checked && made.length > 1) {
+            try {
+              made.forEach(s => s.load('id'));
+              await context.sync();
+              const group = shapes.addGroup(made.map(s => s.id));
+              await context.sync();
+              grouped = true;
+              try { group.name = 'AI Visual - ' + sel.L.name; await context.sync(); } catch (e) { /* name is optional */ }
+            } catch (e) { console.warn('Could not group shapes', e); }
+          }
+        });
+        setStatus(`Inserted “${sel.L.name}” (${sel.prims.length} shapes${grouped ? ', grouped' : ''}). Click any text on the slide to edit it.`);
+      } catch (error) {
+        setStatus('Could not insert: ' + (error && error.message ? error.message : String(error)));
+      } finally {
+        updateInsertButton();
+      }
+    }
+
+    async function useSelection() {
+      try {
+        let text = '';
+        await PowerPoint.run(async context => {
+          const sel = context.presentation.getSelectedShapes();
+          sel.load('items/type');
+          await context.sync();
+          const ranges = sel.items
+            .filter(s => ['GeometricShape', 'TextBox', 'Placeholder'].includes(s.type))
+            .map(s => { const r = s.textFrame.textRange; r.load('text'); return r; });
+          await context.sync();
+          text = ranges.map(r => r.text).join('\n');
+        });
+        text = text.replace(/\r\n?|\u000b/g, '\n').trim();
+        if (!text) { setStatus('Select a text box or shape that contains text, then try again.'); return; }
+        $('content').value = text;
+        refresh();
+        setStatus('Loaded text from the selected shape(s).');
+      } catch (error) {
+        setStatus('Could not read the selection: ' + (error && error.message ? error.message : String(error)));
+      }
+    }
+
+    async function detectSlideSize() {
+      if (!Office.context.requirements.isSetSupported('PowerPointApi', '1.10')) return;
+      try {
+        await PowerPoint.run(async context => {
+          const ps = context.presentation.pageSetup;
+          ps.load('slideWidth,slideHeight');
+          await context.sync();
+          if (ps.slideWidth > 0 && ps.slideHeight > 0) SLIDE = { w: ps.slideWidth, h: ps.slideHeight };
+        });
+      } catch (e) { /* keep the 16:9 default */ }
+    }
+
+    /* ---------- boot ---------- */
+    let timer = null;
+    $('content').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(refresh, 250); });
+    $('showTitle').addEventListener('change', refresh);
+    $('insert').addEventListener('click', insertSelected);
+    $('useSelection').addEventListener('click', useSelection);
+    EXAMPLES.forEach((ex, i) => $('examples').add(new Option(ex.name, i)));
+    $('examples').addEventListener('change', e => {
+      if (e.target.value === '') return;
+      $('content').value = EXAMPLES[+e.target.value].text;
+      e.target.value = '';
+      refresh();
+    });
+    $('content').value = EXAMPLES[0].text;
+    renderPalettes();
+    refresh();
+
+    if (typeof Office === 'undefined') {
+      setStatus('Preview mode: Office could not load. Open this add-in inside PowerPoint to insert visuals.');
+    } else {
+      Office.onReady(async info => {
+        if (info.host !== Office.HostType.PowerPoint) {
+          setStatus('Preview mode: open this add-in inside PowerPoint to insert visuals.');
+          return;
+        }
+        if (!Office.context.requirements.isSetSupported('PowerPointApi', '1.5')) {
+          setStatus('This PowerPoint version is too old for this add-in (needs PowerPointApi 1.5). Use PowerPoint on the web or an up-to-date Microsoft 365.');
+          return;
+        }
+        state.inOffice = true;
+        state.canGroup = Office.context.requirements.isSetSupported('PowerPointApi', '1.8');
+        $('groupWrap').hidden = !state.canGroup;
+        $('useSelection').disabled = false;
+        await detectSlideSize();
+        refresh();
+        setStatus('Ready. Select a slide, pick a visual, then click Insert.');
+      });
+    }
+  </script>
+</body>
+</html>
