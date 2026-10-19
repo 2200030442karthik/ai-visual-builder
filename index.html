@@ -79,6 +79,11 @@
     details.more { margin-top:8px; }
     details.more summary { cursor:pointer; color:var(--accent); font-size:12px; }
     #status.err { color:#a4262c; }
+    .ai-btn.makeover { background:var(--accent); }
+    .ai-btn.makeover:disabled { background:#9db6cc; }
+    .src-note { margin-top:8px; padding:8px 10px; border-radius:8px; background:#f2f7fc; border:1px solid #cfe0ef; font-size:12px; }
+    .brand-colors { display:flex; gap:6px; flex-wrap:wrap; }
+    .brand-colors input[type=color] { width:36px; height:30px; padding:0; border:1px solid var(--line); border-radius:6px; background:#fff; cursor:pointer; }
     .illo-err { color:#a4262c; font-size:12px; }
     .btn-row { display:flex; gap:8px; } .btn-row .secondary { flex:1; }
   </style>
@@ -101,9 +106,27 @@
     <div class="step"><span class="num">1</span> Paste your text</div>
     <textarea id="content" spellcheck="false" placeholder="Example:&#10;AI in manufacturing&#10;- Quality inspection&#10;- Predictive maintenance&#10;- Safety monitoring"></textarea>
     <div class="hint">First line = title, then one point per line. A paragraph or comma-separated keywords work too.</div>
+    <label class="check"><input type="checkbox" id="keepText" checked> Keep my exact text (nothing shortened or left out; long text goes over several slides)</label>
+    <button id="useSelection" class="ai-btn makeover" type="button" disabled>✨ Make this slide visual</button>
+    <div class="hint" style="margin-top:4px">Click a slide with bullet points, then press this. Its text is copied here and replaced by the visual when you insert.</div>
+    <div id="srcNote" class="src-note" hidden>
+      <span id="srcText"></span>
+      <label class="check"><input type="checkbox" id="replaceSrc" checked> Replace the original text on that slide</label>
+    </div>
     <div class="btn-row">
-      <button id="useSelection" class="secondary" type="button" disabled>Use text from slide</button>
+      <button id="convertAll" class="secondary" type="button" disabled>Convert every slide…</button>
       <select id="examples" class="secondary" aria-label="Load an example"><option value="">Try an example…</option></select>
+    </div>
+    <div id="convertBox" class="src-note" hidden>
+      <b>Convert every slide in this presentation?</b>
+      <div class="small" style="margin:4px 0 6px">Each slide with 3 or more lines of text gets the best-fitting visual (your chosen layout when it fits),
+        your colours, font and a matching picture. The original text boxes are replaced. Title-only slides, slides with
+        pictures or tables, and slides too long for one visual are skipped. Tip: PowerPoint keeps a version history
+        (File › Info › Version history) if you want to go back.</div>
+      <div class="btn-row">
+        <button id="convertGo" class="ai-btn" type="button" style="margin-top:0">Yes, convert all slides</button>
+        <button id="convertCancel" class="secondary" type="button" style="margin-top:0">Cancel</button>
+      </div>
     </div>
   </div>
 
@@ -114,19 +137,52 @@
     <div id="preview" class="preview" hidden></div>
 
     <div id="styleBox" hidden>
-      <div class="label">Colours</div>
+      <div class="row" style="margin-bottom:0"><span class="label">Colours</span>
+        <button id="brandToggle" class="linkish" type="button">🎨 Brand colours &amp; font</button></div>
       <div id="palettes" class="swatches"></div>
+      <div id="brandBox" class="src-note" hidden>
+        <b>My brand</b>
+        <div class="small" style="margin:2px 0 6px">Pick up to 6 colours (main colour first). They're saved on this device as “My brand”.</div>
+        <div id="brandColors" class="brand-colors"></div>
+        <button id="brandFromSlide" class="secondary" type="button" disabled>Use colours &amp; font from this slide</button>
+        <label for="fontPick" style="display:block;margin-top:8px">Font</label>
+        <div class="field">
+          <select id="fontPick" style="flex:1;max-width:none">
+            <option value="">Aptos (PowerPoint default)</option>
+            <option>Calibri</option><option>Arial</option><option>Segoe UI</option><option>Helvetica</option><option>Verdana</option>
+            <option>Trebuchet MS</option><option>Georgia</option><option>Times New Roman</option><option>Montserrat</option>
+            <option>Open Sans</option><option>Roboto</option><option>Lato</option><option>Poppins</option><option value="__other">Other…</option>
+          </select>
+        </div>
+        <div class="field" id="fontOtherRow" hidden><input id="fontOther" placeholder="Type the font name, e.g. Gill Sans"></div>
+        <label for="brandCode" style="display:block;margin-top:8px">Share with your team</label>
+        <div class="field">
+          <input id="brandCode" spellcheck="false" aria-label="Brand code">
+          <button id="brandCopy" type="button">Copy</button>
+          <button id="brandApply" type="button">Apply</button>
+        </div>
+        <div class="small">Copy this code and send it to colleagues. They paste it here and press Apply to get the same colours and font.</div>
+      </div>
       <div id="illoPanel" hidden>
         <div class="illo-row">
           <div id="illoBox" class="illo-thumb"></div>
           <div class="illo-ctl">
             <label for="illoPick">Picture</label>
-            <select id="illoPick"><option value="auto">Auto</option><option value="ai" disabled>✨ AI drawing</option></select>
+            <select id="illoPick">
+              <option value="auto">Built from your text</option>
+              <optgroup id="sceneGroup" label="Ready-made scenes"></optgroup>
+              <option value="web" disabled>🌐 Online AI image</option>
+              <option value="ai" disabled>✨ Claude drawing</option>
+            </select>
             <label class="check"><input type="checkbox" id="illoBeside" checked> Show beside the visual</label>
             <div class="small" style="margin:0"><span id="illoState"></span></div>
           </div>
         </div>
         <div id="illoCaption" class="small"></div>
+        <button id="webGen" class="secondary" type="button">🌐 Generate with free online AI</button>
+        <div class="small">Free, no key. Sends only a short description (title + key words, not your full text) to the public
+          service pollinations.ai. Results vary, carry a small logo and can't be edited, and the free tier allows about one picture
+          every 45 seconds per network. Check your company's rules first.</div>
       </div>
       <details class="more">
         <summary>More options</summary>
@@ -171,7 +227,7 @@
   <!-- Engine: text analysis, layouts and preview rendering. No Office dependency. -->
   <script id="engine">
     const INK = '#1F2937', MUTED = '#4B5563', CONNECTOR = '#C7CDD6';
-    const FONT = "Aptos, Calibri, 'Segoe UI', Arial, sans-serif";
+    let FONT = "Aptos, Calibri, 'Segoe UI', Arial, sans-serif";   // preview font; setBrandFont() puts the brand font first
 
     const PALETTES = [
       { id: 'ocean',  name: 'Ocean',     colors: ['#1769AA', '#0F9D9A', '#3A7BD5', '#5B5FC7', '#0B7285', '#2B8A3E'] },
@@ -559,7 +615,7 @@
     ];
 
     /* ---------- text analysis (rule-based for Step 1; AI replaces this in Step 2) ---------- */
-    const BULLET = /^\s*(?:[-*•▪◦·–—>✓✔➢►]|\(?\d{1,2}[.)]|[a-zA-Z][.)])\s+/;
+    const BULLET = /^\s*(?:[•▪◦·✓✔➢►]\s*|(?:[-*–—>]|\(?\d{1,2}[.)]|[a-zA-Z][.)])\s+)/;   // "•Text" (no space) counts too
     const DATE = /^((?:19|20)\d{2}(?:\s*[-–]\s*(?:19|20)?\d{2})?|Q[1-4](?:\s*(?:19|20)\d{2})?|(?:Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+(?:19|20)\d{2}|(?:Phase|Stage|Step|Week|Month|Day|Year|Sprint)\s*\d+)\s*[:\-–—]\s*(.+)$/i;
     const SIGNALS = {
       sequence:  /\b(steps?|first|second|third|then|next|finally|after|before|phases?|stages?|process|workflow|procedure|pipeline|onboarding|how to)\b|->|→/i,
@@ -583,8 +639,10 @@
       return r + '…';
     }
 
-    function analyse(raw) {
-      const out = { title: null, items: [], mode: 'list', notes: [], signals: {} };
+    /* opts.full: keep every word (no shortening, nothing dropped); long text is split over several slides later. */
+    function analyse(raw, opts) {
+      const full = !!(opts && opts.full);
+      const out = { title: null, items: [], mode: 'list', notes: [], signals: {}, full };
       const lines = String(raw || '').replace(/\t/g, '    ').split(/\r?\n/).filter(l => l.trim());
       const indent = l => l.match(/^\s*/)[0].length;
       const clean = l => l.replace(BULLET, '').trim().replace(/\s+/g, ' ');
@@ -593,8 +651,10 @@
 
       if (lines.length) {
         const hasLong = lines.some(l => l.trim().length > 140);
+        const avgLen = lines.reduce((a, l) => a + l.trim().length, 0) / lines.length;
         const paragraph = (lines.length <= 3 && hasLong) ||
-          (lines.length === 1 && lines[0].length > 90 && /[.!?]["')\]]?\s+[A-Z]/.test(lines[0]));
+          (lines.length === 1 && lines[0].length > 90 && /[.!?]["')\]]?\s+[A-Z]/.test(lines[0])) ||
+          (full && lines.length > 3 && avgLen > 60 && !lines.some(isBul) && !lines.some(endsColon));   // wrapped prose pasted as many lines
         if (paragraph) {
           out.mode = 'paragraph';
           let body = lines;
@@ -602,10 +662,16 @@
             out.title = clean(lines[0]).replace(/:\s*$/, '');
             body = lines.slice(1);
           }
-          const sentences = (body.join(' ').match(/[^.!?]+(?:[.!?]+|$)/g) || []).map(s => s.trim()).filter(s => s.length > 3);
-          out.items = sentences.slice(0, 8).map(s => ({ text: shorten(s), children: [] }));
-          out.notes.push('Paragraph detected: each sentence became a point. Click “Analyse with AI” for a proper summary.');
-          if (sentences.length > 8) out.notes.push(`Only the first 8 of ${sentences.length} sentences are used.`);
+          // Split only where a sentence ends and a new one starts, so "3.5", "e.g. this" and "PDF/A." stay intact.
+          const sentences = body.map(l => l.trim()).join(' ').split(/(?<=[.!?]["')\]]?)\s+(?=["'(\[]?[A-Z0-9])/).map(s => s.trim()).filter(Boolean);
+          if (full) {
+            out.items = sentences.map(s => ({ text: s, children: [] }));
+            out.notes.push(`Paragraph: all ${sentences.length} sentence${sentences.length === 1 ? '' : 's'} kept word for word.`);
+          } else {
+            out.items = sentences.filter(s => s.length > 3).slice(0, 8).map(s => ({ text: shorten(s), children: [] }));
+            out.notes.push('Paragraph detected: each sentence became a short point. Tick “Keep my exact text” to keep every word.');
+            if (sentences.length > 8) out.notes.push(`Only the first 8 of ${sentences.length} sentences are used.`);
+          }
         } else {
           let rest = lines;
           if (lines.length > 1) {
@@ -645,9 +711,9 @@
           if (c) { it.text = c[1]; it.children.unshift(c[2]); }
         }
         delete it.header;
-        if (it.children.length > 6) it.children = it.children.slice(0, 6);
+        if (!full && it.children.length > 6) it.children = it.children.slice(0, 6);
       });
-      if (out.items.length > 10) {
+      if (!full && out.items.length > 10) {
         out.notes.push(`Using the first 10 of ${out.items.length} points.`);
         out.items = out.items.slice(0, 10);
       }
@@ -941,7 +1007,7 @@
       }
       function monitorPanel(x, y, z, w, h, k, bars) {
         let s = box(x, y, z, w, 8, h, DARK) + onLeft(x + 6, y + 8, z + 6, w - 12, h - 12, c(k, 'p'));
-        (bars || []).forEach((b, i) => { s += onLeft(x + 16 + i * (w - 32) / bars.length, y + 8, z + 14, (w - 32) / bars.length - 8, b * (h - 34), c(i % 3 + k)); });
+        (bars || []).forEach((b, i) => { s += onLeft(x + 16 + i * (w - 32) / bars.length, y + 8, z + 14, (w - 32) / bars.length - 8, b * (h - 34), c((i % 3 + k) % 6)); });
         return s;
       }
       function cloud2D(cx, cy, k) {
@@ -951,10 +1017,10 @@
       }
       const arrow2D = (cx, cy, dir, fill) => `<polygon points="${[[0, -38], [22, -10], [9, -10], [9, 34], [-9, 34], [-9, -10], [-22, -10]]
         .map(([u, v]) => `${f(cx + u)},${f(cy + v * dir)}`).join(' ')}" fill="${fill}"/>`;
-      function bubble(x, y, z, w, h, k) {
+      function bubble(x, y, z, w, h, k, noDots) {
         const q = [[0, 12], [0, h - 12], [6, h - 3], [18, h], [w - 18, h], [w - 6, h - 3], [w, h - 12], [w, 12], [w - 6, 3], [w - 18, 0], [40, 0], [22, -20], [24, 0], [18, 0], [6, 3]];
         let s = extrude(up(x, y, z, q), [0, 10, 0], c(k, 'l'), c(k));
-        for (let i = 0; i < 3; i++) s += poly(up(x + w * 0.3 + i * w * 0.2, y + 10.5, z + h / 2, ring(6, 12)), WHITE);
+        if (!noDots) for (let i = 0; i < 3; i++) s += poly(up(x + w * 0.3 + i * w * 0.2, y + 10.5, z + h / 2, ring(6, 12)), WHITE);
         return s;
       }
       const gearPts = (R, r, n) => { const q = []; for (let i = 0; i < n; i++) { const a = i * 2 * Math.PI / n, d = Math.PI / n;
@@ -1171,8 +1237,289 @@
         ['communication', 'Communication', 'Speech bubbles, an envelope and a phone.',
           /\b(communicat\w*|messag\w*|chat\w*|e-?mails?|feedback|conversations?|support|service|calls?|contact|inform\w*|announce\w*|news)\b/g],
       ];
+
+      /* ----- composer: one picture built from objects that match words in the user's text, labelled with their own key terms ----- */
+      const GOLD = ['#FDE68A', '#F59E0B', '#B45309'], CARDBOARD = ['#EBCB9F', '#D9B07E', '#BF9262'], NIGHT = '#1E293B', LINE = '#CBD5E1';
+      const SHIELD = [[-80, 180], [-40, 190], [0, 202], [40, 190], [80, 180], [80, 100], [68, 58], [44, 24], [0, 0], [-44, 24], [-68, 58], [-80, 100]].map(([u, v]) => [u * 0.5, v * 0.5]);
+      const CROSS = [[-25, 0], [25, 0], [25, 45], [70, 45], [70, 95], [25, 95], [25, 140], [-25, 140], [-25, 95], [-70, 95], [-70, 45], [-25, 45]].map(([u, v]) => [u * 0.7, v * 0.7]);
+      const starPts = (R, r) => Array.from({ length: 10 }, (_, i) => { const a = Math.PI / 2 + i * Math.PI / 5, q = i % 2 ? r : R; return [q * Math.cos(a), q * Math.sin(a) + R * 0.81]; });
+      const k2 = (k, n) => (k + n) % 6;
+      const glyph = (x, y, z, t, fill, size) => { const [gx, gy] = P(x, y, z);
+        return `<text x="${f(gx)}" y="${f(gy)}" font-family="Segoe UI, Arial, sans-serif" font-size="${size || 26}" font-weight="700" fill="${fill}" text-anchor="middle" dominant-baseline="middle">${esc(t)}</text>`; };
+      const wheelAt = (x, y, z, r) => extrude(up(x, y, z, ring(r, 16)), [0, 4, 0], DARK[1], DARK[2]) + poly(up(x, y + 4.5, z, ring(r * 0.4, 10)), GREY[1]);
+      function windTurbine(x, y, h) {
+        const [hx, hy] = P(x, y, h);
+        const blade = a => `<polygon points="${[[0, -5], [80, -2], [80, 2], [0, 6]].map(([u, v]) => `${f(hx + u * Math.cos(a) - v * Math.sin(a))},${f(hy + u * Math.sin(a) + v * Math.cos(a))}`).join(' ')}" fill="${WHITE}" stroke="#CBD5E1" stroke-width="1.5"/>`;
+        return cyl(x, y, 0, 6, h, PAPER) + blade(-1.9) + blade(0.2) + blade(2.3) + `<circle cx="${f(hx)}" cy="${f(hy)}" r="8" fill="#CBD5E1"/>`;
+      }
+      function rocketAt(k) {
+        const [rx, ry] = P(0, 0, 120), [fx, fy] = P(0, 0, 30);
+        return cyl(0, 0, 0, 30, 10, GREY) + extrude(up(0, 0, 30, [[-36, 0], [-16, 0], [-16, 40]]), [0, 4, 0], c(k), c(k, 'd')) +
+          `<path d="M${f(fx - 14)} ${f(fy + 4)}Q${f(fx)} ${f(fy + 50)} ${f(fx + 14)} ${f(fy + 4)}Z" fill="${AMBER}"/>` + cyl(0, 0, 30, 18, 90, PAPER) +
+          `<path d="M${f(rx - 22)} ${f(ry)}Q${f(rx - 18)} ${f(ry - 44)} ${f(rx)} ${f(ry - 66)}Q${f(rx + 18)} ${f(ry - 44)} ${f(rx + 22)} ${f(ry)}A22 12.7 0 0 1 ${f(rx - 22)} ${f(ry)}Z" fill="${c(k)}"/>` +
+          `<circle cx="${f(rx)}" cy="${f(ry + 32)}" r="9" fill="${c(k2(k, 1), 'l')}" stroke="${c(k)}" stroke-width="3.5"/>` + extrude(side(0, 0, 30, [[16, 0], [36, 0], [16, 40]]), [4, 0, 0], c(k, 'd'), c(k));
+      }
+      function bulbAt(k) {
+        const [bx, by] = P(0, 0, 112);
+        let s = cyl(0, 0, 0, 18, 42, GREY) + cyl(0, 0, 42, 14, 12, DARK) + `<circle cx="${f(bx)}" cy="${f(by)}" r="58" fill="${c(k, 'p')}" fill-opacity="0.6"/>` + sphere(0, 0, 112, 48, k) +
+          `<path d="M${f(bx - 11)} ${f(by + 32)}V${f(by + 4)}a11 11 0 1 1 22 0V${f(by + 32)}" fill="none" stroke="${WHITE}" stroke-width="5" stroke-linecap="round"/>`;
+        for (let i = 0; i < 5; i++) { const a = Math.PI * (1.1 + i * 0.2); s += `<line x1="${f(bx + 66 * Math.cos(a))}" y1="${f(by + 66 * Math.sin(a))}" x2="${f(bx + 86 * Math.cos(a))}" y2="${f(by + 86 * Math.sin(a))}" stroke="${AMBER}" stroke-width="7" stroke-linecap="round"/>`; }
+        return s;
+      }
+      const arrowShape = [[0, -7], [16, -7], [16, -15], [30, 0], [16, 15], [16, 7], [0, 7]];
+
+      /* [id, keywords, height, draw(k), optional scale]. Objects are drawn around the origin, roughly 80 x 80 units. */
+      const PROPS = [
+        ['document', /\b(pdfs?|documents?|docs?|files?|pages?|reports?|papers?|contracts?|forms?|text|articles?|records?|word|paperwork|letters?)\b/g, 96, k =>
+          box(-28, -26, 0, 66, 8, 88, PAPER) + box(-38, -4, 0, 68, 8, 96, PAPER) + onLeft(-30, 4.5, 74, 40, 10, c(k)) +
+          [0, 1, 2, 3].map(i => onLeft(-30, 4.5, 58 - i * 12, i % 2 ? 40 : 54, 5, LINE)).join('') + onLeft(-30, 4.5, 8, 26, 12, c(k, 'l'))],
+        ['folder', /\b(folders?|organi[sz]e\w*|archiv\w*|director(y|ies)|sort\w*|categor\w*|filing)\b/g, 80, k =>
+          box(-40, -10, 0, 80, 6, 72, [c(k, 'l'), c(k, 'd'), c(k, 'd')]) + extrude(up(-40, -10, 72, [[0, 0], [30, 0], [26, 8], [4, 8]]), [0, 6, 0], c(k, 'd'), c(k, 'd')) +
+          box(-32, -5, 8, 64, 4, 70, PAPER) + box(-40, 0, 0, 80, 6, 58, k)],
+        ['lock', /\b(locks?|locked|unlock\w*|passwords?|encrypt\w*|protect\w*|privacy|private|secure|securely)\b/g, 90, k =>
+          pline(Array.from({ length: 15 }, (_, i) => [-20 * Math.cos(Math.PI * i / 14), 0, 52 + 34 * Math.sin(Math.PI * i / 14)]), '#6B7280', 10) +
+          box(-26, -14, 0, 52, 28, 56, k) + poly(up(0, 14.5, 32, ring(6, 14)), c(k, 'd')) + onLeft(-3, 14.5, 14, 6, 16, c(k, 'd'))],
+        ['shield', /\b(secur\w*|cyber\w*|shields?|safe\w*|threats?|risks?|defen[cs]\w*|attacks?|malware|virus\w*|fraud|breach\w*)\b/g, 105, k =>
+          extrude(up(0, -10, 4, SHIELD), [0, 16, 0], c(k), c(k, 'd')) + poly(up(0, 6.5, 4, SHIELD.map(([u, v]) => [u * 0.74, v * 0.74 + 13])), c(k, 'l')) +
+          pline(up(0, 7, 4, [[-15, 50], [-4, 37], [18, 66]]), WHITE, 9)],
+        ['key', /\b(keys?|access\w*|log-?ins?|sign-?in|credentials?|authenticat\w*|permissions?|identity|accounts?)\b/g, 70, k =>
+          extrude(up(-30, -4, 45, ring(20, 24)), [0, 8, 0], c(k), c(k, 'd')) + poly(up(-30, 4.5, 45, ring(8, 16)), c(k, 'p')) +
+          box(-12, -4, 39, 58, 8, 12, k) + box(32, -4, 27, 8, 8, 12, k) + box(20, -4, 29, 8, 8, 10, k)],
+        ['chip', /\b(ai|a\.i|artificial|intelligen\w*|machine learning|ml|deep learning|llms?|gpt|genai|generative|algorithms?|models?|processors?|chips?|computing|predictive|smart|cognitive)\b/g, 40, k =>
+          chip(-40, -40, 80, k, k2(k, 1))],
+        ['network', /\b(networks?|neural|nodes?|connect\w*|links?|relationships?|ecosystems?|apis?|interconnect\w*)\b/g, 130, k => {
+          const n = [[0, 0, 70], [-50, 20, 112], [40, -40, 122], [30, 50, 40], [-40, -40, 50]];
+          return cyl(0, 0, 0, 8, 50, GREY) + n.slice(1).map(p => line(n[0], p, c(k, 'l'), 4)).join('') + line(n[1], n[2], c(k, 'l'), 3) +
+            n.map((p, i) => sphere(...p, i ? 12 : 20, i ? k2(k, 1) : k)).join(''); }],
+        ['server', /\b(servers?|hosting|data ?cent(er|re)s?|backend|back-end|infrastructure|hardware|racks?)\b/g, 130, k => server(-25, -30, k, 130)],
+        ['cloud', /\b(clouds?|saas|online|upload\w*|download\w*|sync\w*|hosted|web-?based|internet)\b/g, 150, k => {
+          const [cx, cy] = P(0, 0, 120);
+          return `<g transform="translate(${f(cx)} ${f(cy)}) scale(.55) translate(${f(-cx)} ${f(-cy)})">${cloud2D(cx, cy, k)}</g>` + arrow2D(cx, cy + 72, -1, c(k2(k, 1))); }],
+        ['database', /\b(databases?|data|storage|records?|sql|datasets?|big data|warehouses?)\b/g, 110, k => [0, 1, 2].map(i => cyl(0, 0, i * 36, 36, 30, k)).join('')],
+        ['chart', /\b(charts?|growth|grow\w*|revenue|sales|analytics?|metrics?|kpis?|performance|increas\w*|statistic\w*|trends?|results?|improv\w*|productivity|roi)\b/g, 105, k =>
+          [40, 60, 80, 105].map((h, i) => box(-44 + i * 22, -8, 0, 16, 16, h, k2(k, i))).join('')],
+        ['pie', /\b(percent\w*|share|portions?|distribution|surveys?|breakdown|ratios?|proportions?|segments?|allocat\w*)\b/g, 40, k =>
+          extrude(flat(0, 0, 0, ring(44, 36)), [0, 0, 18], c(k, 'l'), c(k, 'd')) + extrude(flat(6, 6, 18, [[0, 0], ...arc(44, -0.4, 1.3, 10)]), [0, 0, 12], c(k2(k, 1), 'l'), c(k2(k, 1), 'd'))],
+        ['dashboard', /\b(dashboards?|screens?|displays?|monitor\w*|visuali[sz]\w*|reporting|insights?|overview|tracking)\b/g, 110, k =>
+          cyl(0, 0, 0, 22, 6, GREY) + box(-4, -4, 6, 8, 8, 30, GREY) + monitorPanel(-50, -4, 34, 100, 72, k, [0.5, 0.8, 0.6, 1])],
+        ['laptop', /\b(laptops?|computers?|desktops?|pcs?|software|programs?|tools?|applications?|workstations?|digital\w*)\b/g, 70, k =>
+          box(-45, -30, 0, 90, 64, 5, GREY) + onTop(-38, -4, 5.1, 76, 22, '#E5E7EB') + box(-45, -30, 5, 90, 4, 62, DARK) + onLeft(-40, -25.5, 10, 80, 52, c(k, 'p')) +
+          pline(up(-34, -25, 22, [[0, 0], [18, 12], [36, 6], [54, 24], [68, 30]]), c(k), 4)],
+        ['phone', /\b(mobile|apps?|phones?|smartphones?|ios|android|devices?|tablets?)\b/g, 100, k => {
+          let s = box(-24, -6, 0, 48, 10, 100, DARK) + onLeft(-19, 4.5, 8, 38, 86, c(k, 'p'));
+          for (let r = 0; r < 3; r++) for (let q = 0; q < 2; q++) s += onLeft(-14 + q * 16, 4.5, 60 - r * 18, 12, 12, c(k2(k, r + q)));
+          return s; }],
+        ['coins', /\b(money|financ\w*|costs?|pric\w*|budget\w*|profit\w*|invest\w*|cash|funds?|funding|savings?|earn\w*|income|dollars?|rupees?|euros?|economic\w*|cheap\w*)\b/g, 60, k =>
+          coins(-18, -12, 6, k) + coins(22, 18, 3, k)],
+        ['card', /\b(payments?|pay|cards?|credit|debit|transactions?|checkout|bank\w*|wallets?|billing|invoic\w*|subscriptions?)\b/g, 45, k =>
+          `<ellipse cx="400" cy="512" rx="50" ry="22" fill="#0F172A" fill-opacity="0.08"/>` + extrude(flat(-40, -26, 34, [[0, 0], [80, 0], [80, 52], [0, 52]]), [0, 0, 5], c(k, 'l'), c(k, 'd')) +
+          onTop(-40, -14, 39.1, 80, 9, DARK[1]) + onTop(-28, 6, 39.1, 14, 11, AMBER)],
+        ['person', /\b(users?|customers?|clients?|persons?|employees?|individuals?|members?|candidates?|learners?|visitors?|consumers?)\b/g, 100, k => person(0, 0, k)],
+        ['team', /\b(teams?|people|staff|collaborat\w*|communit\w*|groups?|workforce|colleagues?|partners?\w*|stakeholders?|leaders?\w*|hr|human resources|hiring|recruit\w*)\b/g, 100, k =>
+          person(-30, -20, k) + person(28, -26, k2(k, 1)) + person(-18, 30, k2(k, 2))],
+        ['gear', /\b(settings?|process\w*|automat\w*|operations?|workflows?|engineer\w*|configur\w*|mechani\w*|systems?|functions?|features?|maintenance|services?)\b/g, 116, k =>
+          cyl(0, 0, 0, 30, 6, GREY) + extrude(up(0, -8, 60, gearPts(54, 42, 10)), [0, 16, 0], c(k), c(k, 'd')) + poly(up(0, 8.5, 60, ring(16, 18)), c(k, 'p'))],
+        ['factory', /\b(factor(y|ies)|manufactur\w*|production|industr\w*|assembly|machiner\w*|machines?)\b/g, 95, k =>
+          cyl(-30, -30, 50, 7, 45, GREY) + box(-45, -35, 0, 90, 70, 50, k) +
+          [0, 1].map(i => extrude(up(-45 + i * 45, -35, 50, [[0, 0], [45, 0], [45, 28]]), [0, 70, 0], c(k, 'd'), c(k, 'l'))).join('') +
+          [0, 1, 2].map(i => onLeft(-38 + i * 28, 35.5, 12, 18, 22, c(k, 'p'))).join('')],
+        ['truck', /\b(trucks?|deliver\w*|shipping|shipments?|logistic\w*|transport\w*|freight|fleet|couriers?|dispatch\w*|supply chains?)\b/g, 70, k =>
+          box(-50, -20, 10, 66, 40, 52, k) + box(16, -20, 10, 30, 40, 36, k2(k, 1)) + onLeft(26, 20.5, 26, 14, 14, c(k2(k, 1), 'p')) +
+          wheelAt(-36, 20, 10, 10) + wheelAt(4, 20, 10, 10) + wheelAt(30, 20, 10, 10)],
+        ['package', /\b(packages?|parcels?|boxes|products?|inventory|orders?|stock|goods|items?|merchandise|packaging)\b/g, 52, k =>
+          box(-30, -30, 0, 60, 60, 52, CARDBOARD) + onTop(-30, -6, 52.1, 60, 12, '#C8A06C') + onLeft(-8, 30.5, 30, 16, 12, WHITE)],
+        ['bag', /\b(shop\w*|retail\w*|stores?|e-?commerce|buy\w*|purchas\w*|carts?|market ?places?|sell\w*|brands?)\b/g, 104, k =>
+          box(-30, -14, 0, 60, 28, 70, k) + pline(Array.from({ length: 13 }, (_, i) => [-14 * Math.cos(Math.PI * i / 12), 0, 70 + 30 * Math.sin(Math.PI * i / 12)]), DARK[1], 5) +
+          poly(up(0, 14.5, 36, ring(12, 18)), c(k, 'l'))],
+        ['globe', /\b(global\w*|world\w*|international\w*|countr(y|ies)|regions?|worldwide|export\w*|across borders|cross-border|earth)\b/g, 140, k => {
+          const [gx, gy] = P(0, 0, 88);
+          return cyl(0, 0, 0, 26, 10, GREY) + cyl(0, 0, 10, 4, 30, GREY) + sphere(0, 0, 88, 52, k) +
+            `<g fill="none" stroke="${c(k, 'l')}" stroke-width="2.5"><ellipse cx="${f(gx)}" cy="${f(gy)}" rx="46" ry="14"/><ellipse cx="${f(gx)}" cy="${f(gy)}" rx="19" ry="46"/></g>`; }],
+        ['pin', /\b(locations?|maps?|places?|local\w*|cit(y|ies)|address\w*|nearby|gps|destinations?|venues?|branch\w*)\b/g, 60, k => pin(0, 0, 0, k), 1.7],
+        ['rocket', /\b(launch\w*|start-?ups?|rockets?|boost\w*|accelerat\w*|speed\w*|fast\w*|scal(e|ing)|rapid\w*|quick\w*|turbo)\b/g, 196, k => rocketAt(k), 0.8],
+        ['bulb', /\b(ideas?|innovat\w*|creativ\w*|insights?|tips?|inspir\w*|brainstorm\w*|invent\w*|concepts?|think\w*|imagin\w*|solutions?)\b/g, 170, k => bulbAt(k), 0.85],
+        ['target', /\b(goals?|targets?|strateg\w*|objectives?|missions?|focus\w*|aims?|purpose|precis\w*|accura\w*|outcomes?)\b/g, 116, k =>
+          box(-30, -8, 0, 6, 6, 60, GREY) + box(24, -8, 0, 6, 6, 60, GREY) +
+          [[52, 0], [38, 1], [24, 2], [12, 3]].map(([r, i]) => extrude(up(0, -6 + i * 5, 62, ring(r, 36)), [0, 5, 0], i % 2 ? WHITE : c(k), i % 2 ? '#E5E7EB' : c(k, 'd'))).join('') +
+          line([0, 15, 62], [56, 80, 128], DARK[1], 5) + extrude(up(56, 80, 128, [[-16, 4], [0, 0], [-4, 16]]), [0, 2, 0], c(k2(k, 1)), c(k2(k, 1), 'd'))],
+        ['flag', /\b(milestones?|achiev\w*|success\w*|finish\w*|complet\w*|win\w*|victor\w*|accomplish\w*|reach\w*|done)\b/g, 116, k =>
+          cyl(0, 0, 0, 16, 6, GREY) + cyl(0, 0, 6, 3, 110, GREY) + extrude(up(0, 0, 74, [[0, 0], [56, 20], [0, 42]]), [0, 3, 0], c(k), c(k, 'd'))],
+        ['trophy', /\b(awards?|trophy|trophies|champions?|rewards?|prizes?|winners?|best|excellen\w*|recogni[sz]ed|honou?rs?)\b/g, 84, k =>
+          box(-22, -22, 0, 44, 44, 14, DARK) + cyl(0, 0, 14, 6, 26, GOLD) + pline(up(0, 0, 0, [[-36, 76], [-50, 68], [-48, 54], [-30, 48]]), GOLD[2], 5) +
+          cyl(0, 0, 40, 30, 40, GOLD) + `<ellipse cx="400" cy="${f(P(0, 0, 80)[1])}" rx="29" ry="16.5" fill="${GOLD[2]}" fill-opacity="0.45"/>` +
+          pline(up(0, 0, 0, [[36, 76], [50, 68], [48, 54], [30, 48]]), GOLD[2], 5) + extrude(up(-10, 22.5, 2, starPts(8, 3.5)), [0, 1, 0], AMBER, AMBER)],
+        ['calendar', /\b(dates?|calendars?|schedul\w*|deadlines?|events?|plans?|planning|timelines?|roadmaps?|months?|weeks?|years?|quarters?|annual\w*|monthly|weekly|daily|(?:19|20)\d{2})\b/g, 84, k => {
+          let s = box(-40, -5, 0, 80, 8, 84, PAPER) + onLeft(-40, 3.5, 66, 80, 18, c(k));
+          for (let r = 0; r < 3; r++) for (let q = 0; q < 4; q++) s += onLeft(-34 + q * 18, 3.5, 8 + r * 18, 12, 12, r === 1 && q === 2 ? c(k) : '#E5E7EB');
+          return s; }],
+        ['clock', /\b(time\w*|clocks?|hours?|minutes?|seconds?|real-?time|instant\w*|efficien\w*|wait\w*|delays?|duration|on time|24\/7)\b/g, 104, k =>
+          cyl(0, 4, 0, 22, 6, GREY) + extrude(up(0, 0, 58, ring(46, 40)), [0, 10, 0], c(k), c(k, 'd')) + poly(up(0, 10.5, 58, ring(38, 40)), WHITE) +
+          pline(up(0, 11, 58, [[0, 26], [0, 0], [20, -8]]), DARK[2], 5)],
+        ['envelope', /\b(e-?mails?|mail\w*|inbox|newsletters?|letters?|invitations?|notifications?|alerts?)\b/g, 72, k =>
+          `<ellipse cx="400" cy="508" rx="52" ry="20" fill="#0F172A" fill-opacity="0.08"/>` + extrude(up(-45, -4, 12, [[0, 0], [90, 0], [90, 58], [0, 58]]), [0, 8, 0], PAPER[0], PAPER[2]) +
+          pline(up(-45, 4.5, 12, [[0, 58], [45, 24], [90, 58]]), c(k), 4) + pline(up(-45, 4.5, 12, [[0, 0], [34, 32]]), LINE, 3) + pline(up(-45, 4.5, 12, [[90, 0], [56, 32]]), LINE, 3)],
+        ['chat', /\b(chat\w*|messag\w*|conversations?|feedback|comments?|discuss\w*|support|questions?|answers?|talk\w*|communicat\w*|dialog\w*|replies|reply)\b/g, 90, k =>
+          bubble(-45, -5, 30, 90, 56, k)],
+        ['megaphone', /\b(marketing|campaigns?|advertis\w*|ads|promot\w*|announc\w*|social media|awareness|outreach|broadcast\w*|publicity|press)\b/g, 104, k => {
+          let s = cyl(0, 0, 0, 16, 40, GREY) + extrude(up(-10, -10, 48, [[-50, 20], [-30, 20], [30, 52], [30, -8], [-30, 12], [-50, 12]].map(([u, v]) => [u, v + 8])), [0, 20, 0], c(k), c(k, 'd'));
+          [26, 42].forEach(r => { s += pline(up(28, 10, 70, arc(r, -0.8, 0.8, 10)), c(k2(k, 1)), 6); });
+          return s; }],
+        ['books', /\b(books?|read\w*|librar(y|ies)|knowledge|learn\w*|study\w*|lessons?|guides?|manuals?|handbooks?|chapters?|curriculum|tocs?|table of contents|syllabus)\b/g, 42, k =>
+          box(-40, -28, 0, 80, 56, 14, k) + onLeft(-36, 28.5, 3, 72, 8, WHITE) + box(-36, -24, 14, 74, 50, 14, k2(k, 1)) + onLeft(-32, 26.5, 17, 66, 8, WHITE) +
+          box(-42, -26, 28, 82, 54, 14, k2(k, 2)) + onLeft(-38, 28.5, 31, 74, 8, WHITE)],
+        ['gradcap', /\b(certif\w*|graduat\w*|degrees?|diplomas?|universit\w*|students?|courses?|educat\w*|training|exams?|academ\w*|schools?|colleges?|teach\w*|skills?|upskill\w*|bootcamps?)\b/g, 34, k =>
+          cyl(0, 0, 0, 24, 20, DARK) + extrude(flat(0, 0, 20, [[0, -56], [56, 0], [0, 56], [-56, 0]]), [0, 0, 6], DARK[0], DARK[2]) +
+          pline([[0, 0, 26], [0, 46, 26], [0, 48, 4]], AMBER, 4) + sphere(0, 48, 4, 5, [AMBER, AMBER, '#B45309'])],
+        ['heart', /\b(hearts?|love\w*|care|caring|health\w*|wellness|well-?being|likes?|favou?rites?|passion\w*|emotion\w*|empath\w*|kindness)\b/g, 80, k =>
+          extrude(up(0, -8, 4, heartPts(2.6).map(([u, v]) => [u, v + 46])), [0, 16, 0], c(k), c(k, 'd'))],
+        ['cross', /\b(medic\w*|hospitals?|doctors?|patients?|clinic\w*|nurs\w*|diagnos\w*|treatments?|emergenc\w*|first aid|surgery|healthcare)\b/g, 100, k =>
+          extrude(up(0, -10, 2, CROSS), [0, 18, 0], c(k), c(k, 'd')) + poly(up(0, 8.5, 2, CROSS.map(([u, v]) => [u * 0.7, v * 0.7 + 15])), c(k, 'l'))],
+        ['pill', /\b(medicines?|drugs?|pharma\w*|pills?|prescriptions?|dosage|vaccin\w*|therap\w*)\b/g, 72, k =>
+          cyl(0, 0, 0, 24, 18, PAPER) + cyl(0, 0, 18, 24, 22, [c(k, 'p'), c(k, 'l'), c(k, 'l')]) + cyl(0, 0, 40, 24, 16, PAPER) + cyl(0, 0, 56, 26, 16, k)],
+        ['tree', /\b(nature|environment\w*|green|sustainab\w*|eco\w*|trees?|forest\w*|climate|carbon|organic|agricultur\w*|farm\w*|planet|recycl\w*|net zero)\b/g, 90, k =>
+          tree(-22, -14, k, 34) + tree(20, 18, k2(k, 1), 24)],
+        ['solar', /\b(solar|sun\w*|renewabl\w*|energy|power\w*|electricity|utilit(y|ies))\b/g, 52, k =>
+          box(-4, -4, 0, 8, 8, 30, GREY) + poly([[-45, -30, 48], [45, -30, 48], [45, 30, 24], [-45, 30, 24]], c(k)) + poly([[-45, 30, 24], [45, 30, 24], [45, 30, 20], [-45, 30, 20]], c(k, 'd')) +
+          line([-15, -30, 48], [-15, 30, 24], c(k, 'l'), 2) + line([15, -30, 48], [15, 30, 24], c(k, 'l'), 2) + line([-45, 0, 36], [45, 0, 36], c(k, 'l'), 2)],
+        ['turbine', /\b(wind\w*|turbines?)\b/g, 150, () => windTurbine(0, 0, 150), 0.75],
+        ['battery', /\b(batter(y|ies)|charg\w*|electric\w*|ev|evs|voltage|recharg\w*)\b/g, 92, k =>
+          box(-22, -22, 0, 44, 44, 84, DARK) + box(-8, -8, 84, 16, 16, 8, GREY) + [0, 1, 2].map(i => onLeft(-16, 22.5, 8 + i * 24, 32, 18, c(k))).join('')],
+        ['house', /\b(homes?|houses?|housing|real estate|propert(y|ies)|rent\w*|mortgages?|residential|apartments?|famil(y|ies))\b/g, 84, k =>
+          box(-40, -30, 0, 80, 60, 50, PAPER) + extrude(side(-40, -30, 50, [[0, 0], [60, 0], [30, 34]]), [80, 0, 0], '#E5E7EB', c(k)) +
+          onLeft(-10, 30.5, 0, 18, 30, c(k, 'd')) + onRight(40.5, -15, 22, 18, 16, c(k, 'p'))],
+        ['building', /\b(offices?|compan(y|ies)|business\w*|corporat\w*|enterprises?|organi[sz]ations?|firms?|headquarters|b2b|institutions?|agenc(y|ies))\b/g, 150, k => {
+          let s = box(-30, -30, 0, 60, 60, 150, k);
+          for (let r = 0; r < 6; r++) for (let q = 0; q < 2; q++) s += onLeft(-24 + q * 28, 30.5, 14 + r * 22, 18, 12, c(k, 'p')) + onRight(30.5, -24 + q * 28, 14 + r * 22, 18, 12, c(k, 'l'));
+          return s; }, 0.85],
+        ['magnifier', /\b(search\w*|find\w*|research\w*|analy[sz]\w*|inspect\w*|reviews?|investigat\w*|discover\w*|explor\w*|audit\w*|detect\w*|examin\w*|evaluat\w*)\b/g, 110, k =>
+          line([16, 0, 44], [44, 0, 6], DARK[1], 12) + extrude(up(-8, -6, 70, ring(34, 36)), [0, 10, 0], c(k), c(k, 'd')) + poly(up(-8, 4.5, 70, ring(26, 36)), '#DBEAFE') +
+          pline(up(-8, 5, 70, arc(18, 2.0, 2.9, 6)), WHITE, 4)],
+        ['checklist', /\b(checklists?|tasks?|to-?dos?|requirements?|steps?|compliance|verif\w*|approv\w*|standards?|criteria|rules?|quality|checks?|procedures?)\b/g, 96, k =>
+          box(-34, -4, 0, 68, 8, 92, PAPER) + box(-12, -5, 86, 24, 10, 10, GREY) +
+          [0, 1, 2].map(i => onLeft(-26, 4.5, 62 - i * 22, 12, 12, c(k)) + pline(up(-26, 5, 62 - i * 22, [[2, 6], [5, 2], [11, 10]]), WHITE, 2.5) + onLeft(-8, 4.5, 64 - i * 22, 28, 6, LINE)).join('')],
+        ['puzzle', /\b(integrat\w*|puzzles?|combin\w*|merg\w*|fit\w*|pieces?|compatib\w*|together|join\w*|unif\w*|consolidat\w*)\b/g, 20, k =>
+          [[-40, -40, 0], [2, -40, 1], [-40, 2, 2], [2, 2, 3]].map(([x, y, i]) => box(x, y, 0, 38, 38, 16, k2(k, i))).join('') + cyl(-21, -1, 0, 7, 16.5, k) + cyl(21, 1, 0, 7, 16.5, k2(k, 3))],
+        ['convert', /\b(convert\w*|conversions?|transform\w*|migrat\w*|exchang\w*|switch\w*|transfer\w*|imports?|exports?|formats?|translat\w*)\b/g, 100, k =>
+          box(-50, -10, 0, 36, 6, 48, PAPER) + onLeft(-46, -3.5, 30, 26, 8, c(k)) + box(14, -10, 0, 36, 6, 48, PAPER) + onLeft(18, -3.5, 30, 26, 8, c(k2(k, 1))) +
+          pline(up(0, -8, 56, arc(32, Math.PI * 0.95, Math.PI * 0.08, 14)), c(k), 6) + poly(up(0, -8, 56, [[24, 14], [40, 12], [32, -4]]), c(k))],
+        ['compress', /\b(compress\w*|reduc\w*|shrink\w*|smaller|optimi[sz]\w*|minimi[sz]\w*|sizes?|lightweight|trim\w*|cut\w*)\b/g, 44, k => {
+          const ar = (x, y, rot) => extrude(flat(x, y, 0, arrowShape.map(([u, v]) => rot ? [v, u * rot] : [u * (x < 0 ? 1 : -1), v])), [0, 0, 6], c(k2(k, 1), 'l'), c(k2(k, 1), 'd'));
+          return ar(-74, 0) + ar(0, -74, 1) + box(-22, -22, 0, 44, 44, 44, k) + ar(74, 0) + ar(0, 74, -1); }],
+        ['signature', /\b(sign|signs|signed|signing|signatures?|e-?sign\w*|pens?|writ\w*|edit\w*|draft\w*|authors?|notes?|approve)\b/g, 92, k =>
+          box(-36, -4, 0, 66, 8, 90, PAPER) + onLeft(-28, 4.5, 66, 40, 8, LINE) + onLeft(-28, 4.5, 52, 50, 6, LINE) +
+          pline(up(-28, 5, 22, [[0, 0], [8, 10], [14, -4], [22, 8], [30, 0], [40, 6]]), c(k), 3.5) + line([40, 16, 14], [64, 16, 84], c(k, 'd'), 9) + line([40, 16, 14], [44, 16, 26], AMBER, 9)],
+        ['image', /\b(images?|photos?\w*|pictures?|jpe?gs?|pngs?|galler(y|ies)|visuals?|graphics?|designs?|illustrat\w*|artwork|artists?)\b/g, 70, k =>
+          box(-44, -4, 0, 88, 8, 70, PAPER) + onLeft(-38, 4.5, 6, 76, 58, c(k, 'p')) + poly(up(-38, 5, 6, [[0, 0], [26, 30], [40, 16], [60, 40], [76, 0]]), c(k)) + poly(up(14, 5, 46, ring(7, 12)), AMBER)],
+        ['camera', /\b(cameras?|videos?|record\w*|films?|filming|stream\w*|media|youtube|webinars?|cctv|surveillance)\b/g, 52, k =>
+          box(-36, -22, 0, 72, 44, 44, DARK) + box(-26, -22, 44, 20, 44, 8, DARK) + extrude(up(0, 22, 22, ring(16, 24)), [0, 8, 0], GREY[1], GREY[2]) + poly(up(0, 30.5, 22, ring(10, 20)), c(k))],
+        ['code', /\b(code\w*|coding|developers?|programm\w*|html|markdown|javascript|python|java|scripts?|github|sdk|json|xml|css)\b/g, 104, k =>
+          cyl(0, 0, 0, 22, 6, GREY) + box(-4, -4, 6, 8, 8, 22, GREY) + box(-48, -4, 28, 96, 8, 72, DARK) + onLeft(-42, 4.5, 34, 84, 60, NIGHT) +
+          pline(up(-30, 5, 64, [[12, 14], [0, 0], [12, -14]]), c(k, 'l'), 4) + pline(up(-30, 5, 64, [[48, 14], [60, 0], [48, -14]]), c(k, 'l'), 4) + pline(up(-30, 5, 64, [[24, -16], [36, 16]]), c(k2(k, 1), 'l'), 4)],
+        ['robot', /\b(robots?|robotic\w*|bots?|chatbots?|assistants?|autonomous|agents?|copilots?|virtual assistants?)\b/g, 126, k =>
+          box(-36, -6, 24, 10, 12, 30, k) + box(-26, -20, 0, 52, 40, 60, k) + box(26, -6, 24, 10, 12, 30, k) + box(-20, -16, 64, 40, 32, 34, PAPER) +
+          onLeft(-12, 16.5, 74, 8, 8, DARK[1]) + onLeft(4, 16.5, 74, 8, 8, DARK[1]) + cyl(0, 0, 98, 2, 16, GREY) + sphere(0, 0, 118, 7, k2(k, 1))],
+        ['scale', /\b(laws?|legal\w*|justice|regulat\w*|polic(y|ies)|rights|fair\w*|ethic\w*|governance|terms|courts?|lawyers?|contracts?|gdpr)\b/g, 112, k => {
+          const pan = x => { const [px, py] = P(x, 0, 58);
+            return line([x - 20, 0, 58], [x, 0, 104], DARK[1], 2) + line([x + 20, 0, 58], [x, 0, 104], DARK[1], 2) + `<ellipse cx="${f(px)}" cy="${f(py)}" rx="26" ry="9" fill="${c(k)}"/>`; };
+          return box(-26, -20, 0, 52, 40, 10, DARK) + cyl(0, 0, 10, 4, 96, GREY) + pan(-50) + pan(50) + line([-50, 0, 106], [50, 0, 106], DARK[1], 6) + sphere(0, 0, 112, 7, GOLD); }],
+        ['layers', /\b(layers?|stack\w*|platforms?|architecture|foundation\w*|levels?|tiers?|frameworks?|infrastructure|modules?|components?)\b/g, 62, k =>
+          [0, 1, 2].map(i => extrude(flat(0, 0, i * 26, [[-37, -37], [37, -37], [37, 37], [-37, 37]]), [0, 0, 10], c(k2(k, i), 'l'), c(k2(k, i)))).join('')],
+        ['wifi', /\b(wi-?fi|wireless|connectivity|signals?|5g|4g|bluetooth|broadband|iot|routers?|telecom\w*)\b/g, 90, k =>
+          box(-30, -18, 0, 60, 36, 16, DARK) + onLeft(-20, 18.5, 5, 6, 6, c(k)) + onLeft(-8, 18.5, 5, 6, 6, c(k)) +
+          [18, 32, 46].map(r => pline(up(0, 0, 34, arc(r, Math.PI * 0.25, Math.PI * 0.75, 10)), c(k), 6)).join('')],
+        ['car', /\b(cars?|vehicles?|automotive|driv\w*|mobility|traffic|taxis?|rides?|parking)\b/g, 56, k =>
+          box(-46, -20, 10, 92, 40, 26, k) + box(-22, -18, 36, 48, 36, 20, [c(k, 'p'), c(k, 'l'), c(k, 'l')]) + wheelAt(-28, 20, 10, 11) + wheelAt(28, 20, 10, 11)],
+        ['plane', /\b(travel\w*|flights?|airlines?|airports?|tourism|tourists?|trips?|aviation|airplanes?|aircraft|holidays?|vacations?)\b/g, 110, k =>
+          `<ellipse cx="400" cy="508" rx="50" ry="18" fill="#0F172A" fill-opacity="0.08"/>` +
+          extrude(up(0, -6, 80, [[-10, 6], [20, 6], [-2, -34], [-14, -34]]), [0, 4, 0], c(k, 'd'), c(k, 'd')) +
+          extrude(up(0, -2, 80, [[-60, 0], [50, 0], [64, 6], [50, 12], [-50, 12], [-62, 28], [-70, 28], [-62, 8]]), [0, 10, 0], c(k), c(k, 'd')) +
+          extrude(up(0, 8, 86, [[-6, 4], [22, 4], [0, 34], [-10, 34]]), [0, 4, 0], c(k, 'l'), c(k))],
+        ['cup', /\b(coffee|tea|caf[eé]s?|restaurants?|food\w*|drinks?|breaks?|hospitality|menus?|kitchens?|cooking|meals?|dining)\b/g, 76, k =>
+          cyl(0, 0, 0, 34, 5, PAPER) + pline(up(0, 0, 0, [[24, 36], [38, 32], [38, 18], [24, 14]]), c(k, 'd'), 6) + cyl(0, 0, 5, 22, 40, k) +
+          `<ellipse cx="400" cy="${f(P(0, 0, 45)[1])}" rx="23" ry="13" fill="#7C4A2D"/>` + [-8, 8].map(u => pline(up(u, 0, 56, [[0, 0], [5, 8], [0, 16], [5, 24]]), '#CBD5E1', 3)).join('')],
+        ['star', /\b(stars?|ratings?|rated|premium|featured|quality|favou?rites?|special|exclusive|vip)\b/g, 100, k =>
+          extrude(up(0, -8, 8, starPts(50, 22)), [0, 14, 0], c(k), c(k, 'd'))],
+        ['translate', /\b(translat\w*|languages?|multilingual|locali[sz]\w*|english|spanish|hindi|french|german|subtitles?|bilingual)\b/g, 110, k =>
+          bubble(-55, -10, 62, 60, 46, k, true) + glyph(-25, 0, 85, 'A', WHITE, 26) + bubble(2, 12, 22, 60, 46, k2(k, 1), true) + glyph(32, 22, 45, '文', WHITE, 24)],
+        ['scanner', /\b(ocr|scan\w*|digiti[sz]\w*|recogni[sz]\w*|extract\w*|searchable|captur\w*)\b/g, 64, k =>
+          box(-44, -30, 0, 88, 60, 20, GREY) + onTop(-36, -22, 20.1, 72, 44, PAPER[0]) + [0, 1, 2].map(i => onTop(-28, -14 + i * 12, 20.2, 50 - i * 10, 4, LINE)).join('') +
+          poly([[-40, 4, 20.3], [40, 4, 20.3], [40, 4, 64], [-40, 4, 64]], c(k, 'l'), ' fill-opacity="0.35"') + onTop(-40, 2, 20.4, 80, 4, c(k))],
+      ];
+      const GENERIC = ['layers', 'chart', 'bulb', 'gear', 'document'];
+      const STOP = new Set(('a about above after again against all also am an and any are as at be because been before being below between both but by can could did do does doing down during ' +
+        'each few for from further had has have having he her here hers herself him himself his how i if in into is it its itself just let me more most my myself no nor not now of off on once only ' +
+        'or other our ours ourselves out over own same she should so some such than that the their theirs them themselves then there these they this those through to too under until up very was ' +
+        'we were what when where which while who whom why will with would you your yours yourself yourselves within without across via per using use used uses make makes made get gets got one two ' +
+        'three first second new like well way ways many much may might must need needs etc into onto upon also every each either neither whether however therefore thus these those able including ' +
+        'include includes allow allows help helps based provide provides different various multiple single main key important') .split(' '));
+
+      /* Key terms of the text, most prominent first: acronyms and words repeated or in the first line rank higher. */
+      function keyTerms(text) {
+        const lines = String(text || '').split('\n'), score = new Map(), form = new Map();
+        lines.forEach((l, li) => (l.match(/[A-Za-z][A-Za-z0-9+#&-]*[A-Za-z0-9+#]|[A-Za-z]{2,}/g) || []).forEach(w => {
+          const key = w.toLowerCase(), acro = /^[A-Z0-9]{2,6}$/.test(w) && /[A-Z]/.test(w);
+          if (STOP.has(key) || (!acro && w.length < 4)) return;
+          score.set(key, (score.get(key) || 0) + 1 + (li === 0 ? 2 : 0) + (acro ? 1.5 : 0) + (/^[A-Z]/.test(w) && !acro ? 0.3 : 0));
+          if (!form.has(key) || acro) form.set(key, w);
+        }));
+        return [...score.entries()].sort((a, b) => b[1] - a[1]).map(([k]) => form.get(k));
+      }
+      const nice = w => { w = String(w); if (w.length > 16) w = w.slice(0, 15) + '…'; return /^[A-Z0-9]{2,6}$/.test(w) ? w : w.charAt(0).toUpperCase() + w.slice(1); };
+
+      /* Score every object by keyword hits (first line counts double), keep the best 4, label each with the word that matched. */
+      function compose(text) {
+        const raw = String(text || ''), low = raw.toLowerCase(), head = low.split('\n')[0];
+        const ranked = PROPS.map(p => {
+          const re = p[1], hits = [];
+          re.lastIndex = 0;
+          let m;
+          while ((m = re.exec(low))) { hits.push(raw.substr(m.index, m[0].length)); if (!m[0].length) re.lastIndex++; }
+          const n = hits.length + (head.match(re) || []).length;
+          const freq = {};
+          hits.forEach(h => { const key = h.toLowerCase(); freq[key] = (freq[key] || 0) + 1 + (/^[A-Z0-9]{2,6}$/.test(h) ? 1 : 0); });
+          const best = Object.keys(freq).sort((a, b) => freq[b] - freq[a])[0];
+          const label = best ? hits.find(h => h.toLowerCase() === best && /^[A-Z0-9]{2,6}$/.test(h)) || hits.find(h => h.toLowerCase() === best) : '';
+          return { p, n, label };
+        }).filter(r => r.n > 0).sort((a, b) => b.n - a.n);
+        const chosen = [], used = new Set();
+        for (const r of ranked) { if (chosen.length >= 4) break; if (!used.has(r.p[0])) { chosen.push(r); used.add(r.p[0]); } }
+        const terms = keyTerms(raw).filter(t => !chosen.some(r => r.label.toLowerCase() === t.toLowerCase()));
+        for (const id of GENERIC) {
+          if (chosen.length >= 3 || !raw.trim()) break;
+          if (!used.has(id)) { chosen.push({ p: PROPS.find(p => p[0] === id), n: 0, label: terms.shift() || '' }); used.add(id); }
+        }
+        if (!chosen.length) chosen.push({ p: PROPS.find(p => p[0] === 'layers'), n: 0, label: '' });
+
+        // Slots: hero at the back centre, then right, left and front (drawn back to front).
+        const SLOTS = chosen.length === 1 ? [[0, 0, 1.9]] : [[-45, -45, 1.65], [45, -125, 1.15], [-125, 45, 1.15], [95, 95, 1.1]];
+        const items = chosen.map((r, i) => ({ r, x: SLOTS[i][0], y: SLOTS[i][1], s: SLOTS[i][2] * (r.p[4] || 1), k: i % 6 }));
+        let svg = platform();
+        items.slice(1).forEach(it => { svg += line([items[0].x, items[0].y, 0.5], [it.x, it.y, 0.5], c(0, 'l'), 3, ' stroke-dasharray="8 8"'); });
+        [...items].sort((a, b) => (a.x + a.y) - (b.x + b.y)).forEach(it => {
+          const [px, py] = P(it.x, it.y, 0);
+          svg += `<g transform="translate(${f(px)} ${f(py)}) scale(${it.s}) translate(-400 -500)">${it.r.p[3](it.k)}</g>`;
+        });
+        const boxes = [];
+        items.forEach(it => {
+          if (!it.r.label) return;
+          const t = nice(it.r.label), w = t.length * 11 + 28, h = 30, [px, py] = P(it.x, it.y, 0);
+          let cx = Math.max(70 + w / 2, Math.min(730 - w / 2, px)), cy = Math.max(86, py - it.s * it.r.p[2] - 26);
+          for (let tries = 0; tries < 8 && boxes.some(b => Math.abs(b[0] - cx) < (b[2] + w) / 2 + 6 && Math.abs(b[1] - cy) < h + 4); tries++) cy -= h + 6;
+          boxes.push([cx, cy, w]);
+          svg += `<g><rect x="${f(cx - w / 2)}" y="${f(cy - h / 2)}" width="${f(w)}" height="${h}" rx="15" fill="${WHITE}" stroke="${c(it.k)}" stroke-width="2.5"/>` +
+            `<circle cx="${f(cx - w / 2 + 14)}" cy="${f(cy)}" r="5" fill="${c(it.k)}"/>` +
+            `<text x="${f(cx + 6)}" y="${f(cy + 1)}" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="600" fill="#1F2937" text-anchor="middle" dominant-baseline="middle">${esc(t)}</text></g>`;
+        });
+        const labels = items.map(it => it.r.label && nice(it.r.label)).filter(Boolean);
+        return { id: 'auto', name: 'Built from your text', tokens: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="60 70 680 680" width="800" height="800">${svg}</svg>`,
+          caption: labels.length ? 'Built from your text: ' + labels.join(', ') + '.' : 'Built from your text.' , objects: items.map(it => it.r.p[0]) };
+      }
+
       const cache = {};
       return {
+        compose,
+        keyTerms,
+        props: PROPS.map(p => p[0]),
         list: LIST.map(([id, name]) => ({ id, name })),
         name: id => (LIST.find(s => s[0] === id) || [])[1] || id,
         /* Most keyword hits wins (the first line counts twice; AI gets a small boost). Business growth is the fallback. */
@@ -1252,52 +1599,87 @@
 
     const $ = id => document.getElementById(id);
     const state = { palette: PALETTES[0], selected: null, suggestions: [], inOffice: false, canGroup: false, ai: null, aiBusy: false,
-      picture: 'auto', aiIllo: null };   // picture: 'auto' | built-in scene id | 'ai'
+      picture: 'auto', aiIllo: null, webIllo: null, parts: [] };   // picture: 'auto' | built-in scene id | 'web' | 'ai'
     let SLIDE = { w: 960, h: 540 };
 
     function setStatus(msg, isError) { $('status').textContent = msg; $('status').classList.toggle('err', !!isError); }
+    const keepText = () => $('keepText').checked;
 
-    /* Text used to match a built-in picture: the content plus the AI's title and topic when available. */
+    /* Text used to build the picture: the content plus the AI's title and topic when available. */
     function pictureText() {
       const text = $('content').value, ai = state.ai && state.ai.text === text ? state.ai.data : null;
-      return ai ? `${ai.topic} ${ai.topic} ${ai.title || ''} ${text}` : text;
+      return ai ? `${ai.topic || ''} ${ai.title || ''}\n${text}` : text;
     }
-    const autoScene = () => ILLUSTRATIONS.pick(pictureText());
+    let composed = { key: null, val: null };
+    function autoPicture() {
+      const t = pictureText();
+      if (composed.key !== t) composed = { key: t, val: ILLUSTRATIONS.compose(t) };
+      return composed.val;
+    }
 
-    /* The picture to show: a built-in scene (free, instant) or Claude's drawing. Null while nothing is ready. */
+    /* The picture to show: built from the text (default), a ready-made scene, a free online image or Claude's drawing. */
     function currentIllo() {
       if (!$('content').value.trim()) return null;
       if (state.picture === 'ai') {
         const ai = state.aiIllo;
         return ai && ai.tokens ? { tokens: ai.tokens, caption: ai.caption, ai: true } : null;
       }
-      return ILLUSTRATIONS.get(state.picture === 'auto' ? autoScene() : state.picture);
+      if (state.picture === 'web') {
+        const w = state.webIllo;
+        return w && w.raster ? { raster: w.raster, caption: w.caption, web: true } : null;
+      }
+      return state.picture === 'auto' ? autoPicture() : ILLUSTRATIONS.get(state.picture);
     }
     const illoReady = () => !!currentIllo();
-    const illoSVG = () => paintColors(currentIllo().tokens, state.palette);
+    function illoSVG() {
+      const il = currentIllo();
+      return il.raster ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="800" height="800"><image href="${il.raster}" width="1024" height="1024"/></svg>`
+        : paintColors(il.tokens, state.palette);
+    }
+    const illoHref = () => { const il = currentIllo(); return il.raster || svgDataURL(paintColors(il.tokens, state.palette)); };
 
     /* With the illustration beside it, the visual is laid out in the left 62% of the slide. */
-    function makeCtx(data) {
-      const colors = state.palette.colors, beside = illoReady() && $('illoBeside').checked;
+    function makeCtx(data, noBeside) { return ctxWith(data, !noBeside && illoReady() && $('illoBeside').checked); }
+    function ctxWith(data, beside) {
+      const colors = state.palette.colors;
       return { W: beside ? Math.round(SLIDE.w * 0.62) : SLIDE.w, H: SLIDE.h, M: Math.round(SLIDE.w * 0.05), beside,
         title: data.title, showTitle: $('showTitle').checked, items: data.items, color: i => colors[i % colors.length] };
     }
 
     /* Square image slot to the right of the visual. */
-    function illoPrim(c) {
+    function illoRect(c) {
       const left = c.W - c.M / 2, right = SLIDE.w - c.M, top = c.M * 0.5, bottom = c.H - c.M * 0.5;
       const s = Math.min(right - left, bottom - top);
-      return { t: 'image', x: left + (right - left - s) / 2, y: top + (bottom - top - s) / 2, w: s, h: s, href: svgDataURL(illoSVG()) };
+      return { x: left + (right - left - s) / 2, y: top + (bottom - top - s) / 2, w: s, h: s };
+    }
+    const illoPrim = c => Object.assign({ t: 'image', href: illoHref() }, illoRect(c));
+
+    /* Exact text that doesn't fit one slide is split into parts of up to 8 points / ~1000 characters, one slide each. */
+    function splitParts(data) {
+      const size = it => it.text.length + it.children.join(' ').length + 40;
+      const groups = [];
+      let cur = [], chars = 0;
+      for (const it of data.items) {
+        if (cur.length && (cur.length >= 8 || chars + size(it) > 1000)) { groups.push(cur); cur = []; chars = 0; }
+        cur.push(it); chars += size(it);
+      }
+      if (cur.length) groups.push(cur);
+      if (!data.full || groups.length < 2) return [data];
+      const last = groups[groups.length - 1], prev = groups[groups.length - 2];
+      if (last.length === 1 && prev.length > 2) last.unshift(prev.pop());
+      return groups.map((items, i) => Object.assign({}, data, { items, title: data.title ? `${data.title} (${i + 1}/${groups.length})` : null }));
     }
 
     function refresh() {
       const text = $('content').value;
       const useAI = state.ai && state.ai.text === text;
-      const data = useAI ? state.ai.data : analyse(text);
+      const data = useAI ? state.ai.data : analyse(text, { full: keepText() });
       if (state.ai && !useAI && text.trim()) data.notes.unshift('Text changed since the AI analysis. Click “Analyse with AI” again to update.');
-      const ctx = makeCtx(data), extra = ctx.beside ? [illoPrim(ctx)] : [];
+      const parts = state.parts = splitParts(data), first = parts[0];
+      const ctx = makeCtx(first), extra = ctx.beside ? [illoPrim(ctx)] : [];
       const iso = useAI ? (state.ai.paragraph ? 'first' : ctx.beside ? 'include' : null) : null;
-      state.suggestions = (useAI ? suggestFromAI(data, state.ai.layouts, iso) : suggest(data)).map(s => {
+      const fitsAll = s => parts.every(p => p.items.length >= s.L.min && p.items.length <= s.L.max);
+      state.suggestions = (useAI ? suggestFromAI(first, state.ai.layouts, iso) : suggest(first)).filter(fitsAll).map(s => {
         try { return Object.assign(s, { prims: s.L.build(ctx).concat(extra) }); }
         catch (e) { console.error('Layout failed:', s.L.id, e); return null; }
       }).filter(Boolean);
@@ -1317,15 +1699,17 @@
       if (!data.items.length && !data.title) { el.innerHTML = ''; return; }
       const found = Object.keys(data.signals).filter(k => data.signals[k]);
       const kids = data.items.reduce((a, it) => a + it.children.length, 0);
-      const isAI = data.mode === 'ai';
+      const isAI = data.mode === 'ai', editable = isAI && !data.full, n = state.parts.length;
       el.innerHTML = (isAI ? '<span class="ai">✨ AI</span> · ' + (data.topic ? `Topic: <b>${esc(data.topic)}</b> · ` : '') : '') +
         (data.title ? `Title: <b>${esc(data.title)}</b> · ` : '') +
         `<b>${data.items.length}</b> point${data.items.length === 1 ? '' : 's'}` +
         (kids ? ` · <b>${kids}</b> sub-point${kids === 1 ? '' : 's'}` : '') +
         (isAI ? (data.kind ? ` · type: ${esc(data.kind)}` : '') : found.length ? ` · looks like: ${found.join(', ')}` : '') +
+        (data.full ? ' · <b>exact text</b>' : '') +
         data.notes.map(n => `<span class="note">${esc(n)}</span>`).join('') +
-        (isAI ? '<br><button type="button" class="linkish" id="aiToText">Put the AI key points in the text box to edit them</button>' : '');
-      if (isAI) $('aiToText').addEventListener('click', () => {
+        (n > 1 ? `<span class="note">Your text is long, so it is spread over <b>${n} slides</b> to keep every word readable. The preview shows slide 1.</span>` : '') +
+        (editable ? '<br><button type="button" class="linkish" id="aiToText">Put the AI key points in the text box to edit them</button>' : '');
+      if (editable) $('aiToText').addEventListener('click', () => {
         const t = toText(data);
         $('content').value = t;
         state.ai.text = t;
@@ -1336,24 +1720,33 @@
 
     function renderIllo() {
       const has = !!$('content').value.trim(), il = currentIllo(), ai = state.aiIllo, busy = !!(ai && ai.busy);
+      const web = state.webIllo, webBusy = !!(web && web.busy);
       $('illoPanel').hidden = !has;
       if (!has) return;
       const pick = $('illoPick');
-      pick.options[0].text = 'Auto: ' + ILLUSTRATIONS.name(autoScene());
-      const aiOpt = pick.querySelector('option[value="ai"]');
+      const aiOpt = pick.querySelector('option[value="ai"]'), webOpt = pick.querySelector('option[value="web"]');
       aiOpt.disabled = !(ai && (ai.tokens || ai.busy));
-      aiOpt.text = busy ? '✨ AI drawing (drawing…)' : '✨ AI drawing';
+      aiOpt.text = busy ? '✨ Claude drawing (drawing…)' : '✨ Claude drawing';
+      webOpt.disabled = !(web && (web.raster || web.busy));
+      webOpt.text = webBusy ? '🌐 Online AI image (generating…)' : '🌐 Online AI image';
       pick.value = state.picture;
-      $('illoState').textContent = busy ? '✨ Claude is drawing…' : il ? (il.ai ? '✨ Drawn by AI' : 'Built-in · free') : '';
-      $('illoBox').innerHTML = il ? `<img class="illo-img" alt="${esc(il.caption)}" src="${svgDataURL(illoSVG())}">`
-        : '<div class="illo-wait">Claude is drawing…</div>';
+      $('illoState').textContent = webBusy ? '🌐 Generating online…' : busy ? '✨ Claude is drawing…'
+        : il ? (il.web ? '🌐 Generated online' : il.ai ? '✨ Drawn by Claude' : 'Built-in · free · private') : '';
+      $('illoBox').innerHTML = il ? `<img class="illo-img" alt="${esc(il.caption)}" src="${illoHref()}">`
+        : `<div class="illo-wait">${state.picture === 'web' ? 'Generating…' : 'Claude is drawing…'}</div>`;
       $('illoCaption').innerHTML = (il ? esc(il.caption) : '') +
+        (web && web.error ? `<div class="illo-err">Online image failed: ${esc(web.error)}</div>` : '') +
         (ai && ai.error ? `<div class="illo-err">AI drawing failed: ${esc(ai.error)}</div>` : '');
+      $('webGen').disabled = webBusy;
+      $('webGen').textContent = webBusy ? '🌐 Generating… (10-60 s)' : web && web.raster ? '🌐 Generate another online image' : '🌐 Generate with free online AI';
       $('illoRegen').disabled = busy;
       $('illoRegen').textContent = busy ? 'Drawing… (up to a minute)' : ai && ai.tokens ? '✨ Draw another custom picture' : '✨ Draw a custom picture with AI';
       $('illoInsert').disabled = !il || !state.inOffice;
       $('illoDownload').hidden = !il;
-      if (il) $('illoDownload').href = svgDataURL(illoSVG());
+      if (il) {
+        $('illoDownload').href = illoHref();
+        $('illoDownload').download = il.raster ? 'picture.jpg' : 'picture.svg';
+      }
     }
 
     function renderGrid() {
@@ -1388,7 +1781,8 @@
     function renderPreview() {
       const el = $('preview'), s = current();
       el.hidden = !s;
-      if (s) el.innerHTML = `<div class="preview-head"><strong>${esc(s.L.name)}</strong><span>Preview</span></div>` +
+      const n = state.parts.length;
+      if (s) el.innerHTML = `<div class="preview-head"><strong>${esc(s.L.name)}</strong><span>${n > 1 ? `Slide 1 of ${n}` : 'Preview'}</span></div>` +
         (s.reason ? `<div class="reason">✨ ${esc(s.reason)}</div>` : '') + toSVG(s.prims, SLIDE.w, SLIDE.h);
     }
 
@@ -1401,6 +1795,7 @@
 
     function renderPalettes() {
       const wrap = $('palettes');
+      wrap.innerHTML = '';
       PALETTES.forEach(p => {
         const b = document.createElement('button');
         b.type = 'button';
@@ -1417,6 +1812,113 @@
     function setPalette(p) {
       state.palette = p;
       document.querySelectorAll('.swatch').forEach(x => x.classList.toggle('sel', x.dataset.id === p.id));
+      try { localStorage.setItem('aivb.palette', p.id); } catch (e) { /* storage blocked */ }
+    }
+
+    /* ---------- Brand colours & font (Step 6) ---------- */
+    const BRAND_KEY = 'aivb.brand', BASE_FONT = "Aptos, Calibri, 'Segoe UI', Arial, sans-serif";
+    function loadBrand() { try { return JSON.parse(localStorage.getItem(BRAND_KEY) || 'null') || {}; } catch (e) { return {}; } }
+    function saveBrand(patch) { try { localStorage.setItem(BRAND_KEY, JSON.stringify(Object.assign(loadBrand(), patch))); } catch (e) { /* storage blocked */ } }
+    const brandPalette = () => PALETTES.find(p => p.id === 'custom');
+
+    /* 1-6 colours become a full 6-colour "My brand" palette (missing ones are lighter/darker variants). */
+    function setBrandColors(list, select) {
+      const colors = list.filter(c => /^#[0-9a-f]{6}$/i.test(c)).map(c => c.toUpperCase()).slice(0, 6);
+      if (!colors.length) return false;
+      const n = colors.length;
+      for (let i = n; i < 6; i++) colors.push(i % 2 ? shade(colors[i % n], 0.3) : tint(colors[i % n], 0.25));
+      let p = brandPalette();
+      if (p) p.colors = colors; else { p = { id: 'custom', name: 'My brand', colors }; PALETTES.push(p); }
+      saveBrand({ colors });
+      renderPalettes();
+      setPalette(select || state.palette === p ? p : state.palette);
+      renderBrandBox();
+      return true;
+    }
+
+    function setBrandFont(name, save) {
+      state.font = String(name || '').trim();
+      FONT = (state.font ? `'${state.font.replace(/['"<>;]/g, '')}', ` : '') + BASE_FONT;
+      if (save) saveBrand({ font: state.font });
+      renderBrandBox();
+    }
+
+    const brandCode = () => 'AIVB:' + (brandPalette() || PALETTES[0]).colors.join(',') + (state.font ? '|' + state.font : '');
+
+    function renderBrandBox() {
+      const p = brandPalette() || PALETTES[0], wrap = $('brandColors');
+      if (wrap.children.length !== 6) {
+        wrap.innerHTML = '';
+        for (let i = 0; i < 6; i++) {
+          const inp = document.createElement('input');
+          inp.type = 'color';
+          inp.title = i ? `Colour ${i + 1}` : 'Main colour';
+          inp.addEventListener('change', () => { setBrandColors([...wrap.querySelectorAll('input')].map(x => x.value), true); refresh(); });
+          wrap.appendChild(inp);
+        }
+      }
+      [...wrap.querySelectorAll('input')].forEach((inp, i) => { inp.value = p.colors[i].toLowerCase(); });
+      const known = !state.font || [...$('fontPick').options].some(o => o.value !== '__other' && o.value === state.font);
+      $('fontPick').value = known ? state.font : '__other';
+      $('fontOtherRow').hidden = known;
+      if (!known) $('fontOther').value = state.font;
+      if (document.activeElement !== $('brandCode')) $('brandCode').value = brandCode();
+    }
+
+    /* Colours and font used on the selected slide: shape fills and text colours, most common first. */
+    async function readSlideStyle() {
+      const count = {}, fonts = {};
+      await PowerPoint.run(async context => {
+        const slides = context.presentation.getSelectedSlides(), n = slides.getCount();
+        await context.sync();
+        if (!n.value) throw new Error('Click a slide in the slide list first.');
+        const shapes = slides.getItemAt(0).shapes;
+        shapes.load('items/type,items/id');
+        await context.sync();
+        for (const s of shapes.items) {
+          if (s.type === 'GeometricShape') {
+            try { s.fill.load('foregroundColor,type'); await context.sync(); if (s.fill.type === 'Solid') count[s.fill.foregroundColor] = (count[s.fill.foregroundColor] || 0) + 2; }
+            catch (e) { /* no fill info */ }
+          }
+          if (['GeometricShape', 'TextBox', 'Placeholder'].includes(s.type)) {
+            try {
+              const f = s.textFrame.textRange.font; f.load('name,color'); await context.sync();
+              if (f.name) fonts[f.name] = (fonts[f.name] || 0) + 1;
+              if (f.color) count[f.color] = (count[f.color] || 0) + 1;
+            } catch (e) { /* no text (e.g. picture placeholder) */ }
+          }
+        }
+      });
+      const vivid = c => { if (!/^#[0-9a-f]{6}$/i.test(c)) return false; const [r, g, b] = hexToRgb(c), L = luminance(c);
+        return Math.max(r, g, b) - Math.min(r, g, b) > 40 && L > 0.02 && L < 0.8; };
+      const dist = (a, b) => { const x = hexToRgb(a), y = hexToRgb(b); return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]); };
+      const colors = [];
+      Object.keys(count).filter(vivid).sort((a, b) => count[b] - count[a]).forEach(c => { if (colors.length < 6 && colors.every(d => dist(c, d) > 45)) colors.push(c); });
+      const font = Object.keys(fonts).sort((a, b) => fonts[b] - fonts[a])[0] || '';
+      return { colors, font };
+    }
+
+    async function brandFromSlide() {
+      try {
+        const { colors, font } = await readSlideStyle();
+        const gotC = setBrandColors(colors, true);
+        if (font && !/^\+/.test(font)) setBrandFont(font, true);
+        refresh();
+        setStatus(gotC ? `Saved “My brand”: ${colors.length} colour${colors.length === 1 ? '' : 's'} from this slide` + (font ? ` and the font ${font}.` : '.') +
+          (colors.length < 6 ? ' Missing colours were filled with lighter and darker shades.' : '')
+          : (font ? `No strong colours found on this slide, but the font ${font} is now used.` : 'No colours or fonts found. Try a slide with coloured shapes or text.'), !gotC && !font);
+      } catch (e) {
+        setStatus('Could not read this slide: ' + (e && e.message ? e.message : String(e)), true);
+      }
+    }
+
+    function applyBrandCode() {
+      const m = /AIVB:\s*([#0-9a-fA-F,\s]+)(?:\|(.+))?/.exec($('brandCode').value || '');
+      if (!m) { setStatus('That doesn’t look like a brand code. It starts with “AIVB:”.', true); return; }
+      setBrandColors(m[1].split(',').map(s => s.trim()), true);
+      setBrandFont((m[2] || '').trim(), true);
+      refresh();
+      setStatus('Brand applied: “My brand” colours' + (state.font ? ` and the font ${state.font}` : '') + '.');
     }
 
     /* ---------- PowerPoint ---------- */
@@ -1449,6 +1951,7 @@
         tr.font.size = p.size;
         tr.font.color = p.color || INK;
         tr.font.bold = !!p.bold;
+        if (state.font) tr.font.name = state.font;
         tr.paragraphFormat.horizontalAlignment = HALIGN[p.align || 'center'];
       }
       return s;
@@ -1461,54 +1964,89 @@
       const btn = $('insert');
       btn.disabled = true;
       setStatus('Inserting…');
-      const prims = sel.prims.filter(p => p.t !== 'image'), image = illoReady() && sel.prims.find(p => p.t === 'image');
+      const image = illoReady() && sel.prims.find(p => p.t === 'image');
+      // Long text kept word for word: one slide per part. Part 1 goes on the selected slide (with the picture), the rest on new slides.
+      const parts = state.parts || [];
+      const slidePrims = [sel.prims.filter(p => p.t !== 'image')].concat(parts.slice(1).map(part => sel.L.build(makeCtx(part, true))));
+      let replaced = false;
       try {
-        let grouped = false;
         await PowerPoint.run(async context => {
           // Count first instead of loading 'items' (PowerPoint on the web can reject that); fall back to slide 1.
           const selected = context.presentation.getSelectedSlides(), count = selected.getCount();
           const all = context.presentation.slides.getCount();
           await context.sync();
           if (!count.value && !all.value) throw new Error('This presentation has no slides. Add a slide first.');
-          const slide = count.value ? selected.getItemAt(0) : context.presentation.slides.getItemAt(0);
-          const shapes = slide.shapes;
-          const made = prims.map(p => drawPrim(shapes, p));
-          await context.sync();
-
-          // Keep text boxes at their designed size so top/bottom alignment holds (best effort).
-          try {
-            made.forEach((s, i) => {
-              const p = prims[i];
-              if (p.t !== 'text') return;
-              s.textFrame.autoSizeSetting = 'AutoSizeNone';
-              s.top = r1(p.y);
-              s.height = Math.max(r1(p.h), 1);
-            });
+          const slides = [count.value ? selected.getItemAt(0) : context.presentation.slides.getItemAt(0)];
+          // One-click makeover: remove the text boxes the content came from (only on that same slide).
+          if (state.source && $('replaceSrc').checked && !$('srcNote').hidden) {
+            slides[0].load('id');
             await context.sync();
-          } catch (e) { console.warn('Could not fix text box sizes', e); }
-
-          if (state.canGroup && $('groupShapes').checked && made.length > 1) {
-            try {
-              made.forEach(s => s.load('id'));
-              await context.sync();
-              const group = shapes.addGroup(made.map(s => s.id));
-              await context.sync();
-              grouped = true;
-              try { group.name = 'AI Visual - ' + sel.L.name; await context.sync(); } catch (e) { /* name is optional */ }
-            } catch (e) { console.warn('Could not group shapes', e); }
+            if (slides[0].id === state.source.slideId) {
+              try {
+                state.source.shapeIds.forEach(id => slides[0].shapes.getItem(id).delete());
+                await context.sync();
+                replaced = true;
+              } catch (e) { console.warn('Could not remove the original text', e); }
+            }
           }
+          if (slidePrims.length > 1) {
+            let layoutId = null;
+            try {   // prefer a Blank layout so new slides have no empty placeholders
+              const layouts = context.presentation.slideMasters.getItemAt(0).layouts;
+              layouts.load('items/name,items/id');
+              await context.sync();
+              const blank = layouts.items.find(l => /blank/i.test(l.name));
+              if (blank) layoutId = blank.id;
+            } catch (e) { console.warn('Could not read slide layouts', e); }
+            for (let i = 1; i < slidePrims.length; i++) context.presentation.slides.add(layoutId ? { layoutId } : undefined);
+            const total = context.presentation.slides.getCount();
+            await context.sync();
+            for (let i = 1; i < slidePrims.length; i++) slides.push(context.presentation.slides.getItemAt(total.value - slidePrims.length + i));
+          }
+          for (let n = 0; n < slides.length; n++) await drawOnSlide(context, slides[n], slidePrims[n], sel.L.name);
         });
         let note = '';
         if (image) {
-          try { await insertIllustration(image); note = ' + illustration'; }
-          catch (e) { note = '. The illustration could not be added: ' + (e && e.message ? e.message : String(e)); }
+          try { await insertIllustration(image); note = ' + picture'; }
+          catch (e) { note = '. The picture could not be added: ' + (e && e.message ? e.message : String(e)); }
         }
-        setStatus(`Done! “${sel.L.name}” is on the slide${note}. Click any text on the slide to edit it.`);
+        if (replaced) { note += ' (replacing the original text)'; clearSource(); }
+        setStatus(slidePrims.length > 1
+          ? `Done! “${sel.L.name}” is on this slide${note}, and the rest of your text is on ${slidePrims.length - 1} new slide${slidePrims.length > 2 ? 's' : ''} at the end. Click any text to edit it.`
+          : `Done! “${sel.L.name}” is on the slide${note}. Click any text on the slide to edit it.`);
       } catch (error) {
         const m = error && error.message ? error.message : String(error);
         setStatus('Could not insert. Click once on a slide in the slide list on the left, then press Insert again.\n(Details: ' + m + ')', true);
       } finally {
         updateInsertButton();
+      }
+    }
+
+    async function drawOnSlide(context, slide, prims, name) {
+      const shapes = slide.shapes;
+      const made = prims.map(p => drawPrim(shapes, p));
+      await context.sync();
+
+      // Keep text boxes at their designed size so top/bottom alignment holds (best effort).
+      try {
+        made.forEach((s, i) => {
+          const p = prims[i];
+          if (p.t !== 'text') return;
+          s.textFrame.autoSizeSetting = 'AutoSizeNone';
+          s.top = r1(p.y);
+          s.height = Math.max(r1(p.h), 1);
+        });
+        await context.sync();
+      } catch (e) { console.warn('Could not fix text box sizes', e); }
+
+      if (state.canGroup && $('groupShapes').checked && made.length > 1) {
+        try {
+          made.forEach(s => s.load('id'));
+          await context.sync();
+          const group = shapes.addGroup(made.map(s => s.id));
+          await context.sync();
+          try { group.name = 'AI Visual - ' + name; await context.sync(); } catch (e) { /* name is optional */ }
+        } catch (e) { console.warn('Could not group shapes', e); }
       }
     }
 
@@ -1534,7 +2072,13 @@
     }
 
     async function insertIllustration(p) {
-      const svg = illoSVG(), opts = { imageLeft: r1(p.x), imageTop: r1(p.y), imageWidth: r1(p.w), imageHeight: r1(p.h) };
+      const il = currentIllo(), opts = { imageLeft: r1(p.x), imageTop: r1(p.y), imageWidth: r1(p.w), imageHeight: r1(p.h) };
+      if (il.raster) { await setData(il.raster.split(',')[1], Office.CoercionType.Image, opts); return; }
+      await insertSvgAt(illoSVG(), p);
+    }
+
+    async function insertSvgAt(svg, p) {
+      const opts = { imageLeft: r1(p.x), imageTop: r1(p.y), imageWidth: r1(p.w), imageHeight: r1(p.h) };
       if (Office.context.requirements.isSetSupported('ImageCoercion', '1.2')) {
         try { await setData(svg, Office.CoercionType.XmlSvg, opts); return; }
         catch (e) { console.warn('SVG insert failed, trying PNG', e); }
@@ -1554,26 +2098,113 @@
       }
     }
 
+    /* ---------- One-click slide makeover (Step 6) ---------- */
+    const TEXT_TYPES = ['GeometricShape', 'TextBox', 'Placeholder'];
+
+    /* Text boxes of a slide (or of the selection): the title placeholder first, then top to bottom.
+       `other` counts pictures, tables, groups and charts, which a makeover must not touch. */
+    async function slideTextShapes(context, shapes) {
+      shapes.load('items/id,items/type,items/name,items/top,items/left');
+      await context.sync();
+      let parts = [];
+      for (const s of shapes.items.filter(x => TEXT_TYPES.includes(x.type))) {
+        try {
+          const r = s.textFrame.textRange;
+          r.load('text');
+          await context.sync();
+          const t = String(r.text || '').replace(/\r\n?|\u000b/g, '\n').trim();
+          if (t && !/footer|slide number|date placeholder/i.test(s.name)) parts.push({ id: s.id, t, title: /title/i.test(s.name), ph: s.type === 'Placeholder', top: s.top, left: s.left });
+        } catch (e) { /* no text frame, e.g. a picture placeholder */ }
+      }
+      // A normal slide (title + body placeholder): use just those and leave decorative text boxes alone.
+      if (parts.some(p => p.ph && !p.title)) parts = parts.filter(p => p.ph);
+      parts.sort((a, b) => (b.title - a.title) || (a.top - b.top) || (a.left - b.left));
+      const other = shapes.items.filter(x => !TEXT_TYPES.includes(x.type) && x.type !== 'Line').length;
+      return { parts, other };
+    }
+
+    /* Title first; body lines become bullet points so the title is recognised (slide bullets are formatting, not characters). */
+    function textFromParts(parts) {
+      const hasTitle = parts.length > 1 && parts[0].title;
+      return parts.map((p, i) => hasTitle && i > 0 ? p.t.split('\n').map(l => !l.trim() || BULLET.test(l) || /^\s/.test(l) ? l : '- ' + l).join('\n') : p.t).join('\n');
+    }
+
+    function clearSource() { state.source = null; $('srcNote').hidden = true; }
+
     async function useSelection() {
       try {
-        let text = '';
+        let info = null;
         await PowerPoint.run(async context => {
-          const sel = context.presentation.getSelectedShapes();
-          sel.load('items/type');
+          const slides = context.presentation.getSelectedSlides(), n = slides.getCount();
+          const sel = context.presentation.getSelectedShapes(), m = sel.getCount();
           await context.sync();
-          const ranges = sel.items
-            .filter(s => ['GeometricShape', 'TextBox', 'Placeholder'].includes(s.type))
-            .map(s => { const r = s.textFrame.textRange; r.load('text'); return r; });
-          await context.sync();
-          text = ranges.map(r => r.text).join('\n');
+          if (!n.value) throw new Error('Click a slide in the slide list on the left first.');
+          const slide = slides.getItemAt(0);
+          slide.load('id');
+          const r = await slideTextShapes(context, m.value ? sel : slide.shapes);
+          info = { slideId: slide.id, shapeIds: r.parts.map(p => p.id), text: textFromParts(r.parts), fromSelection: m.value > 0 };
         });
-        text = text.replace(/\r\n?|\u000b/g, '\n').trim();
-        if (!text) { setStatus('First click a text box on the slide (the border should show), then press “Use text from slide”.', true); return; }
-        $('content').value = text;
+        if (!info.text.trim()) { setStatus('This slide has no text to turn into a visual. Click a slide with bullet points (or select a text box) and try again.', true); return; }
+        $('content').value = info.text;
+        state.source = info;
+        $('srcText').textContent = `Text copied from ${info.fromSelection ? 'the selected text box' + (info.shapeIds.length > 1 ? 'es' : '') : 'this slide'}.`;
+        $('replaceSrc').checked = true;
+        $('srcNote').hidden = false;
         refresh();
-        setStatus('Text copied from the slide. Now pick a visual in step 2.');
+        setStatus('Got the slide text. Pick a visual in step 2 and press Insert. The original text will be replaced by the visual.');
       } catch (error) {
-        setStatus('Could not read the slide text. Click a text box on the slide first.\n(Details: ' + (error && error.message ? error.message : String(error)) + ')', true);
+        setStatus('Could not read the slide. Click a slide in the slide list on the left, then try again.\n(Details: ' + (error && error.message ? error.message : String(error)) + ')', true);
+      }
+    }
+
+    async function convertAllSlides() {
+      $('convertBox').hidden = true;
+      $('convertAll').disabled = true;
+      const skipped = [], pics = [];
+      let done = 0, total = 0;
+      try {
+        await PowerPoint.run(async context => {
+          const slides = context.presentation.slides;
+          slides.load('items/id');
+          await context.sync();
+          total = slides.items.length;
+          for (let i = 0; i < total; i++) {
+            setStatus(`Converting slide ${i + 1} of ${total}…`);
+            const slide = slides.items[i];
+            const r = await slideTextShapes(context, slide.shapes);
+            const text = textFromParts(r.parts), lines = text.split('\n').filter(l => l.trim()).length;
+            if (lines < 3) { skipped.push(`${i + 1} (little text)`); continue; }
+            if (r.other) { skipped.push(`${i + 1} (has pictures, tables or groups)`); continue; }
+            if (r.parts.length > 4) { skipped.push(`${i + 1} (already looks like a diagram)`); continue; }
+            const data = analyse(text, { full: keepText() });
+            if (splitParts(data).length > 1) { skipped.push(`${i + 1} (too long, convert it on its own)`); continue; }
+            const n = data.items.length, fits = L => n >= L.min && n <= L.max;
+            const L = LAYOUTS.find(x => x.id === state.selected && fits(x)) || (suggest(data)[0] || {}).L;
+            if (!L) { skipped.push(`${i + 1} (no layout fits)`); continue; }
+            const pic = $('illoBeside').checked ? paintColors(ILLUSTRATIONS.compose(text).tokens, state.palette) : null;
+            const ctx = ctxWith(data, !!pic);
+            r.parts.forEach(p => slide.shapes.getItem(p.id).delete());
+            await context.sync();
+            await drawOnSlide(context, slide, L.build(ctx), L.name);
+            if (pic) pics.push({ id: slide.id, svg: pic, rect: illoRect(ctx) });
+            done++;
+          }
+        });
+        // Pictures go in through the Common API, which inserts on the selected slide, so select each slide first.
+        let picFail = 0;
+        for (let k = 0; k < pics.length; k++) {
+          setStatus(`Adding pictures ${k + 1} of ${pics.length}…`);
+          try {
+            await PowerPoint.run(async context => { context.presentation.setSelectedSlides([pics[k].id]); await context.sync(); });
+            await insertSvgAt(pics[k].svg, pics[k].rect);
+          } catch (e) { console.warn('Picture failed', e); picFail++; }
+        }
+        setStatus(`Done! Converted ${done} of ${total} slide${total === 1 ? '' : 's'}.` +
+          (skipped.length ? ` Skipped slide ${skipped.join(', ')}.` : '') + (picFail ? ` ${picFail} picture(s) could not be added.` : ''));
+      } catch (e) {
+        setStatus(`Stopped after ${done} slide${done === 1 ? '' : 's'}: ` + (e && e.message ? e.message : String(e)), true);
+      } finally {
+        $('convertAll').disabled = !state.inOffice;
       }
     }
 
@@ -1657,6 +2288,85 @@
       refresh();
     }
 
+    /* Free online image (no key): Pollinations.ai turns a short prompt into a picture. Only the title and key words are sent. */
+    const COLOR_WORDS = { ocean: 'blue and teal', ai: 'purple and indigo', sunset: 'coral, amber and teal', forest: 'green and olive', corp: 'navy and steel blue' };
+    let webSeq = 0;
+    async function generateWebPicture() {
+      const text = $('content').value.trim();
+      if (!text) { setStatus('Paste your text in step 1 first.', true); return; }
+      const data = state.ai && state.ai.text === $('content').value ? state.ai.data : analyse(text);
+      // Title, then key words not already in it (PDF and PDFs count once), then the objects the built-in picture found.
+      const head = [data.topic, data.title].filter(Boolean), seen = new Set();
+      const norm = w => w.toLowerCase().replace(/(es|s)$/, '');
+      head.join(' ').split(/\W+/).filter(Boolean).forEach(w => seen.add(norm(w)));
+      const terms = ILLUSTRATIONS.keyTerms(text).filter(t => { const k = norm(t); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 6);
+      const OBJ = { lock: 'padlock', chip: 'AI chip', convert: 'conversion arrows', compress: 'compression', gradcap: 'graduation cap', bag: 'shopping bag',
+        cross: 'medical cross', pin: 'map pin', bulb: 'light bulb', scale: 'scales of justice', cup: 'coffee cup', scanner: 'document scanner', wifi: 'wifi signal' };
+      const things = autoPicture().objects.map(o => OBJ[o] || o);
+      const subject = (head.length ? head.join(': ') + ' (' : '') + terms.join(', ') + (head.length ? ')' : '') + '; showing ' + things.join(', ');
+      const prompt = `Isometric 3D illustration about: ${subject}. Clean modern vector style, ${COLOR_WORDS[state.palette.id] || 'blue'} colour scheme, ` +
+        'soft lighting, white background, objects on a simple platform, centered, no text, no letters, no words';
+      const url = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt) + `?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1e6)}`;
+      const my = ++webSeq;
+      state.webIllo = Object.assign({}, state.webIllo, { busy: true, error: null });
+      setStatus('Generating a picture online from your title and key words… (usually 10-60 seconds)');
+      refresh();
+      try {
+        let res;
+        for (let attempt = 0; ; attempt++) {
+          const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 120000);
+          try { res = await fetch(url, { signal: ctrl.signal }); } finally { clearTimeout(timer); }
+          // The free tier allows one image every ~45 s per internet connection (an office often shares one). Wait once, then retry.
+          if ((res.status === 402 || res.status === 429 || res.status === 503) && attempt === 0) {
+            let wait = 45;
+            try { const j = await res.json(); const m = /(\d+)\s*s/.exec(j && j.error && j.error.message || ''); if (m) wait = Math.min(60, +m[1] + 2); } catch (e) { /* not JSON */ }
+            for (let s = wait; s > 0; s--) {
+              if (my !== webSeq) return;
+              setStatus(`The free service allows one picture every 45 seconds per network, so it's waiting. Retrying in ${s} s…`);
+              await new Promise(r => setTimeout(r, 1000));
+            }
+            continue;
+          }
+          break;
+        }
+        if (res.status === 402 || res.status === 429) throw new Error('The free limit (one picture every 45 seconds per network) is still reached, probably by a colleague on the same network. Try again in a minute.');
+        if (!res.ok) throw new Error('The free service answered with error ' + res.status + '. Try again later.');
+        const blob = await res.blob();
+        if (!/^image\//.test(blob.type)) throw new Error('The free service did not return an image. Try again.');
+        const raster = await blobToJpeg(blob, 1024);
+        if (my !== webSeq) return;
+        state.webIllo = { raster, caption: 'Generated online from: ' + subject + '.' };
+        state.picture = 'web';
+        setStatus('Online picture ready' + ($('illoBeside').checked ? ' and shown beside the visual.' : '.') + ' Not right? Click “Generate another online image”.');
+      } catch (e) {
+        console.error(e);
+        if (my !== webSeq) return;
+        const msg = e && e.name === 'AbortError' ? 'It took too long. Try again.'
+          : e && /fetch|network/i.test(e.message || '') ? 'Could not reach pollinations.ai. Your network or company firewall may block it.' : (e && e.message) || String(e);
+        state.webIllo = Object.assign({}, state.webIllo, { busy: false, error: msg });
+        setStatus('Online picture failed: ' + msg + ' The built-in picture still works.', true);
+      }
+      refresh();
+    }
+
+    function blobToJpeg(blob, size) {
+      return new Promise((resolve, reject) => {
+        const img = new Image(), u = URL.createObjectURL(blob);
+        img.onload = () => {
+          const cv = document.createElement('canvas');
+          cv.width = cv.height = size;
+          const g = cv.getContext('2d');
+          g.fillStyle = '#FFFFFF';
+          g.fillRect(0, 0, size, size);
+          g.drawImage(img, 0, 0, size, size);
+          URL.revokeObjectURL(u);
+          resolve(cv.toDataURL('image/jpeg', 0.9));
+        };
+        img.onerror = () => { URL.revokeObjectURL(u); reject(new Error('Could not read the generated image.')); };
+        img.src = u;
+      });
+    }
+
     function requireKey(action) {
       if ($('apiKey').value.trim()) return true;
       $('aiSettings').open = true;
@@ -1691,11 +2401,17 @@
       if (withIllo) generateIllustration(text);
       try {
         const raw = await callClaude(text);
-        const data = fromAI(raw);
+        let data = fromAI(raw);
         if (!data.items.length && !data.title) throw new Error('The AI found nothing to visualise. Try adding more text.');
+        if (keepText()) {
+          // Exact text: keep the user's own points word for word; take only the AI's title, topic and layout picks.
+          const exact = analyse(text, { full: true });
+          data = Object.assign(exact, { title: exact.title || data.title, topic: data.topic, kind: data.kind, mode: 'ai', signals: data.signals,
+            notes: exact.notes.concat('Exact text kept; the AI only chose the title, layouts and colours.') });
+        }
         state.ai = { text: $('content').value, data, layouts: raw.layouts, paragraph };
         const pal = PALETTES.find(p => p.id === raw.palette);
-        if (pal) setPalette(pal);
+        if (pal && state.palette.id !== 'custom') setPalette(pal);   // never override the user's brand colours
         state.selected = null;
         refresh();
         setStatus(`AI found ${data.items.length} key point${data.items.length === 1 ? '' : 's'} and picked ${state.suggestions.filter(s => s.ai).length} layouts.` +
@@ -1729,7 +2445,10 @@
     $('illoEnabled').addEventListener('change', e => { try { localStorage.setItem('aivb.illo', e.target.checked ? '1' : '0'); } catch (x) { /* storage blocked */ } refresh(); });
     try { $('illoBeside').checked = localStorage.getItem('aivb.beside') !== '0'; } catch (e) { /* storage blocked */ }
     $('illoBeside').addEventListener('change', e => { try { localStorage.setItem('aivb.beside', e.target.checked ? '1' : '0'); } catch (x) { /* storage blocked */ } refresh(); });
-    ILLUSTRATIONS.list.forEach(s => $('illoPick').insertBefore(new Option(s.name, s.id), $('illoPick').querySelector('option[value="ai"]')));
+    ILLUSTRATIONS.list.forEach(s => $('sceneGroup').appendChild(new Option(s.name, s.id)));
+    try { $('keepText').checked = localStorage.getItem('aivb.keepText') !== '0'; } catch (e) { /* storage blocked */ }
+    $('keepText').addEventListener('change', e => { try { localStorage.setItem('aivb.keepText', e.target.checked ? '1' : '0'); } catch (x) { /* storage blocked */ } refresh(); });
+    $('webGen').addEventListener('click', generateWebPicture);
     $('illoPick').addEventListener('change', e => { state.picture = e.target.value; refresh(); });
     $('illoInsert').addEventListener('click', insertIllustrationAlone);
     $('illoRegen').addEventListener('click', () => {
@@ -1742,9 +2461,35 @@
       if (e.target.value === '') return;
       $('content').value = EXAMPLES[+e.target.value].text;
       e.target.value = '';
+      clearSource();
       refresh();
     });
+    $('convertAll').addEventListener('click', () => { $('convertBox').hidden = false; });
+    $('convertCancel').addEventListener('click', () => { $('convertBox').hidden = true; });
+    $('convertGo').addEventListener('click', convertAllSlides);
+
+    // Brand colours & font: restore the saved brand and the last palette.
+    const savedBrand = loadBrand();
+    if (savedBrand.colors) PALETTES.push({ id: 'custom', name: 'My brand', colors: savedBrand.colors });
+    setBrandFont(savedBrand.font || '');
+    try { const pid = localStorage.getItem('aivb.palette'), p = PALETTES.find(x => x.id === pid); if (p) state.palette = p; } catch (e) { /* storage blocked */ }
+    $('brandToggle').addEventListener('click', () => { $('brandBox').hidden = !$('brandBox').hidden; renderBrandBox(); });
+    $('brandFromSlide').addEventListener('click', brandFromSlide);
+    $('fontPick').addEventListener('change', e => {
+      $('fontOtherRow').hidden = e.target.value !== '__other';
+      if (e.target.value === '__other') { $('fontOther').focus(); return; }
+      setBrandFont(e.target.value, true);
+      refresh();
+    });
+    $('fontOther').addEventListener('change', e => { setBrandFont(e.target.value, true); refresh(); });
+    $('brandCopy').addEventListener('click', async () => {
+      $('brandCode').value = brandCode();
+      try { await navigator.clipboard.writeText($('brandCode').value); setStatus('Brand code copied. Paste it to your colleagues.'); }
+      catch (e) { $('brandCode').select(); setStatus('Press Ctrl+C to copy the selected brand code.'); }
+    });
+    $('brandApply').addEventListener('click', applyBrandCode);
     renderPalettes();
+    renderBrandBox();
     refresh();
 
     if (typeof Office === 'undefined') {
@@ -1763,6 +2508,8 @@
         state.canGroup = Office.context.requirements.isSetSupported('PowerPointApi', '1.8');
         $('groupWrap').hidden = !state.canGroup;
         $('useSelection').disabled = false;
+        $('convertAll').disabled = false;
+        $('brandFromSlide').disabled = false;
         await detectSlideSize();
         refresh();
         setStatus($('content').value.trim() ? 'Ready. Pick a visual, click a slide, then press Insert.' : 'Ready. Start by pasting your text in step 1.');
