@@ -82,6 +82,11 @@
     .ai-btn.makeover { background:var(--accent); }
     .ai-btn.makeover:disabled { background:#9db6cc; }
     .src-note { margin-top:8px; padding:8px 10px; border-radius:8px; background:#f2f7fc; border:1px solid #cfe0ef; font-size:12px; }
+    body.deck-mode > .panel:not(#deckPanel), body.deck-mode > #aiSettings, body.deck-mode > footer { display:none !important; }
+    body.deck-mode { padding-bottom:14px; }
+    .deck-meta { color:var(--muted); font-size:12px; margin:2px 0 8px; }
+    .deck-text { white-space:pre-wrap; font:11.5px/1.4 Consolas,monospace; background:#f6f8fa; border-radius:6px; padding:8px; max-height:180px; overflow:auto; margin:6px 0 0; }
+    .deck-list { margin:4px 0 8px; padding-left:18px; font-size:12px; }
     .brand-colors { display:flex; gap:6px; flex-wrap:wrap; }
     .brand-colors input[type=color] { width:36px; height:30px; padding:0; border:1px solid var(--line); border-radius:6px; background:#fff; cursor:pointer; }
     .illo-err { color:#a4262c; font-size:12px; }
@@ -89,7 +94,7 @@
   </style>
 </head>
 <body>
-  <h1>AI Visual Builder <span style="font-size:11px;font-weight:400;color:var(--muted)">version 6</span></h1>
+  <h1>AI Visual Builder <span style="font-size:11px;font-weight:400;color:var(--muted)">version 7</span></h1>
   <p class="sub">Turn text into an editable slide visual in 3 steps. No account or key needed.</p>
 
   <div id="welcome" class="panel tip" hidden>
@@ -100,6 +105,21 @@
       <li>Click a slide, then press <b>Insert</b>. Everything stays editable.</li>
     </ol>
     <button id="welcomeOk" class="secondary" type="button">Got it</button>
+  </div>
+
+  <div id="deckPanel" class="panel" hidden>
+    <div class="step">📑 Deck makeover <span id="deckProgress" class="small" style="margin:0 0 0 auto;font-weight:400"></span></div>
+    <div id="deckBody"></div>
+    <div id="deckActions">
+      <div class="btn-row">
+        <button id="deckConvert" class="ai-btn makeover" type="button">✓ Convert this slide</button>
+        <button id="deckSkip" class="secondary" type="button">Skip</button>
+      </div>
+      <div class="btn-row">
+        <button id="deckAll" class="secondary" type="button">Convert all the rest</button>
+        <button id="deckStop" class="secondary" type="button">Stop</button>
+      </div>
+    </div>
   </div>
 
   <div class="panel">
@@ -114,19 +134,8 @@
       <label class="check"><input type="checkbox" id="replaceSrc" checked> Replace the original text on that slide</label>
     </div>
     <div class="btn-row">
-      <button id="convertAll" class="secondary" type="button" disabled>Convert every slide…</button>
+      <button id="convertAll" class="secondary" type="button" disabled>📑 Convert a whole deck…</button>
       <select id="examples" class="secondary" aria-label="Load an example"><option value="">Try an example…</option></select>
-    </div>
-    <div id="convertBox" class="src-note" hidden>
-      <b>Convert every slide in this presentation?</b>
-      <div class="small" style="margin:4px 0 6px">Each slide with 3 or more lines of text gets the best-fitting visual (your chosen layout when it fits),
-        your colours, font and a matching picture. The original text boxes are replaced. Title-only slides, slides with
-        pictures or tables, and slides too long for one visual are skipped. Tip: PowerPoint keeps a version history
-        (File › Info › Version history) if you want to go back.</div>
-      <div class="btn-row">
-        <button id="convertGo" class="ai-btn" type="button" style="margin-top:0">Yes, convert all slides</button>
-        <button id="convertCancel" class="secondary" type="button" style="margin-top:0">Cancel</button>
-      </div>
     </div>
   </div>
 
@@ -171,7 +180,6 @@
             <select id="illoPick">
               <option value="auto">Built from your text</option>
               <optgroup id="sceneGroup" label="Ready-made scenes"></optgroup>
-              <option value="web" disabled>🌐 Online AI image</option>
               <option value="ai" disabled>✨ Claude drawing</option>
             </select>
             <label class="check"><input type="checkbox" id="illoBeside" checked> Show beside the visual</label>
@@ -179,10 +187,6 @@
           </div>
         </div>
         <div id="illoCaption" class="small"></div>
-        <button id="webGen" class="secondary" type="button">🌐 Generate with free online AI</button>
-        <div class="small">Free, no key. Sends only a short description (title + key words, not your full text) to the public
-          service pollinations.ai. Results vary, carry a small logo and can't be edited, and the free tier allows about one picture
-          every 45 seconds per network. Check your company's rules first.</div>
       </div>
       <details class="more">
         <summary>More options</summary>
@@ -1599,7 +1603,7 @@
 
     const $ = id => document.getElementById(id);
     const state = { palette: PALETTES[0], selected: null, suggestions: [], inOffice: false, canGroup: false, ai: null, aiBusy: false,
-      picture: 'auto', aiIllo: null, webIllo: null, parts: [] };   // picture: 'auto' | built-in scene id | 'web' | 'ai'
+      picture: 'auto', aiIllo: null, parts: [] };   // picture: 'auto' | built-in scene id | 'ai'
     let SLIDE = { w: 960, h: 540 };
 
     function setStatus(msg, isError) { $('status').textContent = msg; $('status').classList.toggle('err', !!isError); }
@@ -1624,19 +1628,11 @@
         const ai = state.aiIllo;
         return ai && ai.tokens ? { tokens: ai.tokens, caption: ai.caption, ai: true } : null;
       }
-      if (state.picture === 'web') {
-        const w = state.webIllo;
-        return w && w.raster ? { raster: w.raster, caption: w.caption, web: true } : null;
-      }
       return state.picture === 'auto' ? autoPicture() : ILLUSTRATIONS.get(state.picture);
     }
     const illoReady = () => !!currentIllo();
-    function illoSVG() {
-      const il = currentIllo();
-      return il.raster ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="800" height="800"><image href="${il.raster}" width="1024" height="1024"/></svg>`
-        : paintColors(il.tokens, state.palette);
-    }
-    const illoHref = () => { const il = currentIllo(); return il.raster || svgDataURL(paintColors(il.tokens, state.palette)); };
+    const illoSVG = () => paintColors(currentIllo().tokens, state.palette);
+    const illoHref = () => svgDataURL(illoSVG());
 
     /* With the illustration beside it, the visual is laid out in the left 62% of the slide. */
     function makeCtx(data, noBeside) { return ctxWith(data, !noBeside && illoReady() && $('illoBeside').checked); }
@@ -1720,32 +1716,25 @@
 
     function renderIllo() {
       const has = !!$('content').value.trim(), il = currentIllo(), ai = state.aiIllo, busy = !!(ai && ai.busy);
-      const web = state.webIllo, webBusy = !!(web && web.busy);
       $('illoPanel').hidden = !has;
       if (!has) return;
       const pick = $('illoPick');
-      const aiOpt = pick.querySelector('option[value="ai"]'), webOpt = pick.querySelector('option[value="web"]');
+      const aiOpt = pick.querySelector('option[value="ai"]');
       aiOpt.disabled = !(ai && (ai.tokens || ai.busy));
       aiOpt.text = busy ? '✨ Claude drawing (drawing…)' : '✨ Claude drawing';
-      webOpt.disabled = !(web && (web.raster || web.busy));
-      webOpt.text = webBusy ? '🌐 Online AI image (generating…)' : '🌐 Online AI image';
       pick.value = state.picture;
-      $('illoState').textContent = webBusy ? '🌐 Generating online…' : busy ? '✨ Claude is drawing…'
-        : il ? (il.web ? '🌐 Generated online' : il.ai ? '✨ Drawn by Claude' : 'Built-in · free · private') : '';
+      $('illoState').textContent = busy ? '✨ Claude is drawing…' : il ? (il.ai ? '✨ Drawn by Claude' : 'Built-in · free · private') : '';
       $('illoBox').innerHTML = il ? `<img class="illo-img" alt="${esc(il.caption)}" src="${illoHref()}">`
-        : `<div class="illo-wait">${state.picture === 'web' ? 'Generating…' : 'Claude is drawing…'}</div>`;
+        : '<div class="illo-wait">Claude is drawing…</div>';
       $('illoCaption').innerHTML = (il ? esc(il.caption) : '') +
-        (web && web.error ? `<div class="illo-err">Online image failed: ${esc(web.error)}</div>` : '') +
         (ai && ai.error ? `<div class="illo-err">AI drawing failed: ${esc(ai.error)}</div>` : '');
-      $('webGen').disabled = webBusy;
-      $('webGen').textContent = webBusy ? '🌐 Generating… (10-60 s)' : web && web.raster ? '🌐 Generate another online image' : '🌐 Generate with free online AI';
       $('illoRegen').disabled = busy;
       $('illoRegen').textContent = busy ? 'Drawing… (up to a minute)' : ai && ai.tokens ? '✨ Draw another custom picture' : '✨ Draw a custom picture with AI';
       $('illoInsert').disabled = !il || !state.inOffice;
       $('illoDownload').hidden = !il;
       if (il) {
         $('illoDownload').href = illoHref();
-        $('illoDownload').download = il.raster ? 'picture.jpg' : 'picture.svg';
+        $('illoDownload').download = 'picture.svg';
       }
     }
 
@@ -1990,14 +1979,7 @@
             }
           }
           if (slidePrims.length > 1) {
-            let layoutId = null;
-            try {   // prefer a Blank layout so new slides have no empty placeholders
-              const layouts = context.presentation.slideMasters.getItemAt(0).layouts;
-              layouts.load('items/name,items/id');
-              await context.sync();
-              const blank = layouts.items.find(l => /blank/i.test(l.name));
-              if (blank) layoutId = blank.id;
-            } catch (e) { console.warn('Could not read slide layouts', e); }
+            const layoutId = await blankLayoutId(context);
             for (let i = 1; i < slidePrims.length; i++) context.presentation.slides.add(layoutId ? { layoutId } : undefined);
             const total = context.presentation.slides.getCount();
             await context.sync();
@@ -2071,11 +2053,7 @@
       });
     }
 
-    async function insertIllustration(p) {
-      const il = currentIllo(), opts = { imageLeft: r1(p.x), imageTop: r1(p.y), imageWidth: r1(p.w), imageHeight: r1(p.h) };
-      if (il.raster) { await setData(il.raster.split(',')[1], Office.CoercionType.Image, opts); return; }
-      await insertSvgAt(illoSVG(), p);
-    }
+    const insertIllustration = p => insertSvgAt(illoSVG(), p);
 
     async function insertSvgAt(svg, p) {
       const opts = { imageLeft: r1(p.x), imageTop: r1(p.y), imageWidth: r1(p.w), imageHeight: r1(p.h) };
@@ -2157,55 +2135,171 @@
       }
     }
 
-    async function convertAllSlides() {
-      $('convertBox').hidden = true;
+    /* ---------- Deck makeover (Step 7): review every slide, convert or skip one by one ---------- */
+    async function blankLayoutId(context) {
+      try {   // prefer a Blank layout so new slides have no empty placeholders
+        const layouts = context.presentation.slideMasters.getItemAt(0).layouts;
+        layouts.load('items/name,items/id');
+        await context.sync();
+        const blank = layouts.items.find(l => /blank/i.test(l.name));
+        return blank ? blank.id : null;
+      } catch (e) { console.warn('Could not read slide layouts', e); return null; }
+    }
+
+    async function goToSlide(id) {
+      try { await PowerPoint.run(async context => { context.presentation.setSelectedSlides([id]); await context.sync(); }); }
+      catch (e) { console.warn('Could not select slide', e); }
+    }
+
+    const deckBusy = on => ['deckConvert', 'deckSkip', 'deckAll', 'deckStop'].forEach(id => { $(id).disabled = on; });
+
+    /* Read every slide once: which can become a visual, and the layouts that fit all of its text. */
+    async function startDeck() {
       $('convertAll').disabled = true;
-      const skipped = [], pics = [];
-      let done = 0, total = 0;
+      setStatus('Reading your slides…');
+      const list = [], auto = [];
       try {
         await PowerPoint.run(async context => {
           const slides = context.presentation.slides;
           slides.load('items/id');
           await context.sync();
-          total = slides.items.length;
-          for (let i = 0; i < total; i++) {
-            setStatus(`Converting slide ${i + 1} of ${total}…`);
-            const slide = slides.items[i];
-            const r = await slideTextShapes(context, slide.shapes);
+          for (let i = 0; i < slides.items.length; i++) {
+            setStatus(`Reading slide ${i + 1} of ${slides.items.length}…`);
+            const r = await slideTextShapes(context, slides.items[i].shapes);
             const text = textFromParts(r.parts), lines = text.split('\n').filter(l => l.trim()).length;
-            if (lines < 3) { skipped.push(`${i + 1} (little text)`); continue; }
-            if (r.other) { skipped.push(`${i + 1} (has pictures, tables or groups)`); continue; }
-            if (r.parts.length > 4) { skipped.push(`${i + 1} (already looks like a diagram)`); continue; }
-            const data = analyse(text, { full: keepText() });
-            if (splitParts(data).length > 1) { skipped.push(`${i + 1} (too long, convert it on its own)`); continue; }
-            const n = data.items.length, fits = L => n >= L.min && n <= L.max;
-            const L = LAYOUTS.find(x => x.id === state.selected && fits(x)) || (suggest(data)[0] || {}).L;
-            if (!L) { skipped.push(`${i + 1} (no layout fits)`); continue; }
-            const pic = $('illoBeside').checked ? paintColors(ILLUSTRATIONS.compose(text).tokens, state.palette) : null;
-            const ctx = ctxWith(data, !!pic);
-            r.parts.forEach(p => slide.shapes.getItem(p.id).delete());
-            await context.sync();
-            await drawOnSlide(context, slide, L.build(ctx), L.name);
-            if (pic) pics.push({ id: slide.id, svg: pic, rect: illoRect(ctx) });
-            done++;
+            if (lines < 3) { auto.push({ n: i + 1, why: 'title slide or very little text' }); continue; }
+            if (r.other) { auto.push({ n: i + 1, why: 'has a picture, table, chart or group' }); continue; }
+            if (r.parts.length > 4) { auto.push({ n: i + 1, why: 'already looks like a diagram' }); continue; }
+            const data = analyse(text, { full: keepText() }), parts = splitParts(data);
+            const fitsAll = L => parts.every(p => p.items.length >= L.min && p.items.length <= L.max);
+            const sugs = suggest(parts[0]).map(s => s.L).filter(fitsAll);
+            if (!sugs.length) { auto.push({ n: i + 1, why: 'no layout fits this text' }); continue; }
+            list.push({ id: slides.items[i].id, n: i + 1, text, ids: r.parts.map(p => p.id), data, parts, sugs, layoutId: sugs[0].id, status: 'todo' });
           }
         });
-        // Pictures go in through the Common API, which inserts on the selected slide, so select each slide first.
-        let picFail = 0;
-        for (let k = 0; k < pics.length; k++) {
-          setStatus(`Adding pictures ${k + 1} of ${pics.length}…`);
-          try {
-            await PowerPoint.run(async context => { context.presentation.setSelectedSlides([pics[k].id]); await context.sync(); });
-            await insertSvgAt(pics[k].svg, pics[k].rect);
-          } catch (e) { console.warn('Picture failed', e); picFail++; }
-        }
-        setStatus(`Done! Converted ${done} of ${total} slide${total === 1 ? '' : 's'}.` +
-          (skipped.length ? ` Skipped slide ${skipped.join(', ')}.` : '') + (picFail ? ` ${picFail} picture(s) could not be added.` : ''));
       } catch (e) {
-        setStatus(`Stopped after ${done} slide${done === 1 ? '' : 's'}: ` + (e && e.message ? e.message : String(e)), true);
-      } finally {
-        $('convertAll').disabled = !state.inOffice;
+        setStatus('Could not read the slides: ' + (e && e.message ? e.message : String(e)), true);
+        $('convertAll').disabled = false;
+        return;
       }
+      $('convertAll').disabled = false;
+      if (!list.length) {
+        setStatus('No slides to convert: ' + (auto.length ? auto.map(a => `slide ${a.n} (${a.why})`).join(', ') + '.' : 'the presentation is empty.'), true);
+        return;
+      }
+      state.deck = { list, auto, pos: 0, pic: $('illoBeside').checked };
+      document.body.classList.add('deck-mode');
+      $('deckPanel').hidden = false;
+      window.scrollTo(0, 0);
+      setStatus('');
+      showDeckSlide();
+    }
+
+    /* Prims for a deck slide (first part) plus its picture, in the current colours and font. */
+    function deckBuild(e) {
+      const L = LAYOUTS.find(x => x.id === e.layoutId) || e.sugs[0];
+      const pic = state.deck.pic ? paintColors(ILLUSTRATIONS.compose(e.text).tokens, state.palette) : null;
+      const ctx = ctxWith(e.parts[0], !!pic);
+      return { L, ctx, pic, prims: L.build(ctx) };
+    }
+
+    function showDeckSlide() {
+      const d = state.deck, e = d.list[d.pos];
+      if (!e) { showDeckSummary(); return; }
+      const todo = d.list.filter(x => x.status === 'todo').length;
+      $('deckProgress').textContent = `${d.pos + 1} of ${d.list.length} · ${todo} left`;
+      const { L, ctx, pic, prims } = deckBuild(e);
+      const preview = prims.concat(pic ? [Object.assign({ t: 'image', href: svgDataURL(pic) }, illoRect(ctx))] : []);
+      const title = e.data.title || (e.data.items[0] && e.data.items[0].text) || 'Untitled';
+      const chars = e.text.replace(/\s+/g, ' ').length;
+      $('deckBody').innerHTML =
+        `<div><b>Slide ${e.n}:</b> ${esc(title)}</div>` +
+        `<div class="deck-meta">${e.data.items.length} point${e.data.items.length === 1 ? '' : 's'} · ${chars} characters · ${e.data.full ? 'all text kept' : 'shortened'}` +
+        (e.parts.length > 1 ? ` · <b>becomes ${e.parts.length} slides</b> (the extra ones go right after it)` : '') + '</div>' +
+        `<div class="preview" style="margin-bottom:8px">${toSVG(preview, SLIDE.w, SLIDE.h)}</div>` +
+        `<div class="row"><label for="deckLayout">Layout</label><select id="deckLayout">${e.sugs.map(x => `<option value="${x.id}"${x === L ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` +
+        `<div class="row"><label for="deckPalette">Colours</label><select id="deckPalette">${PALETTES.map(p => `<option value="${p.id}"${p === state.palette ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>` +
+        `<label class="check"><input type="checkbox" id="deckPic"${d.pic ? ' checked' : ''}> Picture beside the visual</label>` +
+        `<details class="more"><summary>Show this slide's text</summary><div class="deck-text">${esc(e.text)}</div></details>`;
+      $('deckLayout').addEventListener('change', ev => { e.layoutId = ev.target.value; showDeckSlide(); });
+      $('deckPalette').addEventListener('change', ev => { setPalette(PALETTES.find(p => p.id === ev.target.value)); showDeckSlide(); });
+      $('deckPic').addEventListener('change', ev => { d.pic = ev.target.checked; showDeckSlide(); });
+      $('deckActions').hidden = false;
+      deckBusy(false);
+      goToSlide(e.id);
+    }
+
+    /* Replace the slide's text with the visual; text that needs more room goes on new slides right after it. */
+    async function convertDeckSlide(e) {
+      const { L, ctx, pic, prims } = deckBuild(e);
+      const extra = e.parts.slice(1).map(p => L.build(ctxWith(p, false)));
+      await PowerPoint.run(async context => {
+        const slide = context.presentation.slides.getItem(e.id);
+        e.ids.forEach(id => slide.shapes.getItem(id).delete());
+        await context.sync();
+        await drawOnSlide(context, slide, prims, L.name);
+        if (!extra.length) return;
+        const layoutId = await blankLayoutId(context);
+        const all = context.presentation.slides;
+        all.load('items/id');
+        await context.sync();
+        let at = all.items.findIndex(s => s.id === e.id);
+        for (const p of extra) {
+          context.presentation.slides.add(layoutId ? { layoutId } : undefined);
+          const count = context.presentation.slides.getCount();
+          await context.sync();
+          const ns = context.presentation.slides.getItemAt(count.value - 1);
+          try { ns.moveTo(++at); await context.sync(); } catch (err) { e.atEnd = true; }   // moveTo needs PowerPointApi 1.8
+          await drawOnSlide(context, ns, p, L.name);
+        }
+      });
+      if (pic) { await goToSlide(e.id); await insertSvgAt(pic, illoRect(ctx)); }
+    }
+
+    async function deckConvert(all) {
+      const d = state.deck;
+      deckBusy(true);
+      const queue = all ? d.list.filter((x, i) => i >= d.pos && x.status === 'todo') : [d.list[d.pos]];
+      for (let k = 0; k < queue.length; k++) {
+        const e = queue[k];
+        setStatus(all ? `Converting slide ${e.n} (${k + 1} of ${queue.length})…` : `Converting slide ${e.n}…`);
+        if (all) $('deckProgress').textContent = `converting ${k + 1} of ${queue.length}…`;
+        try { await convertDeckSlide(e); e.status = 'done'; }
+        catch (err) { console.error(err); e.status = 'failed'; e.why = err && err.message ? err.message : String(err); }
+      }
+      setStatus('');
+      deckNext();
+    }
+
+    function deckNext() {
+      const d = state.deck;
+      d.pos = d.list.findIndex(x => x.status === 'todo');
+      if (d.pos < 0) showDeckSummary(); else showDeckSlide();
+    }
+
+    function showDeckSummary() {
+      const d = state.deck, by = s => d.list.filter(x => x.status === s);
+      const done = by('done'), skipped = by('skipped').concat(by('todo')), failed = by('failed');
+      const nums = arr => arr.map(x => x.n).join(', ');
+      $('deckProgress').textContent = 'finished';
+      $('deckActions').hidden = true;
+      $('deckBody').innerHTML =
+        `<div style="font-size:14px;margin-bottom:6px"><b>Done! ${done.length} slide${done.length === 1 ? '' : 's'} converted.</b></div>` +
+        (done.some(x => x.parts.length > 1) ? `<div class="small">Long slides were continued on extra slides${done.some(x => x.atEnd) ? ' (added at the end of the presentation, because this PowerPoint version can’t move slides)' : ' right after them'}.</div>` : '') +
+        (skipped.length ? `<div class="small" style="margin-top:6px">You skipped: slide ${nums(skipped)}.</div>` : '') +
+        (failed.length ? `<div class="small" style="margin-top:6px;color:#a4262c">Could not convert: ${failed.map(x => `slide ${x.n} (${esc(x.why)})`).join(', ')}.</div>` : '') +
+        (d.auto.length ? `<div class="small" style="margin-top:6px">Left as they were:</div><ul class="deck-list">${d.auto.map(a => `<li>Slide ${a.n}: ${esc(a.why)}</li>`).join('')}</ul>` : '') +
+        `<div class="small">Click any text on a slide to edit it. To undo, use File › Info › Version history.</div>` +
+        `<button id="deckClose" class="ai-btn makeover" type="button">Close</button>`;
+      $('deckClose').addEventListener('click', endDeck);
+    }
+
+    function endDeck() {
+      state.deck = null;
+      document.body.classList.remove('deck-mode');
+      $('deckPanel').hidden = true;
+      refresh();
+      setStatus('Ready.');
     }
 
     async function detectSlideSize() {
@@ -2286,85 +2380,6 @@
         state.aiIllo = Object.assign({}, state.aiIllo, { busy: false, error: describeError(e) });
       }
       refresh();
-    }
-
-    /* Free online image (no key): Pollinations.ai turns a short prompt into a picture. Only the title and key words are sent. */
-    const COLOR_WORDS = { ocean: 'blue and teal', ai: 'purple and indigo', sunset: 'coral, amber and teal', forest: 'green and olive', corp: 'navy and steel blue' };
-    let webSeq = 0;
-    async function generateWebPicture() {
-      const text = $('content').value.trim();
-      if (!text) { setStatus('Paste your text in step 1 first.', true); return; }
-      const data = state.ai && state.ai.text === $('content').value ? state.ai.data : analyse(text);
-      // Title, then key words not already in it (PDF and PDFs count once), then the objects the built-in picture found.
-      const head = [data.topic, data.title].filter(Boolean), seen = new Set();
-      const norm = w => w.toLowerCase().replace(/(es|s)$/, '');
-      head.join(' ').split(/\W+/).filter(Boolean).forEach(w => seen.add(norm(w)));
-      const terms = ILLUSTRATIONS.keyTerms(text).filter(t => { const k = norm(t); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 6);
-      const OBJ = { lock: 'padlock', chip: 'AI chip', convert: 'conversion arrows', compress: 'compression', gradcap: 'graduation cap', bag: 'shopping bag',
-        cross: 'medical cross', pin: 'map pin', bulb: 'light bulb', scale: 'scales of justice', cup: 'coffee cup', scanner: 'document scanner', wifi: 'wifi signal' };
-      const things = autoPicture().objects.map(o => OBJ[o] || o);
-      const subject = (head.length ? head.join(': ') + ' (' : '') + terms.join(', ') + (head.length ? ')' : '') + '; showing ' + things.join(', ');
-      const prompt = `Isometric 3D illustration about: ${subject}. Clean modern vector style, ${COLOR_WORDS[state.palette.id] || 'blue'} colour scheme, ` +
-        'soft lighting, white background, objects on a simple platform, centered, no text, no letters, no words';
-      const url = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt) + `?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1e6)}`;
-      const my = ++webSeq;
-      state.webIllo = Object.assign({}, state.webIllo, { busy: true, error: null });
-      setStatus('Generating a picture online from your title and key words… (usually 10-60 seconds)');
-      refresh();
-      try {
-        let res;
-        for (let attempt = 0; ; attempt++) {
-          const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 120000);
-          try { res = await fetch(url, { signal: ctrl.signal }); } finally { clearTimeout(timer); }
-          // The free tier allows one image every ~45 s per internet connection (an office often shares one). Wait once, then retry.
-          if ((res.status === 402 || res.status === 429 || res.status === 503) && attempt === 0) {
-            let wait = 45;
-            try { const j = await res.json(); const m = /(\d+)\s*s/.exec(j && j.error && j.error.message || ''); if (m) wait = Math.min(60, +m[1] + 2); } catch (e) { /* not JSON */ }
-            for (let s = wait; s > 0; s--) {
-              if (my !== webSeq) return;
-              setStatus(`The free service allows one picture every 45 seconds per network, so it's waiting. Retrying in ${s} s…`);
-              await new Promise(r => setTimeout(r, 1000));
-            }
-            continue;
-          }
-          break;
-        }
-        if (res.status === 402 || res.status === 429) throw new Error('The free limit (one picture every 45 seconds per network) is still reached, probably by a colleague on the same network. Try again in a minute.');
-        if (!res.ok) throw new Error('The free service answered with error ' + res.status + '. Try again later.');
-        const blob = await res.blob();
-        if (!/^image\//.test(blob.type)) throw new Error('The free service did not return an image. Try again.');
-        const raster = await blobToJpeg(blob, 1024);
-        if (my !== webSeq) return;
-        state.webIllo = { raster, caption: 'Generated online from: ' + subject + '.' };
-        state.picture = 'web';
-        setStatus('Online picture ready' + ($('illoBeside').checked ? ' and shown beside the visual.' : '.') + ' Not right? Click “Generate another online image”.');
-      } catch (e) {
-        console.error(e);
-        if (my !== webSeq) return;
-        const msg = e && e.name === 'AbortError' ? 'It took too long. Try again.'
-          : e && /fetch|network/i.test(e.message || '') ? 'Could not reach pollinations.ai. Your network or company firewall may block it.' : (e && e.message) || String(e);
-        state.webIllo = Object.assign({}, state.webIllo, { busy: false, error: msg });
-        setStatus('Online picture failed: ' + msg + ' The built-in picture still works.', true);
-      }
-      refresh();
-    }
-
-    function blobToJpeg(blob, size) {
-      return new Promise((resolve, reject) => {
-        const img = new Image(), u = URL.createObjectURL(blob);
-        img.onload = () => {
-          const cv = document.createElement('canvas');
-          cv.width = cv.height = size;
-          const g = cv.getContext('2d');
-          g.fillStyle = '#FFFFFF';
-          g.fillRect(0, 0, size, size);
-          g.drawImage(img, 0, 0, size, size);
-          URL.revokeObjectURL(u);
-          resolve(cv.toDataURL('image/jpeg', 0.9));
-        };
-        img.onerror = () => { URL.revokeObjectURL(u); reject(new Error('Could not read the generated image.')); };
-        img.src = u;
-      });
     }
 
     function requireKey(action) {
@@ -2448,7 +2463,6 @@
     ILLUSTRATIONS.list.forEach(s => $('sceneGroup').appendChild(new Option(s.name, s.id)));
     try { $('keepText').checked = localStorage.getItem('aivb.keepText') !== '0'; } catch (e) { /* storage blocked */ }
     $('keepText').addEventListener('change', e => { try { localStorage.setItem('aivb.keepText', e.target.checked ? '1' : '0'); } catch (x) { /* storage blocked */ } refresh(); });
-    $('webGen').addEventListener('click', generateWebPicture);
     $('illoPick').addEventListener('change', e => { state.picture = e.target.value; refresh(); });
     $('illoInsert').addEventListener('click', insertIllustrationAlone);
     $('illoRegen').addEventListener('click', () => {
@@ -2464,9 +2478,11 @@
       clearSource();
       refresh();
     });
-    $('convertAll').addEventListener('click', () => { $('convertBox').hidden = false; });
-    $('convertCancel').addEventListener('click', () => { $('convertBox').hidden = true; });
-    $('convertGo').addEventListener('click', convertAllSlides);
+    $('convertAll').addEventListener('click', startDeck);
+    $('deckConvert').addEventListener('click', () => deckConvert(false));
+    $('deckAll').addEventListener('click', () => deckConvert(true));
+    $('deckSkip').addEventListener('click', () => { state.deck.list[state.deck.pos].status = 'skipped'; deckNext(); });
+    $('deckStop').addEventListener('click', showDeckSummary);
 
     // Brand colours & font: restore the saved brand and the last palette.
     const savedBrand = loadBrand();
