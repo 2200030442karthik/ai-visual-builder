@@ -87,6 +87,13 @@
     .deck-meta { color:var(--muted); font-size:12px; margin:2px 0 8px; }
     .deck-text { white-space:pre-wrap; font:11.5px/1.4 Consolas,monospace; background:#f6f8fa; border-radius:6px; padding:8px; max-height:180px; overflow:auto; margin:6px 0 0; }
     .deck-list { margin:4px 0 8px; padding-left:18px; font-size:12px; }
+    .lib-box { margin:10px 0 4px; padding:10px; border-radius:10px; background:#f7f9fc; border:1px solid var(--line); }
+    .lib-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; margin-top:8px; }
+    .lib-grid:empty { display:none; }
+    .lib-card { padding:3px; border:2px solid transparent; border-radius:8px; background:#fff; box-shadow:0 0 0 1px var(--line); }
+    .lib-card:hover { box-shadow:0 0 0 1px var(--accent); }
+    .lib-card.sel { border-color:var(--accent); }
+    .lib-card img { width:100%; display:block; border-radius:5px; aspect-ratio:16/9; object-fit:cover; }
     .brand-colors { display:flex; gap:6px; flex-wrap:wrap; }
     .brand-colors input[type=color] { width:36px; height:30px; padding:0; border:1px solid var(--line); border-radius:6px; background:#fff; cursor:pointer; }
     .illo-err { color:#a4262c; font-size:12px; }
@@ -94,7 +101,7 @@
   </style>
 </head>
 <body>
-  <h1>AI Visual Builder <span style="font-size:11px;font-weight:400;color:var(--muted)">version 8</span></h1>
+  <h1>AI Visual Builder <span style="font-size:11px;font-weight:400;color:var(--muted)">version 9</span></h1>
   <p class="sub">Turn text into an editable slide visual in 3 steps. No account or key needed.</p>
 
   <div id="welcome" class="panel tip" hidden>
@@ -144,6 +151,16 @@
     <div id="empty2" class="empty">Your suggested visuals will appear here once you paste some text.</div>
     <div id="analysis" class="analysis"></div>
     <div id="preview" class="preview" hidden></div>
+
+    <div id="libBox" class="lib-box">
+      <div class="row" style="margin-bottom:2px"><span class="label">🏢 Company designs</span>
+        <button id="libConnect" class="linkish" type="button">Connect design library</button></div>
+      <div id="libInfo" class="small" style="margin-top:0">Use your company's professionally designed slides. Click “Connect design library”
+        and choose the <b>tem</b> folder (…\SL_Smart_Design_2025_V5\tem). The files are read on this computer only, never uploaded.</div>
+      <div id="libGrid" class="lib-grid"></div>
+      <button id="libMore" class="secondary" type="button" hidden>Show more designs</button>
+      <input type="file" id="libInput" webkitdirectory multiple hidden>
+    </div>
 
     <div id="styleBox" hidden>
       <div class="row" style="margin-bottom:0"><span class="label">Colours</span>
@@ -1732,7 +1749,7 @@
 
     const $ = id => document.getElementById(id);
     const state = { palette: PALETTES[0], selected: null, suggestions: [], inOffice: false, canGroup: false, ai: null, aiBusy: false,
-      picture: 'auto', aiIllo: null, parts: [] };   // picture: 'auto' | built-in scene id | 'ai'
+      picture: 'auto', aiIllo: null, parts: [], lib: null, libPick: null, libPage: 1 };   // picture: 'auto' | built-in scene id | 'ai'
     let SLIDE = { w: 960, h: 540 };
 
     function setStatus(msg, isError) { $('status').textContent = msg; $('status').classList.toggle('err', !!isError); }
@@ -1815,6 +1832,7 @@
       $('empty2').hidden = has;
       $('styleBox').hidden = !has;
       renderAnalysis(data);
+      renderLib(first, parts);
       renderIllo();
       renderGrid();
       renderPreview();
@@ -1877,7 +1895,7 @@
       state.suggestions.forEach((s, i) => {
         const b = document.createElement('button');
         b.type = 'button';
-        b.className = 'card' + (s.L.id === state.selected ? ' sel' : '');
+        b.className = 'card' + (s.L.id === state.selected && !state.libPick ? ' sel' : '');
         b.dataset.id = s.L.id;
         b.title = (s.reason ? s.reason + '\n' : '') + 'Click to preview, double-click to insert';
         b.innerHTML = toSVG(s.prims, SLIDE.w, SLIDE.h) +
@@ -1891,6 +1909,8 @@
 
     function select(id) {
       state.selected = id;
+      state.libPick = null;
+      document.querySelectorAll('.lib-card').forEach(c => c.classList.remove('sel'));
       document.querySelectorAll('.card').forEach(c => c.classList.toggle('sel', c.dataset.id === id));
       renderPreview();
       updateInsertButton();
@@ -1902,15 +1922,22 @@
       const el = $('preview'), s = current();
       el.hidden = !s;
       const n = state.parts.length;
+      if (state.libPick) {
+        el.hidden = false;
+        el.innerHTML = `<div class="preview-head"><strong>Company design ${state.libPick.cat}-point #${esc(state.libPick.key)}</strong><span>Sample text shown</span></div>` +
+          `<img src="${thumbURL(state.libPick)}" alt="" style="width:100%;border-radius:6px;box-shadow:0 0 0 1px #e6eaf0">` +
+          '<div class="reason">Your headings and descriptions replace the sample text; your title goes on top. It is added as a new slide.</div>';
+        return;
+      }
       if (s) el.innerHTML = `<div class="preview-head"><strong>${esc(s.L.name)}</strong><span>${n > 1 ? `Slide 1 of ${n}` : 'Preview'}</span></div>` +
         (s.reason ? `<div class="reason">✨ ${esc(s.reason)}</div>` : '') + toSVG(s.prims, SLIDE.w, SLIDE.h);
     }
 
     function updateInsertButton() {
-      const s = current(), btn = $('insert');
-      btn.disabled = !s || !state.inOffice;
+      const s = current(), btn = $('insert'), lib = state.libPick;
+      btn.disabled = !(s || lib) || !state.inOffice;
       btn.innerHTML = '<span class="num inv">3</span>' + esc(!$('content').value.trim() ? 'Paste your text first'
-        : !s ? 'Insert visual' : !state.inOffice ? 'Open in PowerPoint to insert' : `Insert “${s.L.name}”`);
+        : !(s || lib) ? 'Insert visual' : !state.inOffice ? 'Open in PowerPoint to insert' : lib ? 'Insert company design' : `Insert “${s.L.name}”`);
     }
 
     function renderPalettes() {
@@ -2078,6 +2105,7 @@
     }
 
     async function insertSelected() {
+      if (state.libPick) return insertLibrary();
       const sel = current();
       if (!sel) return;
       if (!state.inOffice) { setStatus('This is a preview. To insert, open PowerPoint and click Home › AI Visual Builder.'); return; }
@@ -2267,6 +2295,187 @@
       }
     }
 
+    /* ---------- Company design library (Step 9) ----------
+       The user picks the template folder (…\tem) once per session. Designs live in "<N>_point" folders as 0001.pptx + 0001_thumb.jpg.
+       Their text boxes are named T_Text_1..N (point headings) and Text_1..N (point descriptions). Nothing is uploaded. */
+    const LIB_PAGE = 8;
+
+    function indexLibrary(files) {
+      const byCat = {};
+      let count = 0;
+      for (const f of files) {
+        const path = (f.webkitRelativePath || f.path || f.name).replace(/\\/g, '/');
+        const m = /(?:^|\/)(\d+)_point\/([^/]+?)(_thumb)?\.(pptx|jpe?g|png)$/i.exec(path);
+        if (!m) continue;
+        const cat = +m[1], key = m[2], list = byCat[cat] || (byCat[cat] = {});
+        const e = list[key] || (list[key] = { cat, key });
+        if (m[3]) e.thumb = f; else if (/pptx/i.test(m[4])) { e.pptx = f; count++; }
+      }
+      const out = {};
+      for (const cat in byCat) out[cat] = Object.values(byCat[cat]).filter(e => e.pptx).sort((a, b) => a.key.localeCompare(b.key));
+      return { byCat: out, count };
+    }
+
+    const thumbURL = e => e.thumb ? (e.url || (e.url = URL.createObjectURL(e.thumb))) : '';
+    const hashStr = s => { let h = 7; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; };
+
+    /* Designs suit text of 2-10 points that fits one slide; very wordy points read better in the add-in's own layouts. */
+    function libFits(part, parts) {
+      if (!state.lib || parts.length > 1) return false;
+      const n = part.items.length, list = state.lib.byCat[n];
+      return !!(list && list.length);
+    }
+
+    function renderLib(part, parts) {
+      const box = $('libGrid'), info = $('libInfo');
+      box.innerHTML = '';
+      $('libMore').hidden = true;
+      if (!state.lib) { $('libConnect').textContent = 'Connect design library'; return; }
+      $('libConnect').textContent = 'Change folder';
+      const n = part ? part.items.length : 0;
+      if (!libFits(part, parts || [part])) {
+        state.libPick = null;
+        info.textContent = `${state.lib.count} company designs connected. ` + (!n ? 'Paste your text to see matching designs.'
+          : (parts || []).length > 1 ? 'This text is too long for one design; use the layouts below or shorten it.'
+          : `They have 2–10 points; this text has ${n}.`);
+        return;
+      }
+      const list = state.lib.byCat[n], start = hashStr((part.title || '') + n) % list.length;
+      const shown = Math.min(list.length, state.libPage * LIB_PAGE);
+      info.textContent = `${list.length} designs for ${n} points. Click one to use it; your text replaces the sample text.`;
+      if (state.libPick && state.libPick.cat !== n) state.libPick = null;
+      for (let k = 0; k < shown; k++) {
+        const e = list[(start + k) % list.length], b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'lib-card' + (state.libPick && state.libPick.key === e.key ? ' sel' : '');
+        b.title = `Company design ${n}-point #${e.key}`;
+        b.innerHTML = `<img alt="Design ${esc(e.key)}" src="${thumbURL(e)}">`;
+        b.addEventListener('click', () => pickLib(e));
+        box.appendChild(b);
+      }
+      $('libMore').hidden = shown >= list.length;
+    }
+
+    function pickLib(e) {
+      state.libPick = e;
+      state.selected = null;
+      document.querySelectorAll('.card').forEach(c => c.classList.remove('sel'));
+      document.querySelectorAll('.lib-card').forEach(c => c.classList.toggle('sel', c.title.endsWith('#' + e.key)));
+      renderPreview();
+      updateInsertButton();
+    }
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result).split(',')[1]);
+        r.onerror = () => reject(new Error('Could not read ' + file.name + '. Connect the design library again.'));
+        r.readAsDataURL(file);
+      });
+    }
+
+    /* Put the content into a freshly inserted design: headings into T_Text_k, descriptions into Text_k, title on top.
+       Longer text than the sample gets a smaller font, and the design is scaled if it is bigger than this deck's slides. */
+    async function fillTemplate(context, slide, data, withTitle) {
+      const shapes = slide.shapes;
+      shapes.load('items/id,items/name,items/type,items/left,items/top,items/width,items/height');
+      await context.sync();
+      const maxRight = Math.max(0, ...shapes.items.map(s => s.left + s.width));
+      if (SLIDE.known && maxRight > SLIDE.w * 1.03) {
+        const f = SLIDE.w / 1280;
+        shapes.items.forEach(s => { s.left *= f; s.top *= f; s.width *= f; s.height *= f; });
+        await context.sync();
+      }
+      const W = SLIDE.known ? SLIDE.w : (maxRight > 965 ? 1280 : 960), H = W * 9 / 16;
+      const byName = {};
+      shapes.items.forEach(s => { byName[s.name] = s; });
+      const slots = [];
+      data.items.forEach((it, i) => {
+        const k = i + 1, head = (it.date ? it.date + ': ' : '') + it.text, body = it.children.join('\n');
+        const hs = byName['T_Text_' + k], bs = byName['Text_' + k] || byName['Text ' + k];
+        if (hs && bs) { slots.push([hs, head]); slots.push([bs, body]); }
+        else if (hs || bs) slots.push([hs || bs, body ? head + '\n' + body : head]);
+      });
+      if (!slots.length) {   // a design with other names: fill the sample-text boxes in reading order
+        const texty = [];
+        for (const s of shapes.items.filter(x => TEXT_TYPES.includes(x.type))) {
+          try { const r = s.textFrame.textRange; r.load('text'); await context.sync(); if (/lorem|ipsum|^\s*text\s*\d/i.test(r.text)) texty.push(s); } catch (e) { /* no text */ }
+        }
+        texty.sort((a, b) => (a.top - b.top) || (a.left - b.left));
+        data.items.forEach((it, i) => { if (texty[i]) slots.push([texty[i], ((it.date ? it.date + ': ' : '') + it.text) + (it.children.length ? '\n' + it.children.join('\n') : '')]); });
+      }
+      const ranges = slots.map(([s]) => { const r = s.textFrame.textRange; r.load('text,font/size'); return r; });
+      await context.sync();
+      slots.forEach(([, t], i) => {
+        const r = ranges[i], L0 = Math.max(10, String(r.text || '').length), s0 = r.font.size || 18;
+        r.text = t;
+        if (t.length > L0 * 1.2) r.font.size = Math.max(9, Math.round(s0 * Math.sqrt(L0 / t.length)));
+        if (state.font) r.font.name = state.font;
+      });
+      await context.sync();
+      if (withTitle && data.title) {
+        const tb = shapes.addTextBox(data.title, { left: r1(W * 0.045), top: r1(H * 0.035), width: r1(W * 0.9), height: r1(H * 0.11) });
+        tb.name = 'Slide Title';
+        const tr = tb.textFrame.textRange;
+        tr.font.size = Math.round(W / 40);
+        tr.font.bold = true;
+        tr.font.color = INK;
+        tr.font.name = state.font || 'Open Sans';
+        tb.textFrame.verticalAlignment = 'Middle';
+        await context.sync();
+      }
+      return slots.length;
+    }
+
+    /* Insert a design right after `afterId`, fill it, and optionally delete the slide it replaces. */
+    async function insertTemplateSlide(entry, data, afterId, deleteOriginal) {
+      const b64 = await fileToBase64(entry.pptx);
+      let filled = 0;
+      await PowerPoint.run(async context => {
+        context.presentation.insertSlidesFromBase64(b64, { formatting: 'KeepSourceFormatting', targetSlideId: afterId });
+        await context.sync();
+        const slides = context.presentation.slides;
+        slides.load('items/id');
+        await context.sync();
+        const at = slides.items.findIndex(s => s.id === afterId);
+        const ns = slides.items[at + 1];
+        if (!ns) throw new Error('The design could not be inserted.');
+        filled = await fillTemplate(context, ns, data, $('showTitle').checked);
+        if (deleteOriginal) { slides.items[at].delete(); await context.sync(); }
+        context.presentation.setSelectedSlides([ns.id]);
+        await context.sync();
+      });
+      return filled;
+    }
+
+    async function insertLibrary() {
+      const e = state.libPick, part = state.parts[0];
+      if (!e || !part) return;
+      if (!state.inOffice) { setStatus('This is a preview. To insert, open PowerPoint and click Home › AI Visual Builder.'); return; }
+      $('insert').disabled = true;
+      setStatus('Inserting the company design…');
+      try {
+        let afterId = null, replace = false;
+        await PowerPoint.run(async context => {
+          const sel = context.presentation.getSelectedSlides(), n = sel.getCount();
+          await context.sync();
+          const slide = n.value ? sel.getItemAt(0) : context.presentation.slides.getItemAt(0);
+          slide.load('id');
+          await context.sync();
+          afterId = slide.id;
+          replace = !!(state.source && $('replaceSrc').checked && !$('srcNote').hidden && state.source.slideId === slide.id);
+        });
+        const filled = await insertTemplateSlide(e, part, afterId, replace);
+        if (replace) clearSource();
+        setStatus(`Done! The company design is ${replace ? 'in place of the original slide' : 'on a new slide after the selected one'}` +
+          (filled ? '' : ', but its text boxes have unusual names, so please type your text in') + '. Click any text to edit it.');
+      } catch (err) {
+        setStatus('Could not insert the design: ' + (err && err.message ? err.message : String(err)), true);
+      } finally {
+        updateInsertButton();
+      }
+    }
+
     /* ---------- Deck makeover (Step 7): review every slide, convert or skip one by one ---------- */
     async function blankLayoutId(context) {
       try {   // prefer a Blank layout so new slides have no empty placeholders
@@ -2343,10 +2552,20 @@
        layout that keeps variety — never the same layout twice in a row, repeats cost points, and diagrams are capped
        at about half the content slides so text + picture, big numbers, quotes and steps break up the deck. */
     function planDeck(list) {
-      const used = {};
-      let prev = null, diagrams = 0, content = 0, lastPic = false;
+      const used = {}, libUsed = {};
+      let prev = null, diagrams = 0, content = 0, lastPic = false, libRun = 0;
       for (const e of list) {
         if (e.role !== 'content') { e.layoutId = e.scored[0].L.id; e.pic = false; lastPic = !!e.scored[0].L.ownPicture; continue; }
+        // Company designs first (when connected), unless the text is clearly a big-number or quote slide.
+        e.libOK = libFits(e.parts[0], e.parts);
+        const strong = e.scored.find(x => (x.L.id === 'kpi' || x.L.id === 'quote') && x.score >= 80);
+        if (e.libOK && !strong && libRun < 3) {
+          e.layoutId = 'lib';
+          e.lib = nextDesign(e, libUsed);
+          e.pic = false; lastPic = true; prev = 'lib'; content++; diagrams++; libRun++;
+          continue;
+        }
+        libRun = 0;
         let best = null, bestV = -Infinity;
         for (const { L, score } of e.scored) {
           let v = score - (used[L.id] || 0) * 18 - (L.id === prev ? 60 : 0);
@@ -2365,6 +2584,14 @@
 
     /* Prims for a deck slide (first part) plus its picture, in the current colours and font. Layouts with their own
        picture slot always get a picture; others get one beside them when "Picture beside the visual" is ticked. */
+    /* A design for this slide's point count that the deck hasn't used yet. */
+    function nextDesign(e, usedKeys) {
+      const n = e.parts[0].items.length, list = state.lib.byCat[n], seen = usedKeys[n] || (usedKeys[n] = new Set());
+      const start = hashStr(e.text) % list.length;
+      for (let k = 0; k < list.length; k++) { const d = list[(start + k * 7) % list.length]; if (!seen.has(d.key)) { seen.add(d.key); return d; } }
+      return list[start];
+    }
+
     function deckBuild(e) {
       const L = LAYOUTS.find(x => x.id === e.layoutId) || e.sugs[0];
       const wantPic = L.ownPicture || (state.deck.pic && e.pic && L.family !== 'role' && !NO_BESIDE.includes(L.id));
@@ -2381,20 +2608,29 @@
       if (!e) { showDeckSummary(); return; }
       const todo = d.list.filter(x => x.status === 'todo').length;
       $('deckProgress').textContent = `${d.pos + 1} of ${d.list.length} · ${todo} left`;
-      const { L, pic, rect, prims } = deckBuild(e);
-      const preview = prims.concat(pic ? [Object.assign({ t: 'image', href: svgDataURL(pic) }, rect)] : []);
+      const isLib = e.layoutId === 'lib' && e.lib;
+      const { L, pic, rect, prims } = isLib ? { L: null } : deckBuild(e);
+      const preview = isLib ? `<img src="${thumbURL(e.lib)}" alt="" style="width:100%;border-radius:6px"><div class="reason">Company design ${e.lib.cat}-point #${esc(e.lib.key)}: your text replaces the sample text.</div>`
+        : toSVG(prims.concat(pic ? [Object.assign({ t: 'image', href: svgDataURL(pic) }, rect)] : []), SLIDE.w, SLIDE.h);
       const title = e.data.title || (e.data.items[0] && e.data.items[0].text) || 'Untitled';
       const chars = e.text.replace(/\s+/g, ' ').length;
       $('deckBody').innerHTML =
         `<div><b>Slide ${e.n}:</b> ${esc(title)}</div>` +
         `<div class="deck-meta"><b>${ROLE_NAMES[e.role]}</b> · ${e.data.items.length} point${e.data.items.length === 1 ? '' : 's'} · ${chars} characters · ${e.data.full ? 'all text kept' : 'shortened'}` +
         (e.parts.length > 1 ? ` · <b>becomes ${e.parts.length} slides</b> (the extra ones go right after it)` : '') + '</div>' +
-        `<div class="preview" style="margin-bottom:8px">${toSVG(preview, SLIDE.w, SLIDE.h)}</div>` +
-        `<div class="row"><label for="deckLayout">Layout</label><select id="deckLayout">${e.sugs.map(x => `<option value="${x.id}"${x === L ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` +
+        `<div class="preview" style="margin-bottom:8px">${preview}</div>` +
+        (isLib ? '<button id="deckNextDesign" class="secondary" type="button" style="margin:-2px 0 8px">↻ Show a different company design</button>' : '') +
+        `<div class="row"><label for="deckLayout">Layout</label><select id="deckLayout">${(e.libOK ? `<option value="lib"${isLib ? ' selected' : ''}>🏢 Company design</option>` : '') +
+          e.sugs.map(x => `<option value="${x.id}"${x === L ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` +
         `<div class="row"><label for="deckPalette">Colours</label><select id="deckPalette">${PALETTES.map(p => `<option value="${p.id}"${p === state.palette ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>` +
         `<label class="check"><input type="checkbox" id="deckPic"${d.pic ? ' checked' : ''}> Picture beside the visual</label>` +
         `<details class="more"><summary>Show this slide's text</summary><div class="deck-text">${esc(e.text)}</div></details>`;
-      $('deckLayout').addEventListener('change', ev => { e.layoutId = ev.target.value; showDeckSlide(); });
+      $('deckLayout').addEventListener('change', ev => {
+        e.layoutId = ev.target.value;
+        if (e.layoutId === 'lib' && !e.lib) e.lib = nextDesign(e, d.libUsed || (d.libUsed = {}));
+        showDeckSlide();
+      });
+      if (isLib) $('deckNextDesign').addEventListener('click', () => { e.lib = nextDesign(e, d.libUsed || (d.libUsed = {})); showDeckSlide(); });
       $('deckPalette').addEventListener('change', ev => { setPalette(PALETTES.find(p => p.id === ev.target.value)); showDeckSlide(); });
       $('deckPic').addEventListener('change', ev => { d.pic = ev.target.checked; showDeckSlide(); });
       $('deckActions').hidden = false;
@@ -2404,6 +2640,7 @@
 
     /* Replace the slide's text with the visual; text that needs more room goes on new slides right after it. */
     async function convertDeckSlide(e) {
+      if (e.layoutId === 'lib' && e.lib) { await insertTemplateSlide(e.lib, e.parts[0], e.id, true); return; }
       const { L, pic, rect, prims } = deckBuild(e);
       // Continuation slides get the same layout; picture layouts fall back to a plain one so no empty picture box is left.
       const contFor = p => !L.ownPicture ? L : ['steps', 'cards', 'statement'].map(id => LAYOUTS.find(x => x.id === id)).find(x => p.items.length >= x.min && p.items.length <= x.max);
@@ -2484,7 +2721,7 @@
           const ps = context.presentation.pageSetup;
           ps.load('slideWidth,slideHeight');
           await context.sync();
-          if (ps.slideWidth > 0 && ps.slideHeight > 0) SLIDE = { w: ps.slideWidth, h: ps.slideHeight };
+          if (ps.slideWidth > 0 && ps.slideHeight > 0) SLIDE = { w: ps.slideWidth, h: ps.slideHeight, known: true };
         });
       } catch (e) { /* keep the 16:9 default */ }
     }
@@ -2654,6 +2891,16 @@
       refresh();
     });
     $('convertAll').addEventListener('click', startDeck);
+    $('libConnect').addEventListener('click', () => $('libInput').click());
+    $('libInput').addEventListener('change', e => {
+      const lib = indexLibrary(Array.from(e.target.files || []));
+      if (!lib.count) { setStatus('No designs found in that folder. Choose the “tem” folder that contains 2_point, 3_point, … folders.', true); return; }
+      state.lib = lib;
+      state.libPage = 1;
+      refresh();
+      setStatus(`Design library connected: ${lib.count} company designs. Matching designs appear in step 2.`);
+    });
+    $('libMore').addEventListener('click', () => { state.libPage++; renderLib(state.parts[0], state.parts); });
     $('deckConvert').addEventListener('click', () => deckConvert(false));
     $('deckAll').addEventListener('click', () => deckConvert(true));
     $('deckSkip').addEventListener('click', () => { state.deck.list[state.deck.pos].status = 'skipped'; deckNext(); });
