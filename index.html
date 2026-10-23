@@ -94,7 +94,7 @@
   </style>
 </head>
 <body>
-  <h1>AI Visual Builder <span style="font-size:11px;font-weight:400;color:var(--muted)">version 7</span></h1>
+  <h1>AI Visual Builder <span style="font-size:11px;font-weight:400;color:var(--muted)">version 8</span></h1>
   <p class="sub">Turn text into an editable slide visual in 3 steps. No account or key needed.</p>
 
   <div id="welcome" class="panel tip" hidden>
@@ -616,19 +616,138 @@
           }
           return out;
         } },
+
+      /* ----- Step 8: slide types that are not diagrams, so a deck has rhythm. "pic" image slots get the picture. ----- */
+      { id: 'picture', name: 'Text + picture', tag: 'Picture', min: 1, max: 8, family: 'text', ownPicture: true,
+        score: (d, s) => 54 + (d.n <= 6 ? 6 : 0) - (s.sequence || s.cycle || s.time ? 12 : 0),
+        build(c) {
+          const out = [], L = c.M, c0 = c.color(0), cw = (c.W - 2 * c.M) * 0.56;
+          let top = c.M * 0.8;
+          if (c.showTitle && c.title) {
+            out.push(label(L, c.M * 0.5, cw, 74, c.title, { size: fit(c.title, cw, 74, 32, 18), bold: true, valign: 'middle', color: accentText(c0) }));
+            top = c.M * 0.5 + 92;
+          }
+          out.push(rule(L, top - 12, 64, 5, c0));
+          const body = c.items.map(it => '• ' + (it.date ? it.date + ': ' : '') + it.text + (it.children.length ? '\n' + it.children.map(k => '    – ' + k).join('\n') : '')).join('\n');
+          const bh = c.H - c.M * 0.6 - top;
+          out.push(label(L, top, cw, bh, body, { size: fit(body, cw, bh, 22, 9) }));
+          const px = L + cw + 28, s = Math.min(c.W - c.M - px, c.H - 2 * c.M), py = (c.H - s) / 2;
+          out.push(box('roundRect', px, py, s, s, { fill: tint(c0, 0.93) }));
+          out.push({ t: 'image', pic: true, x: px + 8, y: py + 8, w: s - 16, h: s - 16 });
+          return out;
+        } },
+
+      { id: 'kpi', name: 'Big numbers', tag: 'Numbers', min: 1, max: 4, family: 'text',
+        score: d => 15 + (d.numFrac >= 0.5 ? 72 : d.numFrac > 0 ? 22 : 0),
+        build(c) {
+          const f = frame(c), out = f.out, n = c.items.length, gap = 20, w = (f.cw - (n - 1) * gap) / n, h = f.bottom - f.top;
+          c.items.forEach((it, i) => {
+            const col = c.color(i), x = f.left + i * (w + gap), m = NUM.exec(it.text);
+            const big = m ? m[0].trim() : String(i + 1).padStart(2, '0');
+            const body = (it.date ? it.date + ': ' : '') + it.text + (it.children.length ? '\n' + it.children.join('\n') : '');
+            out.push(box('rect', x, f.top, w, h, { fill: tint(col, 0.9) }));
+            out.push(rule(x, f.top, w, 6, col));
+            const nh = Math.min(110, h * 0.38), by = f.top + 26 + nh, bh = f.bottom - by - 12;
+            out.push(label(x + 10, f.top + 18, w - 20, nh, big, { size: fit(big, w - 20, nh, 66, 20), bold: true, color: accentText(col), align: 'center', valign: 'middle' }));
+            out.push(label(x + 12, by, w - 24, bh, body, { size: fit(body, w - 24, bh, 18, 9), align: 'center' }));
+          });
+          return out;
+        } },
+
+      { id: 'quote', name: 'Quote', tag: 'Text', min: 1, max: 3, family: 'text',
+        score: (d, s) => 16 + (s.quote ? 72 : 0) - (d.n > 2 ? 15 : 0),
+        build(c) {
+          const out = [], c0 = c.color(0), L = c.M * 1.6, cw = c.W - 2 * L, first = c.items[0];
+          const main = first.text + (first.children.length ? '\n' + first.children.join('\n') : '');
+          const by = c.items.slice(1).map(it => it.text + (it.children.length ? ' ' + it.children.join(' ') : '')).join('\n');
+          out.push(rule(0, 0, c.W, c.H, tint(c0, 0.94)));
+          out.push(label(L - 24, c.M * 0.2, 170, 160, '“', { size: 150, bold: true, color: tint(c0, 0.5) }));
+          if (c.showTitle && c.title) out.push(label(L + 140, c.M * 0.6, cw - 140, 40, c.title, { size: fit(c.title, cw - 140, 40, 18, 11), bold: true, color: accentText(c0), align: 'right' }));
+          const qy = c.H * 0.22, qh = c.H * 0.48;
+          out.push(label(L, qy, cw, qh, main, { size: fit(main, cw, qh, 36, 13), bold: true, align: 'center', valign: 'middle' }));
+          out.push(rule(c.W / 2 - 40, qy + qh + 14, 80, 4, c0));
+          if (by) out.push(label(L, qy + qh + 30, cw, c.H - qy - qh - 30 - c.M * 0.5, by, { size: fit(by, cw, c.H - qy - qh - 30 - c.M * 0.5, 20, 10), color: MUTED, align: 'center' }));
+          return out;
+        } },
+
+      { id: 'agenda', name: 'Agenda', tag: 'Agenda', min: 2, max: 10, family: 'text',
+        score: (d, s) => 18 + (s.agenda ? 75 : 0),
+        build(c) {
+          const f = frame(c), out = f.out, n = c.items.length, cols = n > 5 ? 2 : 1, rows = Math.ceil(n / cols);
+          const gap = 28, colW = (f.cw - (cols - 1) * gap) / cols, rowH = (f.bottom - f.top) / rows;
+          c.items.forEach((it, i) => {
+            const col = Math.floor(i / rows), r = i % rows, x = f.left + col * (colW + gap), y = f.top + r * rowH, D = Math.min(48, rowH - 10);
+            const t = it.text + (it.children.length ? '\n' + it.children.join(' · ') : ''), tx = x + D + 16, tw = colW - D - 16;
+            out.push(tile('ellipse', x, y + (rowH - D) / 2, D, D, c.color(i), String(i + 1).padStart(2, '0'), { max: 16 }));
+            out.push(rule(tx, y + rowH - 2, tw, 1.5, '#E5E7EB'));
+            out.push(label(tx, y + 2, tw, rowH - 6, t, { size: fit(t, tw, rowH - 6, 24, 9), valign: 'middle' }));
+          });
+          return out;
+        } },
+
+      { id: 'cover', name: 'Title slide', tag: 'Cover', min: 0, max: 3, family: 'role', role: true, ownPicture: true,
+        score: d => d.n <= 2 ? 32 : 0,
+        build(c) {
+          const out = [], c0 = c.color(0), head = c.title || (c.items[0] && c.items[0].text) || 'Title';
+          const rest = (c.title ? c.items : c.items.slice(1)).map(it => it.text + (it.children.length ? ' · ' + it.children.join(' · ') : '')).join('\n');
+          const split = c.W * 0.56, tw = split - 2 * c.M;
+          out.push(rule(split, 0, c.W - split, c.H, c0));
+          out.push(rule(c.M, c.H * 0.28, 80, 8, c0));
+          out.push(label(c.M, c.H * 0.28 + 22, tw, 180, head, { size: fit(head, tw, 180, 48, 22), bold: true }));
+          if (rest) out.push(label(c.M, c.H * 0.28 + 214, tw, c.H * 0.72 - 214 - c.M * 0.6, rest, { size: fit(rest, tw, c.H * 0.72 - 214 - c.M * 0.6, 22, 11), color: MUTED }));
+          const s = Math.min(c.W - split - 70, c.H - 140), px = split + (c.W - split - s) / 2, py = (c.H - s) / 2;
+          out.push(box('roundRect', px, py, s, s, { fill: '#FFFFFF' }));
+          out.push({ t: 'image', pic: true, x: px + 10, y: py + 10, w: s - 20, h: s - 20 });
+          return out;
+        } },
+
+      { id: 'section', name: 'Section divider', tag: 'Section', min: 0, max: 2, family: 'role', role: true, ownPicture: true,
+        score: d => d.n <= 1 ? 30 : 0,
+        build(c) {
+          const out = [], c0 = c.color(0), head = c.title || (c.items[0] && c.items[0].text) || 'Section';
+          const rest = (c.title ? c.items : c.items.slice(1)).map(it => it.text).join('\n'), tw = c.W * 0.55 - c.M;
+          out.push(rule(0, 0, c.W, c.H, c0));
+          out.push(rule(c.M, c.H * 0.5 - 76, 7, 152, tint(c0, 0.55)));
+          out.push(label(c.M + 26, c.H * 0.5 - 90, tw, 120, head, { size: fit(head, tw, 120, 46, 22), bold: true, color: '#FFFFFF', valign: 'bottom' }));
+          if (rest) out.push(label(c.M + 26, c.H * 0.5 + 38, tw, 100, rest, { size: fit(rest, tw, 100, 20, 11), color: tint(c0, 0.8) }));
+          const s = Math.min(c.H - 2 * c.M, c.W * 0.36), px = c.W - c.M - s, py = (c.H - s) / 2;
+          out.push(box('ellipse', px, py, s, s, { fill: '#FFFFFF' }));
+          out.push({ t: 'image', pic: true, x: px + s * 0.12, y: py + s * 0.12, w: s * 0.76, h: s * 0.76 });
+          return out;
+        } },
+
+      { id: 'closing', name: 'Closing / thank you', tag: 'Closing', min: 0, max: 4, family: 'role', role: true,
+        score: (d, s) => (s.closing ? 75 : 0) + (d.n <= 2 ? 5 : 0),
+        build(c) {
+          const out = [], c0 = c.color(0), head = c.title || (c.items[0] && c.items[0].text) || 'Thank you';
+          const rest = (c.title ? c.items : c.items.slice(1)).map(it => it.text + (it.children.length ? ' · ' + it.children.join(' · ') : '')).join('\n');
+          const w = c.W - 4 * c.M;
+          out.push(rule(0, 0, c.W, c.H, c0));
+          out.push(box('ellipse', -120, -140, 360, 360, { fill: tint(c0, 0.15) }));
+          out.push(box('ellipse', c.W - 220, c.H - 200, 320, 320, { fill: shade(c0, 0.15) }));
+          out.push(label(2 * c.M, c.H * 0.24, w, 150, head, { size: fit(head, w, 150, 60, 24), bold: true, color: '#FFFFFF', align: 'center', valign: 'bottom' }));
+          out.push(rule(c.W / 2 - 50, c.H * 0.24 + 166, 100, 5, tint(c0, 0.6)));
+          if (rest) out.push(label(2 * c.M, c.H * 0.24 + 190, w, c.H * 0.76 - 190 - c.M, rest, { size: fit(rest, w, c.H * 0.76 - 190 - c.M, 22, 11), color: tint(c0, 0.85), align: 'center' }));
+          return out;
+        } },
     ];
+    LAYOUTS.forEach(L => { L.family = L.family || (['steps', 'statement'].includes(L.id) ? 'text' : 'diagram'); });
+    const NUM = /(?:[$€£₹]\s?)?\d[\d,]*(?:\.\d+)?\s?(?:%|x\b|k\b|m\b|bn\b|million\b|billion\b|\+)?/i;
 
     /* ---------- text analysis (rule-based for Step 1; AI replaces this in Step 2) ---------- */
     const BULLET = /^\s*(?:[•▪◦·✓✔➢►]\s*|(?:[-*–—>]|\(?\d{1,2}[.)]|[a-zA-Z][.)])\s+)/;   // "•Text" (no space) counts too
     const DATE = /^((?:19|20)\d{2}(?:\s*[-–]\s*(?:19|20)?\d{2})?|Q[1-4](?:\s*(?:19|20)\d{2})?|(?:Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\.?\s+(?:19|20)\d{2}|(?:Phase|Stage|Step|Week|Month|Day|Year|Sprint)\s*\d+)\s*[:\-–—]\s*(.+)$/i;
     const SIGNALS = {
-      sequence:  /\b(steps?|first|second|third|then|next|finally|after|before|phases?|stages?|process|workflow|procedure|pipeline|onboarding|how to)\b|->|→/i,
+      sequence:  /\b(steps?|first|second|third|then|next|finally|after|before|phases?|stages?|process|workflow|procedure|pipeline|onboard\w*|how (?:to|we|it works)|journey|lifecycle)\b|->|→/i,
       time:      /\b(19|20)\d{2}\b|\bq[1-4]\b|\b(timeline|roadmap|history|milestones?)\b|\b(week|month|quarter|year|day)\s*\d+/i,
       cycle:     /\b(cycle|cyclic|loop|life ?cycle|continuous|iterat\w*|repeat\w*|recurring|feedback|circular|pdca|agile|sprints?)\b/i,
       hierarchy: /\b(levels?|layers?|foundation|tiers?|basic|intermediate|advanced|priorit\w*|maslow|hierarchy)\b/i,
       funnel:    /\b(funnel|leads?|prospects?|awareness|interest|consideration|conversion|purchase|retention|narrow\w*|filter\w*)\b/i,
       compare:   /\b(vs\.?|versus|compare|comparison|pros|cons|advantages?|disadvantages?|traditional|modern|manual|automated)\b/i,
       center:    /\b(components?|elements?|pillars?|applications?|benefits?|features?|types?|uses?|areas?|capabilities|key|core|principles?|values?)\b/i,
+      quote:     /[“”]|"[^"\n]{12,}"|\n\s*(?:—|–|--)\s*[A-Z]/,
+      agenda:    /\b(agenda|contents|outline|table of contents|topics we|what we(?:'|’)ll cover|today(?:'|’)s topics)\b/i,
+      closing:   /\b(thank you|thanks|any questions|questions\?|q\s*&\s*a|contact us|get in touch)\b/i,
     };
 
     function shorten(s) {
@@ -730,13 +849,16 @@
 
     function stats(data) {
       const n = data.items.length, total = data.items.reduce((a, it) => a + it.text.length, 0);
-      return { n, avgLen: n ? total / n : 0, hasChildren: data.items.some(it => it.children.length), title: !!data.title, mode: data.mode };
+      return { n, avgLen: n ? total / n : 0, hasChildren: data.items.some(it => it.children.length), title: !!data.title, mode: data.mode,
+        numFrac: n ? data.items.filter(it => NUM.test(it.text)).length / n : 0 };
     }
 
+    /* Title, section and closing slides are only offered when the text really looks like one. */
     function suggest(data) {
       const d = stats(data);
       return LAYOUTS.filter(L => d.n >= L.min && d.n <= L.max)
         .map(L => ({ L, score: Math.round(L.score(d, data.signals)) }))
+        .filter(s => !s.L.role || s.score >= 30)
         .sort((a, b) => b.score - a.score);
     }
 
@@ -757,6 +879,13 @@
       isometric: '3D blocks rising step by step; growth, progression, maturity',
       pillars: 'roof over columns; supporting principles or foundations of one goal',
       statement: 'one key message, optionally with a few bullets',
+      picture: 'bullet points beside a large picture; general content, explanations',
+      kpi: 'big numbers in tiles; statistics, percentages, amounts',
+      quote: 'one quotation with its author',
+      agenda: 'numbered list of topics; agenda, contents, outline',
+      cover: 'title slide with subtitle',
+      section: 'section divider with a short heading',
+      closing: 'thank-you / questions / contact slide',
     };
 
     const AI_SYSTEM = [
@@ -1649,6 +1778,8 @@
       return { x: left + (right - left - s) / 2, y: top + (bottom - top - s) / 2, w: s, h: s };
     }
     const illoPrim = c => Object.assign({ t: 'image', href: illoHref() }, illoRect(c));
+    /* Layouts with their own picture slot: fill it, or drop it when there is no picture. */
+    const withPicture = (prims, href) => prims.flatMap(p => p.pic ? (href ? [Object.assign({}, p, { href })] : []) : [p]);
 
     /* Exact text that doesn't fit one slide is split into parts of up to 8 points / ~1000 characters, one slide each. */
     function splitParts(data) {
@@ -1672,11 +1803,11 @@
       const data = useAI ? state.ai.data : analyse(text, { full: keepText() });
       if (state.ai && !useAI && text.trim()) data.notes.unshift('Text changed since the AI analysis. Click “Analyse with AI” again to update.');
       const parts = state.parts = splitParts(data), first = parts[0];
-      const ctx = makeCtx(first), extra = ctx.beside ? [illoPrim(ctx)] : [];
+      const ctx = makeCtx(first), extra = ctx.beside ? [illoPrim(ctx)] : [], own = ctxWith(first, false);
       const iso = useAI ? (state.ai.paragraph ? 'first' : ctx.beside ? 'include' : null) : null;
       const fitsAll = s => parts.every(p => p.items.length >= s.L.min && p.items.length <= s.L.max);
       state.suggestions = (useAI ? suggestFromAI(first, state.ai.layouts, iso) : suggest(first)).filter(fitsAll).map(s => {
-        try { return Object.assign(s, { prims: s.L.build(ctx).concat(extra) }); }
+        try { return Object.assign(s, { prims: s.L.ownPicture ? withPicture(s.L.build(own), illoReady() ? illoHref() : null) : s.L.build(ctx).concat(extra) }); }
         catch (e) { console.error('Layout failed:', s.L.id, e); return null; }
       }).filter(Boolean);
       if (!state.suggestions.some(s => s.L.id === state.selected)) state.selected = state.suggestions.length ? state.suggestions[0].L.id : null;
@@ -1956,7 +2087,7 @@
       const image = illoReady() && sel.prims.find(p => p.t === 'image');
       // Long text kept word for word: one slide per part. Part 1 goes on the selected slide (with the picture), the rest on new slides.
       const parts = state.parts || [];
-      const slidePrims = [sel.prims.filter(p => p.t !== 'image')].concat(parts.slice(1).map(part => sel.L.build(makeCtx(part, true))));
+      const slidePrims = [sel.prims.filter(p => p.t !== 'image')].concat(parts.slice(1).map(part => sel.L.build(makeCtx(part, true)).filter(p => p.t !== 'image')));
       let replaced = false;
       try {
         await PowerPoint.run(async context => {
@@ -2006,6 +2137,7 @@
 
     async function drawOnSlide(context, slide, prims, name) {
       const shapes = slide.shapes;
+      prims = prims.filter(p => p.t !== 'image');   // pictures go in separately (insertSvgAt)
       const made = prims.map(p => drawPrim(shapes, p));
       await context.sync();
 
@@ -2151,6 +2283,8 @@
       catch (e) { console.warn('Could not select slide', e); }
     }
 
+    const NO_BESIDE = ['kpi', 'quote', 'agenda', 'statement'];   // these fill the slide; a picture beside them only crowds it
+    const ROLE_NAMES = { cover: 'Title slide', agenda: 'Agenda', section: 'Section', closing: 'Closing', content: 'Content' };
     const deckBusy = on => ['deckConvert', 'deckSkip', 'deckAll', 'deckStop'].forEach(id => { $(id).disabled = on; });
 
     /* Read every slide once: which can become a visual, and the layouts that fit all of its text. */
@@ -2167,16 +2301,26 @@
             setStatus(`Reading slide ${i + 1} of ${slides.items.length}…`);
             const r = await slideTextShapes(context, slides.items[i].shapes);
             const text = textFromParts(r.parts), lines = text.split('\n').filter(l => l.trim()).length;
-            if (lines < 3) { auto.push({ n: i + 1, why: 'title slide or very little text' }); continue; }
+            if (!lines) { auto.push({ n: i + 1, why: 'no text' }); continue; }
             if (r.other) { auto.push({ n: i + 1, why: 'has a picture, table, chart or group' }); continue; }
             if (r.parts.length > 4) { auto.push({ n: i + 1, why: 'already looks like a diagram' }); continue; }
             const data = analyse(text, { full: keepText() }), parts = splitParts(data);
+            const head = data.title || (data.items[0] && data.items[0].text) || '';
+            // The slide's job in the deck decides which kinds of slide it can become.
+            const role = i === 0 && lines <= 4 ? 'cover'
+              : SIGNALS.closing.test(head) && lines <= 6 ? 'closing'
+              : SIGNALS.agenda.test(head) && data.items.length >= 2 ? 'agenda'
+              : lines <= 2 ? 'section' : 'content';
             const fitsAll = L => parts.every(p => p.items.length >= L.min && p.items.length <= L.max);
-            const sugs = suggest(parts[0]).map(s => s.L).filter(fitsAll);
-            if (!sugs.length) { auto.push({ n: i + 1, why: 'no layout fits this text' }); continue; }
-            list.push({ id: slides.items[i].id, n: i + 1, text, ids: r.parts.map(p => p.id), data, parts, sugs, layoutId: sugs[0].id, status: 'todo' });
+            const scored = role === 'content'
+              ? suggest(parts[0]).filter(s => fitsAll(s.L) && !s.L.role)
+              : [{ L: LAYOUTS.find(L => L.id === role), score: 100 }].concat(suggest(parts[0]).filter(s => fitsAll(s.L) && s.L.id !== role));
+            if (!scored.length) { auto.push({ n: i + 1, why: 'no layout fits this text' }); continue; }
+            list.push({ id: slides.items[i].id, n: i + 1, text, ids: r.parts.map(p => p.id), data, parts, role, scored,
+              sugs: scored.map(s => s.L), layoutId: scored[0].L.id, status: 'todo' });
           }
         });
+        planDeck(list);
       } catch (e) {
         setStatus('Could not read the slides: ' + (e && e.message ? e.message : String(e)), true);
         $('convertAll').disabled = false;
@@ -2195,12 +2339,41 @@
       showDeckSlide();
     }
 
-    /* Prims for a deck slide (first part) plus its picture, in the current colours and font. */
+    /* The deck "director": title, agenda, section and closing slides keep their role; content slides get the best
+       layout that keeps variety — never the same layout twice in a row, repeats cost points, and diagrams are capped
+       at about half the content slides so text + picture, big numbers, quotes and steps break up the deck. */
+    function planDeck(list) {
+      const used = {};
+      let prev = null, diagrams = 0, content = 0, lastPic = false;
+      for (const e of list) {
+        if (e.role !== 'content') { e.layoutId = e.scored[0].L.id; e.pic = false; lastPic = !!e.scored[0].L.ownPicture; continue; }
+        let best = null, bestV = -Infinity;
+        for (const { L, score } of e.scored) {
+          let v = score - (used[L.id] || 0) * 18 - (L.id === prev ? 60 : 0);
+          if (L.family === 'diagram' && content > 0 && diagrams / content >= 0.5) v -= 30;
+          if (v > bestV) { best = L; bestV = v; }
+        }
+        e.layoutId = best.id;
+        e.pic = !lastPic;                      // pictures on every other slide, not on all of them
+        lastPic = !!best.ownPicture || (e.pic && !NO_BESIDE.includes(best.id));
+        used[best.id] = (used[best.id] || 0) + 1;
+        prev = best.id;
+        content++;
+        if (best.family === 'diagram') diagrams++;
+      }
+    }
+
+    /* Prims for a deck slide (first part) plus its picture, in the current colours and font. Layouts with their own
+       picture slot always get a picture; others get one beside them when "Picture beside the visual" is ticked. */
     function deckBuild(e) {
       const L = LAYOUTS.find(x => x.id === e.layoutId) || e.sugs[0];
-      const pic = state.deck.pic ? paintColors(ILLUSTRATIONS.compose(e.text).tokens, state.palette) : null;
-      const ctx = ctxWith(e.parts[0], !!pic);
-      return { L, ctx, pic, prims: L.build(ctx) };
+      const wantPic = L.ownPicture || (state.deck.pic && e.pic && L.family !== 'role' && !NO_BESIDE.includes(L.id));
+      const pic = wantPic ? paintColors(ILLUSTRATIONS.compose(e.text).tokens, state.palette) : null;
+      const ctx = ctxWith(e.parts[0], !!pic && !L.ownPicture);
+      const prims = L.build(ctx);
+      const slot = prims.find(p => p.pic);
+      const rect = !pic ? null : slot ? { x: slot.x, y: slot.y, w: slot.w, h: slot.h } : illoRect(ctx);
+      return { L, ctx, pic, rect, prims: prims.filter(p => !p.pic) };
     }
 
     function showDeckSlide() {
@@ -2208,13 +2381,13 @@
       if (!e) { showDeckSummary(); return; }
       const todo = d.list.filter(x => x.status === 'todo').length;
       $('deckProgress').textContent = `${d.pos + 1} of ${d.list.length} · ${todo} left`;
-      const { L, ctx, pic, prims } = deckBuild(e);
-      const preview = prims.concat(pic ? [Object.assign({ t: 'image', href: svgDataURL(pic) }, illoRect(ctx))] : []);
+      const { L, pic, rect, prims } = deckBuild(e);
+      const preview = prims.concat(pic ? [Object.assign({ t: 'image', href: svgDataURL(pic) }, rect)] : []);
       const title = e.data.title || (e.data.items[0] && e.data.items[0].text) || 'Untitled';
       const chars = e.text.replace(/\s+/g, ' ').length;
       $('deckBody').innerHTML =
         `<div><b>Slide ${e.n}:</b> ${esc(title)}</div>` +
-        `<div class="deck-meta">${e.data.items.length} point${e.data.items.length === 1 ? '' : 's'} · ${chars} characters · ${e.data.full ? 'all text kept' : 'shortened'}` +
+        `<div class="deck-meta"><b>${ROLE_NAMES[e.role]}</b> · ${e.data.items.length} point${e.data.items.length === 1 ? '' : 's'} · ${chars} characters · ${e.data.full ? 'all text kept' : 'shortened'}` +
         (e.parts.length > 1 ? ` · <b>becomes ${e.parts.length} slides</b> (the extra ones go right after it)` : '') + '</div>' +
         `<div class="preview" style="margin-bottom:8px">${toSVG(preview, SLIDE.w, SLIDE.h)}</div>` +
         `<div class="row"><label for="deckLayout">Layout</label><select id="deckLayout">${e.sugs.map(x => `<option value="${x.id}"${x === L ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` +
@@ -2231,8 +2404,10 @@
 
     /* Replace the slide's text with the visual; text that needs more room goes on new slides right after it. */
     async function convertDeckSlide(e) {
-      const { L, ctx, pic, prims } = deckBuild(e);
-      const extra = e.parts.slice(1).map(p => L.build(ctxWith(p, false)));
+      const { L, pic, rect, prims } = deckBuild(e);
+      // Continuation slides get the same layout; picture layouts fall back to a plain one so no empty picture box is left.
+      const contFor = p => !L.ownPicture ? L : ['steps', 'cards', 'statement'].map(id => LAYOUTS.find(x => x.id === id)).find(x => p.items.length >= x.min && p.items.length <= x.max);
+      const extra = e.parts.slice(1).map(p => contFor(p).build(ctxWith(p, false)));
       await PowerPoint.run(async context => {
         const slide = context.presentation.slides.getItem(e.id);
         e.ids.forEach(id => slide.shapes.getItem(id).delete());
@@ -2253,7 +2428,7 @@
           await drawOnSlide(context, ns, p, L.name);
         }
       });
-      if (pic) { await goToSlide(e.id); await insertSvgAt(pic, illoRect(ctx)); }
+      if (pic) { await goToSlide(e.id); await insertSvgAt(pic, rect); }
     }
 
     async function deckConvert(all) {
