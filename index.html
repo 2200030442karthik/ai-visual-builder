@@ -94,7 +94,7 @@
   </style>
 </head>
 <body>
-  <h1>AI Visual Builder <span style="font-size:11px;font-weight:400;color:var(--muted)">version 8</span></h1>
+  <h1>AI Visual Builder <span style="font-size:11px;font-weight:400;color:var(--muted)">version 9</span></h1>
   <p class="sub">Turn text into an editable slide visual in 3 steps. No account or key needed.</p>
 
   <div id="welcome" class="panel tip" hidden>
@@ -206,22 +206,21 @@
 
   <details class="panel" id="aiSettings">
     <summary>✨ Optional: smarter results with AI</summary>
-    <div class="small" style="margin:0 0 8px">Not needed: everything above works without it. With your own Anthropic API key, Claude can
-      summarise long text into key points, pick layouts and draw a custom picture.</div>
-    <label for="apiKey">Anthropic API key</label>
+    <div class="small" style="margin:0 0 8px">Not needed: everything above works without it. With your own API key, AI can
+      summarise long text into key points, pick layouts and create a custom picture for your content.</div>
+    <div class="row"><label for="aiProvider">AI service</label>
+      <select id="aiProvider"><option value="openai">OpenAI (ChatGPT)</option><option value="anthropic">Anthropic (Claude)</option></select></div>
+    <label for="apiKey" id="apiKeyLabel">OpenAI API key</label>
     <div class="field">
-      <input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…" />
+      <input id="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-…" />
       <button id="forgetKey" type="button">Forget</button>
     </div>
     <label class="check"><input type="checkbox" id="rememberKey" checked> Remember on this device</label>
     <button id="analyseAI" class="ai-btn" type="button">✨ Analyse my text with AI</button>
-    <button id="illoRegen" class="secondary" type="button">✨ Draw a custom picture with AI</button>
-    <label class="check"><input type="checkbox" id="illoEnabled"> Also draw a custom picture every time I analyse (costs a little more)</label>
-    <div class="small">
-      Get a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.
-      The key stays in this browser and is sent only to Anthropic. Each AI request sends your text to Claude
-      (model <code>claude-opus-5-5</code>) and costs a few cents on your account. Don’t use confidential content unless your company allows it.
-    </div>
+    <button id="illoRegen" class="secondary" type="button">✨ Create an AI picture for my text</button>
+    <label class="check"><input type="checkbox" id="illoEnabled"> Also create a picture every time I analyse</label>
+    <label class="check" id="deckAIWrap"><input type="checkbox" id="deckAIPics"> Use AI pictures in “Convert a whole deck” (one per slide that shows a picture)</label>
+    <div class="small" id="aiInfo"></div>
   </details>
 
   <footer>
@@ -1751,18 +1750,23 @@
       return composed.val;
     }
 
-    /* The picture to show: built from the text (default), a ready-made scene, a free online image or Claude's drawing. */
+    /* The picture to show: built from the text (default), a ready-made scene, or the AI picture
+       (an OpenAI image as PNG in `raster`, or Claude's SVG drawing in `tokens`). */
     function currentIllo() {
       if (!$('content').value.trim()) return null;
       if (state.picture === 'ai') {
         const ai = state.aiIllo;
-        return ai && ai.tokens ? { tokens: ai.tokens, caption: ai.caption, ai: true } : null;
+        return ai && (ai.tokens || ai.raster) ? { tokens: ai.tokens, raster: ai.raster, caption: ai.caption, ai: true } : null;
       }
       return state.picture === 'auto' ? autoPicture() : ILLUSTRATIONS.get(state.picture);
     }
     const illoReady = () => !!currentIllo();
-    const illoSVG = () => paintColors(currentIllo().tokens, state.palette);
-    const illoHref = () => svgDataURL(illoSVG());
+    function illoSVG() {
+      const il = currentIllo();
+      return il.raster ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="800" height="800"><image href="${il.raster}" width="1024" height="1024"/></svg>`
+        : paintColors(il.tokens, state.palette);
+    }
+    const illoHref = () => { const il = currentIllo(); return il.raster || svgDataURL(paintColors(il.tokens, state.palette)); };
 
     /* With the illustration beside it, the visual is laid out in the left 62% of the slide. */
     function makeCtx(data, noBeside) { return ctxWith(data, !noBeside && illoReady() && $('illoBeside').checked); }
@@ -1852,21 +1856,21 @@
       if (!has) return;
       const pick = $('illoPick');
       const aiOpt = pick.querySelector('option[value="ai"]');
-      aiOpt.disabled = !(ai && (ai.tokens || ai.busy));
-      aiOpt.text = busy ? '✨ Claude drawing (drawing…)' : '✨ Claude drawing';
+      aiOpt.disabled = !(ai && (ai.tokens || ai.raster || ai.busy));
+      aiOpt.text = busy ? '✨ AI picture (creating…)' : '✨ AI picture';
       pick.value = state.picture;
-      $('illoState').textContent = busy ? '✨ Claude is drawing…' : il ? (il.ai ? '✨ Drawn by Claude' : 'Built-in · free · private') : '';
+      $('illoState').textContent = busy ? `✨ ${providerName()} is creating…` : il ? (il.ai ? '✨ AI picture' : 'Built-in · free · private') : '';
       $('illoBox').innerHTML = il ? `<img class="illo-img" alt="${esc(il.caption)}" src="${illoHref()}">`
-        : '<div class="illo-wait">Claude is drawing…</div>';
+        : '<div class="illo-wait">Creating…</div>';
       $('illoCaption').innerHTML = (il ? esc(il.caption) : '') +
-        (ai && ai.error ? `<div class="illo-err">AI drawing failed: ${esc(ai.error)}</div>` : '');
+        (ai && ai.error ? `<div class="illo-err">AI picture failed: ${esc(ai.error)}</div>` : '');
       $('illoRegen').disabled = busy;
-      $('illoRegen').textContent = busy ? 'Drawing… (up to a minute)' : ai && ai.tokens ? '✨ Draw another custom picture' : '✨ Draw a custom picture with AI';
+      $('illoRegen').textContent = busy ? 'Creating… (up to a minute)' : ai && (ai.tokens || ai.raster) ? '✨ Create another AI picture' : '✨ Create an AI picture for my text';
       $('illoInsert').disabled = !il || !state.inOffice;
       $('illoDownload').hidden = !il;
       if (il) {
         $('illoDownload').href = illoHref();
-        $('illoDownload').download = 'picture.svg';
+        $('illoDownload').download = il.raster ? 'picture.png' : 'picture.svg';
       }
     }
 
@@ -2186,7 +2190,9 @@
       });
     }
 
-    const insertIllustration = p => insertSvgAt(illoSVG(), p);
+    const insertIllustration = p => { const il = currentIllo(); return il.raster ? insertPngAt(il.raster, p) : insertSvgAt(illoSVG(), p); };
+    const insertPngAt = (dataUrl, p) => setData(dataUrl.split(',')[1], Office.CoercionType.Image,
+      { imageLeft: r1(p.x), imageTop: r1(p.y), imageWidth: r1(p.w), imageHeight: r1(p.h) });
 
     async function insertSvgAt(svg, p) {
       const opts = { imageLeft: r1(p.x), imageTop: r1(p.y), imageWidth: r1(p.w), imageHeight: r1(p.h) };
@@ -2374,7 +2380,19 @@
       const prims = L.build(ctx);
       const slot = prims.find(p => p.pic);
       const rect = !pic ? null : slot ? { x: slot.x, y: slot.y, w: slot.w, h: slot.h } : illoRect(ctx);
-      return { L, ctx, pic, rect, prims: prims.filter(p => !p.pic) };
+      // With AI pictures on, the slide's own AI picture replaces the built-in one once it is ready.
+      return { L, ctx, pic, rect, raster: pic && deckAI() ? e.aiPic || null : null, prims: prims.filter(p => !p.pic) };
+    }
+
+    /* AI pictures in the deck makeover: only with OpenAI, a key and the option ticked. One picture per slide, made once. */
+    const deckAI = () => provider() === 'openai' && $('deckAIPics').checked && !!$('apiKey').value.trim();
+    function deckPicture(e) {
+      if (!e.aiJob) {
+        e.aiJob = openaiImage(picturePrompt(e.text))
+          .then(url => { e.aiPic = url; e.aiErr = null; })
+          .catch(err => { e.aiErr = describeError(err); e.aiJob = null; });
+      }
+      return e.aiJob;
     }
 
     function showDeckSlide() {
@@ -2382,14 +2400,16 @@
       if (!e) { showDeckSummary(); return; }
       const todo = d.list.filter(x => x.status === 'todo').length;
       $('deckProgress').textContent = `${d.pos + 1} of ${d.list.length} · ${todo} left`;
-      const { L, pic, rect, prims } = deckBuild(e);
-      const preview = prims.concat(pic ? [Object.assign({ t: 'image', href: svgDataURL(pic) }, rect)] : []);
+      const { L, pic, rect, raster, prims } = deckBuild(e);
+      const preview = prims.concat(pic ? [Object.assign({ t: 'image', href: raster || svgDataURL(pic) }, rect)] : []);
+      const aiNote = !pic || !deckAI() ? '' : e.aiPic ? ' · ✨ AI picture' : e.aiErr ? ` · <span style="color:#a4262c">AI picture failed: ${esc(e.aiErr)}</span>` : ' · ✨ creating AI picture…';
+      if (pic && deckAI() && !e.aiPic && !e.aiErr) deckPicture(e).then(() => { if (state.deck && state.deck.list[state.deck.pos] === e) showDeckSlide(); });
       const title = e.data.title || (e.data.items[0] && e.data.items[0].text) || 'Untitled';
       const chars = e.text.replace(/\s+/g, ' ').length;
       $('deckBody').innerHTML =
         `<div><b>Slide ${e.n}:</b> ${esc(title)}</div>` +
         `<div class="deck-meta"><b>${ROLE_NAMES[e.role]}</b> · ${e.data.items.length} point${e.data.items.length === 1 ? '' : 's'} · ${chars} characters · ${e.data.full ? 'all text kept' : 'shortened'}` +
-        (e.parts.length > 1 ? ` · <b>becomes ${e.parts.length} slides</b> (the extra ones go right after it)` : '') + '</div>' +
+        (e.parts.length > 1 ? ` · <b>becomes ${e.parts.length} slides</b> (the extra ones go right after it)` : '') + aiNote + '</div>' +
         `<div class="preview" style="margin-bottom:8px">${toSVG(preview, SLIDE.w, SLIDE.h)}</div>` +
         `<div class="row"><label for="deckLayout">Layout</label><select id="deckLayout">${e.sugs.map(x => `<option value="${x.id}"${x === L ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select></div>` +
         `<div class="row"><label for="deckPalette">Colours</label><select id="deckPalette">${PALETTES.map(p => `<option value="${p.id}"${p === state.palette ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>` +
@@ -2405,7 +2425,11 @@
 
     /* Replace the slide's text with the visual; text that needs more room goes on new slides right after it. */
     async function convertDeckSlide(e) {
-      const { L, pic, rect, prims } = deckBuild(e);
+      if (deckAI() && deckBuild(e).pic && !e.aiPic) {   // wait for this slide's AI picture (falls back to the built-in one if it fails)
+        setStatus(`Creating the AI picture for slide ${e.n}…`);
+        await deckPicture(e);
+      }
+      const { L, pic, rect, raster, prims } = deckBuild(e);
       // Continuation slides get the same layout; picture layouts fall back to a plain one so no empty picture box is left.
       const contFor = p => !L.ownPicture ? L : ['steps', 'cards', 'statement'].map(id => LAYOUTS.find(x => x.id === id)).find(x => p.items.length >= x.min && p.items.length <= x.max);
       const extra = e.parts.slice(1).map(p => contFor(p).build(ctxWith(p, false)));
@@ -2429,7 +2453,7 @@
           await drawOnSlide(context, ns, p, L.name);
         }
       });
-      if (pic) { await goToSlide(e.id); await insertSvgAt(pic, rect); }
+      if (pic) { await goToSlide(e.id); await (raster ? insertPngAt(raster, rect) : insertSvgAt(pic, rect)); }
     }
 
     async function deckConvert(all) {
@@ -2490,15 +2514,39 @@
       } catch (e) { /* keep the 16:9 default */ }
     }
 
-    /* ---------- Claude (Step 2) ---------- */
+    /* ---------- AI services (Step 2, OpenAI added in Step 9): the user's own key, stored only in this browser ---------- */
     const AI_MODEL = 'claude-opus-5-5';
     const SDK_URL = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.131.0/+esm';
-    const KEY_STORE = 'aivb.anthropicKey';
+    const OPENAI_URL = 'https://api.openai.com/v1';
+    // Tried in order: if a model isn't available on the account, the next one is used.
+    const OPENAI_TEXT_MODELS = ['gpt-5-mini', 'gpt-4.1-mini', 'gpt-4o-mini'];
+    const OPENAI_IMAGE_MODELS = ['gpt-image-2', 'gpt-image-1.5', 'gpt-image-1', 'gpt-image-1-mini'];
+    const KEY_STORES = { anthropic: 'aivb.anthropicKey', openai: 'aivb.openaiKey' };
     let sdkPromise = null;
 
-    function loadKey() { try { return localStorage.getItem(KEY_STORE) || ''; } catch (e) { return ''; } }
-    function saveKey(k) { try { if (k) localStorage.setItem(KEY_STORE, k); else localStorage.removeItem(KEY_STORE); } catch (e) { /* storage blocked */ } }
+    const provider = () => $('aiProvider').value;
+    const providerName = () => provider() === 'openai' ? 'OpenAI' : 'Claude';
+    function loadKey(p) { try { return localStorage.getItem(KEY_STORES[p || provider()]) || ''; } catch (e) { return ''; } }
+    function saveKey(k, p) { try { const s = KEY_STORES[p || provider()]; if (k) localStorage.setItem(s, k); else localStorage.removeItem(s); } catch (e) { /* storage blocked */ } }
 
+    /* Settings text and key field follow the chosen service. */
+    function showProvider() {
+      const o = provider() === 'openai';
+      $('apiKeyLabel').textContent = o ? 'OpenAI API key' : 'Anthropic API key';
+      $('apiKey').placeholder = o ? 'sk-…' : 'sk-ant-…';
+      $('apiKey').value = loadKey();
+      $('deckAIWrap').hidden = !o;
+      $('aiInfo').innerHTML = o
+        ? 'Get a key at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com</a> (the API is billed separately from a ChatGPT subscription). ' +
+          'AI pictures use OpenAI’s image model (<code>gpt-image</code>); your OpenAI organisation may need to be verified once in its settings. ' +
+          'Each analysis costs a fraction of a cent and each picture a few cents. The key stays in this browser and is sent only to OpenAI, together with your text. ' +
+          'Don’t use confidential content unless your company allows it.'
+        : 'Get a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>. ' +
+          'The key stays in this browser and is sent only to Anthropic, together with your text (model <code>claude-opus-5-5</code>). ' +
+          'Pictures are drawn as editable vector graphics. Each request costs a few cents. Don’t use confidential content unless your company allows it.';
+    }
+
+    /* ----- Anthropic ----- */
     /* One structured-output request to Claude; returns the parsed JSON. */
     async function askClaude({ system, content, schema, effort, timeout, what }) {
       if (!sdkPromise) sdkPromise = import(SDK_URL).catch(e => { sdkPromise = null; throw e; });
@@ -2532,28 +2580,128 @@
       return JSON.parse(block.text);
     }
 
-    const callClaude = text => askClaude({ system: AI_SYSTEM, content: `<content>\n${text}\n</content>`, schema: AI_SCHEMA,
-      effort: 'low', timeout: 90000, what: 'analyse this text' });
+    /* ----- OpenAI ----- */
+    async function openaiFetch(path, body, timeout) {
+      const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), timeout || 90000);
+      let res;
+      try {
+        res = await fetch(OPENAI_URL + path, {
+          method: 'POST', signal: ctrl.signal,
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + $('apiKey').value.trim() },
+          body: JSON.stringify(body),
+        });
+      } catch (e) {
+        throw Object.assign(new Error(e.name === 'AbortError' ? 'OpenAI took too long. Please try again.' : 'Connection failed'), { network: e.name !== 'AbortError' });
+      } finally {
+        clearTimeout(timer);
+      }
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = json.error || {};
+        throw Object.assign(new Error(err.message || 'OpenAI error ' + res.status), { status: res.status, code: err.code || err.type || '', param: err.param || '' });
+      }
+      return json;
+    }
+    const modelUnavailable = e => e.status === 404 || /model_not_found|unsupported_model/i.test(e.code) || (e.status === 400 && e.param === 'model') ||
+      (e.status === 403 && /model/i.test(e.message) && !/verif/i.test(e.message));
 
-    /* Step 3: draws the illustration. Runs alongside the analysis; the newest request wins. */
+    let openaiTextModel = null;   // the first model that worked, reused for later requests
+    async function askOpenAI({ system, content, schema, name, timeout }) {
+      const models = openaiTextModel ? [openaiTextModel] : OPENAI_TEXT_MODELS;
+      let last;
+      for (const model of models) {
+        try {
+          const r = await openaiFetch('/chat/completions', {
+            model,
+            messages: [{ role: 'system', content: system }, { role: 'user', content }],
+            response_format: { type: 'json_schema', json_schema: { name, strict: true, schema } },
+          }, timeout);
+          const msg = r.choices && r.choices[0] && r.choices[0].message;
+          if (!msg) throw new Error('OpenAI returned no result. Please try again.');
+          if (msg.refusal) throw new Error('OpenAI declined: ' + msg.refusal);
+          openaiTextModel = model;
+          return JSON.parse(msg.content);
+        } catch (e) {
+          last = e;
+          if (!modelUnavailable(e)) throw e;
+        }
+      }
+      throw last;
+    }
+
+    let openaiImageModel = null;
+    /* One square picture as a PNG data URL (transparent background where the model supports it). */
+    async function openaiImage(prompt) {
+      const models = openaiImageModel ? [openaiImageModel] : OPENAI_IMAGE_MODELS;
+      let last;
+      for (const model of models) {
+        let body = { model, prompt, n: 1, size: '1024x1024', quality: 'medium', background: 'transparent' };
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const r = await openaiFetch('/images/generations', body, 180000);
+            const b64 = r.data && r.data[0] && r.data[0].b64_json;
+            if (!b64) throw new Error('OpenAI returned no picture. Please try again.');
+            openaiImageModel = model;
+            return 'data:image/png;base64,' + b64;
+          } catch (e) {
+            last = e;
+            // An option this model doesn't accept: try once more with only the basics.
+            if (attempt === 0 && e.status === 400 && /background|quality|size|parameter/i.test(e.message + e.param) && e.param !== 'model') {
+              body = { model, prompt, n: 1, size: '1024x1024' };
+              continue;
+            }
+            break;
+          }
+        }
+        if (!modelUnavailable(last)) throw last;
+      }
+      throw last;
+    }
+
+    /* What to draw: the slide's subject, its key words and the objects the built-in picture found, in the current colours. */
+    function picturePrompt(text) {
+      const data = analyse(text), comp = ILLUSTRATIONS.compose(text);
+      const terms = ILLUSTRATIONS.keyTerms(text).slice(0, 8).join(', ');
+      const things = comp.objects.join(', ');
+      const colours = state.palette.colors.slice(0, 4).join(', ');
+      return `A clean, modern isometric 3D illustration for a business presentation slide about "${data.title || terms}". ` +
+        `It should clearly show ideas related to: ${terms}${things ? ` (for example ${things})` : ''}. ` +
+        `Style: soft lighting, rounded shapes, flat-shaded isometric objects on a simple platform, consistent with corporate infographics. ` +
+        `Colour palette: ${colours}, plus white and light grey. Plain transparent background. ` +
+        'No text, no letters, no numbers, no logos, no watermarks.';
+    }
+
+    /* ----- shared ----- */
+    const callAI = text => provider() === 'openai'
+      ? askOpenAI({ system: AI_SYSTEM, content: `<content>\n${text}\n</content>`, schema: AI_SCHEMA, name: 'slide_plan', timeout: 90000 })
+      : askClaude({ system: AI_SYSTEM, content: `<content>\n${text}\n</content>`, schema: AI_SCHEMA, effort: 'low', timeout: 90000, what: 'analyse this text' });
+
+    /* Creates the AI picture: an OpenAI image, or a Claude vector drawing. Runs alongside the analysis; the newest request wins. */
     let illoSeq = 0;
     async function generateIllustration(text) {
-      const my = ++illoSeq, p = state.palette;
-      state.aiIllo = Object.assign({}, state.aiIllo, { busy: true, error: null });   // the built-in picture stays until Claude's is ready
+      const my = ++illoSeq, p = state.palette, viaOpenAI = provider() === 'openai';
+      state.aiIllo = Object.assign({}, state.aiIllo, { busy: true, error: null });   // the built-in picture stays until the AI one is ready
       refresh();
       try {
-        const r = await askClaude({ system: ILLO_SYSTEM, content: illoPrompt(text, p), schema: ILLO_SCHEMA,
-          effort: 'medium', timeout: 180000, what: 'draw this topic' });
-        const svg = sanitizeSVG(r.svg);
+        let next;
+        if (viaOpenAI) {
+          const raster = await openaiImage(picturePrompt(text));
+          next = { raster, caption: 'AI picture created by OpenAI for your text.' };
+        } else {
+          const r = await askClaude({ system: ILLO_SYSTEM, content: illoPrompt(text, p), schema: ILLO_SCHEMA,
+            effort: 'medium', timeout: 180000, what: 'draw this topic' });
+          next = { tokens: tokenizeColors(sanitizeSVG(r.svg), p), caption: String(r.caption || '').trim() || 'Isometric illustration drawn by Claude.' };
+        }
         if (my !== illoSeq) return;
-        state.aiIllo = { tokens: tokenizeColors(svg, p), caption: String(r.caption || '').trim() || 'Isometric illustration drawn by Claude.' };
+        state.aiIllo = next;
         state.picture = 'ai';
-        setStatus('The AI illustration is ready' + ($('illoBeside').checked ? ' and shown beside each visual.' : '.') +
+        setStatus('The AI picture is ready' + ($('illoBeside').checked ? ' and shown beside each visual.' : '.') +
           (state.inOffice ? ' Pick a visual and click Insert.' : ''));
       } catch (e) {
         console.error(e);
         if (my !== illoSeq) return;
         state.aiIllo = Object.assign({}, state.aiIllo, { busy: false, error: describeError(e) });
+        setStatus('AI picture failed: ' + describeError(e), true);
       }
       refresh();
     }
@@ -2562,20 +2710,26 @@
       if ($('apiKey').value.trim()) return true;
       $('aiSettings').open = true;
       $('apiKey').focus();
-      setStatus(`AI needs an Anthropic API key. Paste it in “Optional: smarter results with AI”, then click ${action} again. (Everything else works without a key.)`, true);
+      setStatus(`AI needs your ${providerName() === 'OpenAI' ? 'OpenAI' : 'Anthropic'} API key. Paste it in “Optional: smarter results with AI”, then click ${action} again. (Everything else works without a key.)`, true);
       return false;
     }
 
     function describeError(e) {
-      const status = e && e.status;
-      if (status === 401) return 'The API key was rejected. Check it in AI settings.';
-      if (status === 403) return 'This API key is not allowed to use ' + AI_MODEL + '.';
+      const status = e && e.status, o = provider() === 'openai', who = o ? 'OpenAI' : 'Anthropic';
+      const msg = (e && e.message) || String(e);
+      if (status === 401) return `The ${who} API key was rejected. Check it in AI settings.`;
+      if (o && /verif/i.test(msg)) return 'OpenAI requires your organisation to be verified before it can create pictures. ' +
+        'Verify it at platform.openai.com › Settings › Organization (it can take a few minutes), then try again.';
+      if (o && (status === 429 || /quota|billing|insufficient/i.test(msg))) return 'OpenAI says the key has no credit or hit a limit. Add billing / credit at platform.openai.com, or wait a moment.';
       if (status === 429) return 'Rate limit or credit limit reached. Wait a moment, or check your Anthropic billing.';
-      if (status >= 500) return 'Anthropic’s service had a problem (' + status + '). Please try again.';
-      if (e && /Connection|fetch|network|import/i.test((e.name || '') + ' ' + (e.message || ''))) {
-        return 'Could not reach Anthropic. Your network or company firewall may block api.anthropic.com or cdn.jsdelivr.net.';
+      if (status === 403) return o ? 'This OpenAI key is not allowed to use that model: ' + msg : 'This API key is not allowed to use ' + AI_MODEL + '.';
+      if (o && status === 400 && /safety|content_policy|moderation/i.test(msg + (e.code || ''))) return 'OpenAI’s safety filter refused this picture. Try rewording the text.';
+      if (status >= 500) return `${who}’s service had a problem (${status}). Please try again.`;
+      if ((e && e.network) || /Connection|fetch|network|import/i.test((e && e.name || '') + ' ' + msg)) {
+        return o ? 'Could not reach OpenAI. Your network or company firewall may block api.openai.com.'
+          : 'Could not reach Anthropic. Your network or company firewall may block api.anthropic.com or cdn.jsdelivr.net.';
       }
-      return (e && e.message) ? e.message : String(e);
+      return msg;
     }
 
     async function analyseWithAI() {
@@ -2583,15 +2737,15 @@
       if (!text) { setStatus('Type or paste some text first.'); return; }
       if (!requireKey('“Analyse my text with AI”')) return;
       if ($('rememberKey').checked) saveKey($('apiKey').value.trim());
-      const btn = $('analyseAI'), withIllo = $('illoEnabled').checked;
+      const btn = $('analyseAI'), withIllo = $('illoEnabled').checked, who = providerName();
       const paragraph = analyse(text).mode === 'paragraph';
       state.aiBusy = true;
       btn.disabled = true;
       btn.textContent = 'Analysing…';
-      setStatus(withIllo ? 'Claude is reading your text and drawing an illustration…' : 'Claude is reading your text…');
+      setStatus(withIllo ? `${who} is reading your text and creating a picture…` : `${who} is reading your text…`);
       if (withIllo) generateIllustration(text);
       try {
-        const raw = await callClaude(text);
+        const raw = await callAI(text);
         let data = fromAI(raw);
         if (!data.items.length && !data.title) throw new Error('The AI found nothing to visualise. Try adding more text.');
         if (keepText()) {
@@ -2606,7 +2760,7 @@
         state.selected = null;
         refresh();
         setStatus(`AI found ${data.items.length} key point${data.items.length === 1 ? '' : 's'} and picked ${state.suggestions.filter(s => s.ai).length} layouts.` +
-          (state.aiIllo && state.aiIllo.busy ? ' Claude is still drawing the picture…' : state.inOffice ? ' Pick a visual in step 2, then press Insert.' : ''));
+          (state.aiIllo && state.aiIllo.busy ? ` ${who} is still creating the picture…` : state.inOffice ? ' Pick a visual in step 2, then press Insert.' : ''));
       } catch (e) {
         console.error(e);
         setStatus('AI analysis failed: ' + describeError(e) + ' The free suggestions above still work.', true);
@@ -2625,12 +2779,16 @@
     $('useSelection').addEventListener('click', useSelection);
     $('analyseAI').addEventListener('click', analyseWithAI);
     $('content').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !state.aiBusy) analyseWithAI(); });
-    $('apiKey').value = loadKey();
+    try { const pv = localStorage.getItem('aivb.provider'); if (pv) $('aiProvider').value = pv; } catch (e) { /* storage blocked */ }
+    showProvider();
+    $('aiProvider').addEventListener('change', e => { try { localStorage.setItem('aivb.provider', e.target.value); } catch (x) { /* storage blocked */ } showProvider(); });
+    try { $('deckAIPics').checked = localStorage.getItem('aivb.deckAIPics') === '1'; } catch (e) { /* storage blocked */ }
+    $('deckAIPics').addEventListener('change', e => { try { localStorage.setItem('aivb.deckAIPics', e.target.checked ? '1' : '0'); } catch (x) { /* storage blocked */ } });
     try { $('aiSettings').open = localStorage.getItem('aivb.aiOpen') === '1'; } catch (e) { /* storage blocked */ }
     $('aiSettings').addEventListener('toggle', e => { try { localStorage.setItem('aivb.aiOpen', e.target.open ? '1' : '0'); } catch (x) { /* storage blocked */ } });
     try { $('welcome').hidden = localStorage.getItem('aivb.welcomed') === '1'; } catch (e) { $('welcome').hidden = false; }
     $('welcomeOk').addEventListener('click', () => { $('welcome').hidden = true; try { localStorage.setItem('aivb.welcomed', '1'); } catch (e) { /* storage blocked */ } });
-    $('forgetKey').addEventListener('click', () => { saveKey(''); $('apiKey').value = ''; setStatus('API key removed from this device.'); });
+    $('forgetKey').addEventListener('click', () => { saveKey(''); $('apiKey').value = ''; setStatus(`${providerName() === 'OpenAI' ? 'OpenAI' : 'Anthropic'} key removed from this device.`); });
     $('rememberKey').addEventListener('change', e => { saveKey(e.target.checked ? $('apiKey').value.trim() : ''); });
     try { $('illoEnabled').checked = localStorage.getItem('aivb.illo') === '1'; } catch (e) { /* storage blocked */ }
     $('illoEnabled').addEventListener('change', e => { try { localStorage.setItem('aivb.illo', e.target.checked ? '1' : '0'); } catch (x) { /* storage blocked */ } refresh(); });
@@ -2644,7 +2802,7 @@
     $('illoRegen').addEventListener('click', () => {
       const text = $('content').value.trim();
       if (!text) { setStatus('Type or paste some text first.'); return; }
-      if (requireKey('“Draw a custom picture”')) generateIllustration(text);
+      if (requireKey('“Create an AI picture”')) { if ($('rememberKey').checked) saveKey($('apiKey').value.trim()); generateIllustration(text); }
     });
     EXAMPLES.forEach((ex, i) => $('examples').add(new Option(ex.name, i)));
     $('examples').addEventListener('change', e => {
