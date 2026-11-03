@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+*.log
+napkin-key*
+.env
+local-ai/tests/.edge-profile/
+local-ai/tests/last-run.json
+local-ai/tests/.edge-profile-server.log
+local-ai/tests/.access-test.json
+local-ai/tests/.edge-profile-diag/
+local-ai/tests/.access-diag.json
+local-ai/tests/.edge-profile-probe/
+local-ai/tests/.access-probe.json
+# local diagnosis output (kept on disk, not committed)
+/git_*_out.txt
+/git_diff_*.txt
+local-ai/tests/run_after_fix.json
+local-ai/tests/last-run-studio.json

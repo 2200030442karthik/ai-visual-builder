@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 520" width="1000" height="520">
+<!-- SYNTHETIC test fixture (V10.8): reconstructed from the 30 Oct screenshot of Napkin SVG request 98cba9db (Educational
+     Content, 1 visual), whose file was not kept (the panel host keeps only the last request). Heading over seven columns,
+     the last four with long sentence-fragment labels, as in the screenshot. -->
+<rect width="1000" height="520" fill="#ffffff"/>
+<rect x="330" y="20" width="340" height="40" rx="6" fill="#7f7f7f"/>
+<text x="500" y="46" text-anchor="middle" font-size="18" font-weight="700" fill="#ffffff">Educational Content</text>
+<line x1="500" y1="60" x2="500" y2="90" stroke="#7f7f7f" stroke-width="2"/>
+<line x1="77" y1="90" x2="923" y2="90" stroke="#7f7f7f" stroke-width="2"/>
+<g><rect x="20" y="110" width="115" height="380" rx="10" fill="#62b7e4"/><text x="77" y="140" text-anchor="middle" font-size="12" font-weight="700" fill="#404040"><tspan x="77" y="140">Learning</tspan><tspan x="77" dy="15">Needs</tspan></text><text x="77" y="420" text-anchor="middle" font-size="10" fill="#404040"><tspan x="77" y="420">students learned</tspan><tspan x="77" dy="12">from only a</tspan></text></g>
+<g><rect x="161" y="110" width="115" height="380" rx="10" fill="#e6a157"/><text x="218" y="140" text-anchor="middle" font-size="12" font-weight="700" fill="#404040"><tspan x="218" y="140">Education</tspan><tspan x="218" dy="15">Content</tspan></text></g>
+<g><rect x="302" y="110" width="115" height="380" rx="10" fill="#8ecdb7"/><text x="359" y="140" text-anchor="middle" font-size="12" font-weight="700" fill="#404040"><tspan x="359" y="140">Versatile</tspan><tspan x="359" dy="15">Content</tspan></text><text x="359" y="420" text-anchor="middle" font-size="10" fill="#404040"><tspan x="359" y="420">versatile, accessible,</tspan><tspan x="359" dy="12">informational</tspan></text></g>
+<g><rect x="443" y="110" width="115" height="380" rx="10" fill="#9b99c7"/><text x="500" y="140" text-anchor="middle" font-size="12" font-weight="700" fill="#404040"><tspan x="500" y="140">created by</tspan><tspan x="500" dy="15">educators to</tspan><tspan x="500" dy="15">engage</tspan></text></g>
+<g><rect x="584" y="110" width="115" height="380" rx="10" fill="#e58f6d"/><text x="641" y="140" text-anchor="middle" font-size="12" font-weight="700" fill="#404040"><tspan x="641" y="140">inspire and</tspan><tspan x="641" dy="15">inform their</tspan><tspan x="641" dy="15">students</tspan></text></g>
+<g><rect x="725" y="110" width="115" height="380" rx="10" fill="#ddb945"/><text x="782" y="140" text-anchor="middle" font-size="12" font-weight="700" fill="#404040"><tspan x="782" y="140">creative and</tspan><tspan x="782" dy="15">personalized</tspan><tspan x="782" dy="15">to each</tspan><tspan x="782" dy="15">learner's needs</tspan></text></g>
+<g><rect x="866" y="110" width="115" height="380" rx="10" fill="#7ea2c8"/><text x="923" y="140" text-anchor="middle" font-size="12" font-weight="700" fill="#404040"><tspan x="923" y="140">helps you</tspan><tspan x="923" dy="15">achieve your</tspan><tspan x="923" dy="15">student's</tspan><tspan x="923" dy="15">learning goals</tspan></text></g>
+</svg>

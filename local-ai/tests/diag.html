@@ -1,0 +1,65 @@
+<!doctype html>
+<!-- Diagnosis page: runs given texts through analysis and the gallery, and saved real Napkin results through the Napkin
+     checks, and reports every layout considered (offered / rejected with the reason) and every variation's status with
+     its preview. No network, no credits. Run with tests/run_diag.py. -->
+<html><head><meta charset="utf-8"><title>diag</title><script src="/tests/samples.js"></script><script src="/tests/mock.js"></script></head>
+<body><iframe id="f" src="/v10.html" style="width:420px;height:900px"></iframe><pre id="out">running</pre>
+<script>
+const out = document.getElementById('out');
+const STYLE = 'EHH64S9R64R64C9DCMSKCSHD6GTPADHDC4SKJC1D68WP6CK66DJ32RV4CGVG';
+async function run() {
+  const F = document.getElementById('f'), W = F.contentWindow, ev = x => W.eval(x);
+  for (let i = 0; i < 100 && !ev("typeof suggest === 'function' && typeof analyseContent === 'function'"); i++) await new Promise(r => setTimeout(r, 100));
+  installMock(W);
+  ev("state.inOffice = true; state.canGroup = true; state.canRotate = true; 1");
+  await ev('refreshStatus()');
+  W.__mock.layoutName = 'Content_Slide'; await ev('checkSlide()');
+  const res = { gallery: [], napkin: [] }, samples = Object.fromEntries(EXAMPLES);
+  const texts = (new URLSearchParams(location.search).get('texts') || '').split(',').filter(Boolean);
+  for (const name of texts) {
+    W.document.getElementById('content').value = samples[name];
+    await ev('analyseContent()');
+    res.gallery.push(Object.assign({ name }, ev(`(() => { const out = state.sections.map(s => { const r = { heading: s.heading, status: s.status, type: s.model && s.model.type, source: s.model && s.model.source };
+      if (s.status !== 'ready' || !s.model || s.model.type === 'none') return r;
+      s.gallery = null; const G = suggest(s), sc = G.scene || {};
+      return Object.assign(r, { mode: sc.mode, n: sc.n, ordered: sc.ordered, topic: sc.topic, intro: sc.intro, items: (sc.items || []).map(i => i.label + (i.detail ? ' :: ' + i.detail : '')),
+        icons: (sc.icons || []).map(i => i && i.matched ? i.key : '-'), list: G.list.map(c => c.engine + ':' + c.name), dropped: G.dropped,
+        thumbs: G.list.map(c => ({ name: c.name, svg: thumb(c.prims) })) }); }); return { sections: out }; })()`)));
+  }
+  // saved real Napkin results through the Napkin checks (stand-in Napkin: no network, no credits)
+  const cases = JSON.parse(new URLSearchParams(location.search).get('napkin') || '[]');
+  W.setTimeout = f => { f(); return 0; };
+  for (const c of cases) {
+    const files = [];
+    for (const f of c.files) { const r = await fetch('/tests/fixtures/' + f); files.push(c.fmt === 'svg' ? await r.text() : new Uint8Array(await r.arrayBuffer())); }
+    W.__cfg = { files: files.length };
+    const ACC = `access: { configured: true, mode: 'windows', authorized: true, user: 'test', reason: '', template: { layout_name: 'Content_Slide', fingerprint: { shapes: { 'content placeholder': [101.7, 205, 1078.5, 435.2], 'heading placeholder': [101.7, 119.1, 1078.5, 71.2], 'section tag strip': [1287.2, 0, 80.8, 720.3] }, tolerance: 3 } } }`;
+    ev(`state.svc = { server: 'test', ${ACC}, napkin: { configured: true, enabled: true, used_today: 0, max_per_day: 0, style_id: '${STYLE}', variations: [1, 4], last: true } }; renderNapkin(); 1`);
+    await ev('checkSlide().then(() => { showGate(); renderNapkin(); })');
+    ev(`api = async (path, body) => { if (path.startsWith('/api/napkin/visual')) return { id: 'job-1', status: 'pending', style_id: '${STYLE}' };
+      if (path.startsWith('/api/napkin/status')) return { status: 'completed', files: window.__cfg.files, style_id: '${STYLE}' };
+      return { server: 'test', ${ACC}, napkin: { configured: true, enabled: true, used_today: 1, max_per_day: 0, style_id: '${STYLE}', variations: [1, 4], last: true } }; }; 1`);
+    W.fetch = async url => { const i = +(/[?&]i=(\d+)/.exec(url) || [0, 0])[1]; return new Response(files[i % files.length], { status: 200 }); };
+    const d = W.document;
+    c.text = c.text || samples[c.sample];
+    d.getElementById('content').value = c.text;
+    d.querySelector(`input[name="napkinFmt"][value="${c.fmt}"]`).checked = true;
+    d.getElementById('napkinVar').value = String(files.length > 1 ? 4 : 1);
+    d.getElementById('napkinOk').checked = true; d.getElementById('napkinOk').dispatchEvent(new W.Event('change'));
+    d.getElementById('napkinGo').click();
+    for (let i = 0; i < 200 && (W.__napkin.N.busy || !/Napkin AI/.test(d.getElementById('status').textContent)); i++) await new Promise(r => setTimeout(r, 30));
+    const R = W.__napkin.N.result, pr = await W.__napkin.prepared(c.text);
+    const bg = '<rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/><rect x="102" y="205" width="1079" height="435" fill="none" stroke="#D9D9D9" stroke-dasharray="6 4"/>';
+    res.napkin.push({ name: c.name, status: d.getElementById('status').textContent, sent: pr.content, concepts: pr.concepts, points: pr.points, ordered: pr.ordered,
+      items: R ? R.items.map(it => ({ n: it.n, status: it.check.status, notes: it.check.notes, block: it.quality && it.quality.block, warn: it.quality && it.quality.warn,
+        rebuilt: !!(it.conv && it.conv.rebuilt), fills: it.fmt === 'svg' ? (W.napkinPartsSvg(it.data) || { fills: [] }).fills.map(f => [f.x, f.y, f.w, f.h].map(Math.round).join(',') + (f.pic ? 'p' : '')) : null, titles: it.structure ? it.structure.items.map(u => u.label + '@' + [u.title.x, u.title.y, u.title.w, u.title.h].map(Math.round).join(',')) : null, build: it.conv.report && Object.keys(it.conv.report.notes || {}), trace: (() => { try { const st = W.napkinStructure(it, it.drop); if (!st) return null; const R0 = Object.assign({}, W.eval('TEMPLATE.contentArea')), f = W.napkinFaithful(st, R0, it.check.add || [], it.ordered); return f.ok ? W.visualQuality(W.qualityItems(f.prims), R0).block : f.trace; } catch (e) { return String(e.message); } })(), structure: it.structure ? { comp: it.structure.comp, hub: it.structure.hub && it.structure.hub.label, links: it.structure.links, styles: it.structure.items.map(u => u.style + '/' + u.iconPos), geo: it.structure.items.map(u => u.label + ' ' + [u.box.x, u.box.y, u.box.w, u.box.h].map(Math.round).join(',')), hubBox: it.structure.hub && it.structure.hub.box && [it.structure.hub.box.x, it.structure.hub.box.y, it.structure.hub.box.w, it.structure.hub.box.h].map(Math.round), head: it.structure.head && it.structure.head.text, items: it.structure.items.map(u => u.label + (u.detail ? ' :: ' + u.detail : '')) } : null,
+        shot: W.toSVG(it.conv.prims, 1280, 720).replace(/(<svg[^>]*>)<rect[^>]*\/>/, '$1' + bg) })) : [] });
+  }
+  out.textContent = JSON.stringify(res);
+}
+(async () => {
+  const F = document.getElementById('f');
+  for (let i = 0; i < 300; i++) { try { if (F.contentWindow.location.pathname === '/v10.html' && F.contentDocument.readyState === 'complete') break; } catch (e) {} await new Promise(r => setTimeout(r, 100)); }
+  await run();
+})().catch(e => { out.textContent = JSON.stringify({ fatal: String(e && e.stack || e) }); });
+</script></body></html>

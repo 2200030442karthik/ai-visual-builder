@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AI Visual Builder V10.12. A separate add-in from V9 (different Id), so both can be installed side by side.
+     The panel is served on this PC by local-ai\server.py (https://localhost:44317); it must be running, otherwise
+     PowerPoint shows "Sorry, we can't load the add-in". -->
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
+  <Id>08d15d9d-8629-4583-b67d-5f80143dde6d</Id>
+  <Version>10.12.0.0</Version>
+  <ProviderName>AI Visual Builder</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="AI Visual Builder V10 (local AI)"/>
+  <Description DefaultValue="Turns learning content into accurate, editable infographics and pictorial visuals in the Simplilearn template. Runs on this PC."/>
+  <IconUrl DefaultValue="https://raw.githubusercontent.com/OfficeDev/Office-Addin-TaskPane-JS/master/assets/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://raw.githubusercontent.com/OfficeDev/Office-Addin-TaskPane-JS/master/assets/icon-64.png"/>
+  <SupportUrl DefaultValue="https://2200030442karthik.github.io/ai-visual-builder/"/>
+  <AppDomains><AppDomain>https://localhost:44317</AppDomain></AppDomains>
+  <Hosts><Host Name="Presentation"/></Hosts>
+  <Requirements><Sets DefaultMinVersion="1.1"><Set Name="PowerPointApi" MinVersion="1.5"/></Sets></Requirements>
+  <DefaultSettings><SourceLocation DefaultValue="https://localhost:44317/v10.html"/></DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Presentation">
+        <DesktopFormFactor>
+          <GetStarted>
+            <Title resid="GetStarted.Title"/>
+            <Description resid="GetStarted.Description"/>
+            <LearnMoreUrl resid="GetStarted.LearnMoreUrl"/>
+          </GetStarted>
+          <FunctionFile resid="Taskpane.Url"/>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="AIVB10.Group">
+                <Label resid="Group.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.16"/>
+                  <bt:Image size="32" resid="Icon.32"/>
+                  <bt:Image size="80" resid="Icon.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="AIVB10.Open">
+                  <Label resid="Button.Label"/>
+                  <Supertip>
+                    <Title resid="Button.Label"/>
+                    <Description resid="Button.Tooltip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16"/>
+                    <bt:Image size="32" resid="Icon.32"/>
+                    <bt:Image size="80" resid="Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>AIVisualBuilderV10Pane</TaskpaneId>
+                    <SourceLocation resid="Taskpane.Url"/>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Icon.16" DefaultValue="https://raw.githubusercontent.com/OfficeDev/Office-Addin-TaskPane-JS/master/assets/icon-16.png"/>
+        <bt:Image id="Icon.32" DefaultValue="https://raw.githubusercontent.com/OfficeDev/Office-Addin-TaskPane-JS/master/assets/icon-32.png"/>
+        <bt:Image id="Icon.80" DefaultValue="https://raw.githubusercontent.com/OfficeDev/Office-Addin-TaskPane-JS/master/assets/icon-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:44317/v10.html"/>
+        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://localhost:44317/v10.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="GetStarted.Title" DefaultValue="AI Visual Builder V10 is ready"/>
+        <bt:String id="Group.Label" DefaultValue="AI Visuals (local)"/>
+        <bt:String id="Button.Label" DefaultValue="AI Visual Builder V10"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="GetStarted.Description" DefaultValue="Click AI Visual Builder V10 on the Home tab. If it does not load, run local-ai\Start AI Visual Builder.bat."/>
+        <bt:String id="Button.Tooltip" DefaultValue="Turn your text into an accurate, editable infographic."/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>

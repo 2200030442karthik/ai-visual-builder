@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1079 435" width="1079" height="435">
+<rect x="0" y="0" width="1079" height="435" fill="#FFFFFF"/>
+<text x="539.5" y="38" font-family="Open Sans" font-size="30" font-weight="bold" fill="#404040" text-anchor="middle">Data engineering platform</text>
+<g>
+<line x1="20" y1="226" x2="1050" y2="226" stroke="#7F7F7F" stroke-width="3"/>
+<path d="M1050 218 L1066 226 L1050 234 Z" fill="#7F7F7F"/>
+</g>
+<g>
+<circle cx="130" cy="226" r="20" fill="#62B7E4"/>
+<text x="130" y="234" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">1</text>
+<text x="130" y="84" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">Data ingestion</text>
+<text font-family="Open Sans" font-size="22" fill="#404040" text-anchor="middle"><tspan x="130" y="110.4">Databases, APIs,</tspan><tspan x="130" dy="26.4">logs, files;</tspan><tspan x="130" dy="26.4">records checked</tspan><tspan x="130" dy="26.4">for completeness</tspan></text>
+</g>
+<g>
+<circle cx="247" cy="226" r="20" fill="#E6A157"/>
+<text x="247" y="234" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">2</text>
+<text x="247" y="272" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">Data validation</text>
+<text font-family="Open Sans" font-size="22" fill="#404040" text-anchor="middle"><tspan x="247" y="298.4">Verifies required</tspan><tspan x="247" dy="26.4">fields, examines</tspan><tspan x="247" dy="26.4">data types, finds</tspan><tspan x="247" dy="26.4">missing values</tspan></text>
+</g>
+<g>
+<circle cx="364" cy="226" r="20" fill="#8ECDB7"/>
+<text x="364" y="234" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">3</text>
+<text x="364" y="84" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">Transformation</text>
+<text font-family="Open Sans" font-size="22" fill="#404040" text-anchor="middle"><tspan x="364" y="110.4">Raw data cleaned,</tspan><tspan x="364" dy="26.4">standardized into</tspan><tspan x="364" dy="26.4">consistent formats</tspan><tspan x="364" dy="26.4">for analysis</tspan></text>
+</g>
+<g>
+<circle cx="481" cy="226" r="20" fill="#9B99C7"/>
+<text x="481" y="234" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">4</text>
+<text x="481" y="272" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">Data storage</text>
+<text font-family="Open Sans" font-size="22" fill="#404040" text-anchor="middle"><tspan x="481" y="298.4">Processed datasets</tspan><tspan x="481" dy="26.4">in databases or</tspan><tspan x="481" dy="26.4">analytical storage</tspan><tspan x="481" dy="26.4">efficient retrieval</tspan></text>
+</g>
+<g>
+<circle cx="598" cy="226" r="20" fill="#E58F6D"/>
+<text x="598" y="234" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">5</text>
+<text x="598" y="84" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">Orchestration</text>
+<text font-family="Open Sans" font-size="22" fill="#404040" text-anchor="middle"><tspan x="598" y="110.4">Scheduled workflows</tspan><tspan x="598" dy="26.4">dependencies, task</tspan><tspan x="598" dy="26.4">monitoring, failure</tspan><tspan x="598" dy="26.4">management</tspan></text>
+</g>
+<g>
+<circle cx="715" cy="226" r="20" fill="#DDB945"/>
+<text x="715" y="234" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">6</text>
+<text x="715" y="272" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">Quality monitoring</text>
+<text font-family="Open Sans" font-size="22" fill="#404040" text-anchor="middle"><tspan x="715" y="298.4">Automated checks:</tspan><tspan x="715" dy="26.4">duplicate records,</tspan><tspan x="715" dy="26.4">invalid values,</tspan><tspan x="715" dy="26.4">unexpected changes</tspan></text>
+</g>
+<g>
+<circle cx="832" cy="226" r="20" fill="#7EA2C8"/>
+<text x="832" y="234" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">7</text>
+<text font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle"><tspan x="832" y="84">Analytics and</tspan><tspan x="832" dy="26.4">reporting</tspan></text>
+<text font-family="Open Sans" font-size="22" fill="#404040" text-anchor="middle"><tspan x="832" y="136.8">Dashboards, reports</tspan><tspan x="832" dy="26.4">on performance,</tspan><tspan x="832" dy="26.4">trends, outcomes</tspan></text>
+</g>
+<g>
+<circle cx="949" cy="226" r="20" fill="#D98CA1"/>
+<text x="949" y="234" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">8</text>
+<text font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle"><tspan x="949" y="272">Security and</tspan><tspan x="949" dy="26.4">governance</tspan></text>
+<text font-family="Open Sans" font-size="22" fill="#404040" text-anchor="middle"><tspan x="949" y="324.8">Access controls,</tspan><tspan x="949" dy="26.4">data classification</tspan><tspan x="949" dy="26.4">and audit records</tspan><tspan x="949" dy="26.4">protect information</tspan></text>
+</g>
+</svg>

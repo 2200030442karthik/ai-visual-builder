@@ -1,0 +1,50 @@
+{
+  "_comment": "Copy to %ProgramData%\\AIVisualBuilder\\access.json (administrators only may change it). See README-V10.txt, ACCESS.",
+  "mode": "entra",
+  "tenant_id": "<Directory (tenant) ID of the Simplilearn Microsoft 365 organization>",
+  "client_id": "<Application (client) ID of the AI Visual Builder app registration>",
+  "required_scope": "access_as_user",
+  "allowed_roles": [
+    "Visuals.Generate"
+  ],
+  "allowed_groups": [],
+  "allowed_users": [],
+  "napkin_max_per_day": 0,
+  "napkin_max_per_user_per_day": 0,
+  "template": {
+    "template_name": "LVC_Template.pptx",
+    "layout_name": "Content_Slide",
+    "master_names": [],
+    "layout_ids": [],
+    "master_ids": [],
+    "fingerprint": {
+      "shapes": {
+        "content placeholder": [
+          101.7,
+          205.0,
+          1078.5,
+          435.2
+        ],
+        "heading placeholder": [
+          101.7,
+          119.1,
+          1078.5,
+          71.2
+        ],
+        "section tag strip": [
+          1287.2,
+          0.0,
+          80.8,
+          720.3
+        ]
+      },
+      "tolerance": 3
+    },
+    "xml_ids": {
+      "master": 2147483673,
+      "layout": 2147483736,
+      "layout_creation_id": 189336738
+    },
+    "verified": true
+  }
+}

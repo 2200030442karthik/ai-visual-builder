@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1079 435" width="1079" height="435">
+  <rect x="0" y="0" width="1079" height="435" fill="#FFFFFF"/>
+  <text x="12" y="38" font-family="Open Sans" font-size="30" font-weight="bold" fill="#404040">Data engineering platform</text>
+
+  <g>
+    <rect x="10" y="52" width="1059" height="42" rx="6" fill="#F2F2F2"/>
+    <rect x="10" y="52" width="48" height="42" rx="6" fill="#62B7E4"/>
+    <text x="34" y="81" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">1</text>
+    <text x="72" y="81" font-family="Open Sans" font-size="22" font-weight="600" fill="#404040">Data ingestion</text>
+    <line x1="362" y1="60" x2="362" y2="86" stroke="#D9D9D9" stroke-width="2"/>
+    <text x="376" y="81" font-family="Open Sans" font-size="22" fill="#404040">Databases, APIs, logs, files; basic completeness check</text>
+  </g>
+
+  <g>
+    <rect x="10" y="98" width="1059" height="42" rx="6" fill="#F2F2F2"/>
+    <rect x="10" y="98" width="48" height="42" rx="6" fill="#E6A157"/>
+    <text x="34" y="127" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">2</text>
+    <text x="72" y="127" font-family="Open Sans" font-size="22" font-weight="600" fill="#404040">Data validation</text>
+    <line x1="362" y1="106" x2="362" y2="132" stroke="#D9D9D9" stroke-width="2"/>
+    <text x="376" y="127" font-family="Open Sans" font-size="22" fill="#404040">Required fields, data types, missing values</text>
+  </g>
+
+  <g>
+    <rect x="10" y="144" width="1059" height="42" rx="6" fill="#F2F2F2"/>
+    <rect x="10" y="144" width="48" height="42" rx="6" fill="#8ECDB7"/>
+    <text x="34" y="173" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">3</text>
+    <text x="72" y="173" font-family="Open Sans" font-size="22" font-weight="600" fill="#404040">Data transformation</text>
+    <line x1="362" y1="152" x2="362" y2="178" stroke="#D9D9D9" stroke-width="2"/>
+    <text x="376" y="173" font-family="Open Sans" font-size="22" fill="#404040">Cleaned, standardized, consistent formats for analysis</text>
+  </g>
+
+  <g>
+    <rect x="10" y="190" width="1059" height="42" rx="6" fill="#F2F2F2"/>
+    <rect x="10" y="190" width="48" height="42" rx="6" fill="#9B99C7"/>
+    <text x="34" y="219" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">4</text>
+    <text x="72" y="219" font-family="Open Sans" font-size="22" font-weight="600" fill="#404040">Data storage</text>
+    <line x1="362" y1="198" x2="362" y2="224" stroke="#D9D9D9" stroke-width="2"/>
+    <text x="376" y="219" font-family="Open Sans" font-size="22" fill="#404040">Databases or analytical storage for efficient retrieval</text>
+  </g>
+
+  <g>
+    <rect x="10" y="236" width="1059" height="42" rx="6" fill="#F2F2F2"/>
+    <rect x="10" y="236" width="48" height="42" rx="6" fill="#E58F6D"/>
+    <text x="34" y="265" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">5</text>
+    <text x="72" y="265" font-family="Open Sans" font-size="22" font-weight="600" fill="#404040">Data orchestration</text>
+    <line x1="362" y1="244" x2="362" y2="270" stroke="#D9D9D9" stroke-width="2"/>
+    <text x="376" y="265" font-family="Open Sans" font-size="22" fill="#404040">Scheduled workflows: dependencies, tasks, failures</text>
+  </g>
+
+  <g>
+    <rect x="10" y="282" width="1059" height="42" rx="6" fill="#F2F2F2"/>
+    <rect x="10" y="282" width="48" height="42" rx="6" fill="#DDB945"/>
+    <text x="34" y="311" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">6</text>
+    <text x="72" y="311" font-family="Open Sans" font-size="22" font-weight="600" fill="#404040">Quality monitoring</text>
+    <line x1="362" y1="290" x2="362" y2="316" stroke="#D9D9D9" stroke-width="2"/>
+    <text x="376" y="311" font-family="Open Sans" font-size="22" fill="#404040">Duplicates, invalid values, unexpected quality changes</text>
+  </g>
+
+  <g>
+    <rect x="10" y="328" width="1059" height="42" rx="6" fill="#F2F2F2"/>
+    <rect x="10" y="328" width="48" height="42" rx="6" fill="#7EA2C8"/>
+    <text x="34" y="357" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">7</text>
+    <text x="72" y="357" font-family="Open Sans" font-size="22" font-weight="600" fill="#404040">Analytics &amp; reporting</text>
+    <line x1="362" y1="336" x2="362" y2="362" stroke="#D9D9D9" stroke-width="2"/>
+    <text x="376" y="357" font-family="Open Sans" font-size="22" fill="#404040">Dashboards, reports: performance, trends, outcomes</text>
+  </g>
+
+  <g>
+    <rect x="10" y="374" width="1059" height="42" rx="6" fill="#F2F2F2"/>
+    <rect x="10" y="374" width="48" height="42" rx="6" fill="#D98CA1"/>
+    <text x="34" y="403" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">8</text>
+    <text x="72" y="403" font-family="Open Sans" font-size="22" font-weight="600" fill="#404040">Security &amp; governance</text>
+    <line x1="362" y1="382" x2="362" y2="408" stroke="#D9D9D9" stroke-width="2"/>
+    <text x="376" y="403" font-family="Open Sans" font-size="22" fill="#404040">Access controls, classification, audit records</text>
+  </g>
+</svg>

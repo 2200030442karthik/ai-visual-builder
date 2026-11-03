@@ -1,0 +1,290 @@
+<!doctype html>
+<!-- V10.12 acceptance: free design regeneration, editing inserted visuals, several slides. Loads the real panel (v10.html)
+     in an iframe with the strict PowerPoint stand-in (mock.js, with tags and real groups), uses the saved real Claude
+     design of 3 Nov and the samples, never calls an AI provider, and writes JSON into <pre id="out">; #evidence holds
+     the previews for the screenshot (tests/run_tests.py). -->
+<html><head><meta charset="utf-8"><title>V10.12 studio tests</title><script src="/tests/samples.js"></script><script src="/tests/mock.js"></script>
+<style>body{font:12px Segoe UI,Arial} #evidence{display:grid;grid-template-columns:repeat(4,300px);gap:8px;width:1240px} #evidence div{border:1px solid #ccc;padding:3px} #evidence svg{width:100%;height:auto;display:block} h3{grid-column:1/-1;margin:8px 0 0}</style></head>
+<body><iframe id="f" src="/v10.html" style="width:420px;height:900px"></iframe><pre id="out">running</pre><div id="evidence"></div>
+<script>
+const out = document.getElementById('out'), errors = [], EV = document.getElementById('evidence');
+const APPROVED = new Set(['#8ECDB7', '#62B7E4', '#7EA2C8', '#9B99C7', '#DDB945', '#E6A157', '#E58F6D', '#B88968', '#D98CA1', '#C1A5C6', '#FFFFFF', '#F2F2F2', '#D9D9D9', '#7F7F7F', '#404040']);
+const wait = ms => new Promise(r => setTimeout(r, ms));
+async function run() {
+  const F = document.getElementById('f'), W = F.contentWindow, ev = x => W.eval(x), d = W.document;
+  W.addEventListener('error', e => errors.push(String(e.message)));
+  for (let i = 0; i < 100 && !ev("typeof __studio === 'object'"); i++) await wait(100);
+  if (!ev("typeof __studio === 'object'")) throw new Error('studio.js did not load');
+  installMock(W);
+  const M = W.__mock;
+  M.realGroups = true;
+  ev('state.inOffice = true; state.canGroup = true; state.canRotate = true; 1');
+  try { W.localStorage.clear(); } catch (e) {}
+  // every AI request is counted: none may happen here
+  W.__ai = [];
+  ev("{ const a0 = api; api = async (p, b, t) => { if (/\\/(visual|file)/.test(p)) window.__ai.push(p); return a0(p, b, t); }; } 1");
+  const f0 = W.fetch.bind(W);
+  W.fetch = (u, o) => { if (/\/api\/(napkin|claude)\/(visual|file)/.test(String(u))) W.__ai.push(String(u)); return f0(u, o); };
+  await ev('refreshStatus()');
+  const gateNow = async layout => { M.layoutName = layout; await ev('checkSlide()'); ev('showGate(); updateButtons(); 1'); };
+  await gateNow('Content_Slide');
+  const S = W.__studio, res = { ui: {}, d: {}, e: {}, s: {}, errors };
+  const samples = Object.fromEntries(EXAMPLES), DE = samples['Data engineering platform (8 concepts)'];
+  const REAL = JSON.parse(await (await fetch('/tests/fixtures/claude-dataeng-plan.json')).text());
+  const plan = ev('x => planFromClaude(x).plan')(REAL);
+  const leaves = s => s.items.flatMap(x => x.type === 'Group' ? x.group.shapes.items : [x]);
+  const tagOf = (x, k) => { const t = x.tags.getItemOrNullObject(k); return t.isNullObject ? null : t.value; };
+  const textsOf = s => leaves(s).map(x => String(x.textFrame && x.textFrame.textRange.text || '')).filter(t => t.trim() && !/^Click/.test(t));
+  const svgOf = prims => ev('p => thumb(p)')(prims);
+  const shot = (title, items) => { EV.insertAdjacentHTML('beforeend', `<h3>${title}</h3>` + items.map(([n, p]) => `<div>${svgOf(p)}<b>${n}</b></div>`).join('')); };
+  const status = () => d.getElementById('status').textContent;
+  const brandOK = prims => prims.every(p => (!p.fill || APPROVED.has(String(p.fill).toUpperCase())) && (!p.color || APPROVED.has(String(p.color).toUpperCase()) || p.color === ev('INK')) && (!p.text || p.size >= 22 || p.t === 'shape' && !p.text));
+  const minPt = prims => Math.min(...prims.filter(p => p.text).map(p => p.size));
+  const allText = (P, prims) => { const t = new Set(prims.filter(p => p.text).map(p => String(p.text))); return P.items.every(i => t.has(i.label) && (!i.detail || t.has(i.detail))); };
+  const R = ev('Object.assign({}, TEMPLATE.contentArea)');
+
+  /* ===== milestone 1: free design regeneration ===== */
+  {
+    const seen = new W.Set(), rounds = [];
+    for (let k = 0; k < 12; k++) { const l = ev('(P, R, s) => planMoreDesigns(P, R, s, 4)')(plan, R, seen); if (!l.length) break; rounds.push(l); }
+    const all = rounds.flat(), keys = all.map(r => ev('planDesignKey')(r));
+    res.d.rounds = rounds.map(l => l.map(r => `${r.name} [${r.kind}] ${ev('planStyleName')(r.style) || 'default'}`));
+    res.d.total = all.length; res.d.unique = new Set(keys).size === keys.length;
+    res.d.round1Kinds = new Set(rounds[0].map(r => r.kind)).size; res.d.round2New = rounds[1] ? rounds[1].every(r => !rounds[0].some(q => ev('planDesignKey')(q) === ev('planDesignKey')(r))) : false;
+    res.d.complete = all.every(r => allText(plan, r.prims)); res.d.minPt = Math.min(...all.map(r => minPt(r.prims))); res.d.brand = all.every(r => brandOK(r.prims));
+    res.d.distinctFamiliesPerRound = rounds.every(l => new Set(l.map(r => r.family)).size === l.length);
+    shot('1. More designs of the saved Claude plan (3 Nov) - round 1', rounds[0].map(r => [r.name, r.prims]));
+    if (rounds[1]) shot('1. More designs - round 2 (nothing repeated)', rounds[1].map(r => [r.name + ' (' + (ev('planStyleName')(r.style) || 'default') + ')', r.prims]));
+    // the panel: the free analysis of step 1 as the plan, Show, More, Insert
+    d.getElementById('content').value = DE;
+    S.studioFillSources('text'); S.studioTab('designs');
+    await S.showDesigns(false);
+    const first = S.ST.designs.map(x => x.r.name);
+    await S.showDesigns(true);
+    const second = S.ST.designs.map(x => x.r.name + '|' + ev('planStyleName')(x.r.style));
+    res.ui.cards = d.querySelectorAll('#stGrid .gcard').length; res.ui.first = first; res.ui.second = second; res.ui.note = d.getElementById('stDesignNote').textContent;
+    // insert the selected design: insert = preview, every shape tagged, record on the slide
+    S.ST.sel = 0;
+    const D0 = S.ST.designs[0];
+    await S.insertDesign();
+    const sl = M.slides[0], tv = leaves(sl).filter(x => tagOf(x, 'AIVB_V')), id = tv.length ? tagOf(tv[0], 'AIVB_V') : '';
+    const want = D0.r.prims.filter(p => p.text).map(p => String(p.text)).sort(), got = textsOf(sl).sort();
+    res.d.insert = { status: status().slice(0, 200), shapes: leaves(sl).filter(x => x.type !== 'Placeholder').length, tagged: tv.length, sameId: tv.every(x => tagOf(x, 'AIVB_V') === id),
+      record: !!tagOf(sl, `AIVB_R_${id}_N`), insertEqualsPreview: JSON.stringify(want) === JSON.stringify(got), fields: leaves(sl).filter(x => tagOf(x, 'AIVB_F')).length };
+    // a saved plan (a provider's result) is listed and drawn after a reload of the panel (this PC's storage)
+    S.savePlan(plan, 'Claude AI result (request test)'); S.studioFillSources();
+    res.d.savedListed = [...d.querySelectorAll('#stPlan option')].some(o => /^Saved: .*Claude AI result/.test(o.textContent));
+    // automatic density: content whose descriptions do not fit one slide -> the point names, said
+    const longP = ev('planFromItems')('Long descriptions', Array.from({ length: 9 }, (_, i) => ({ label: `Stage ${i + 1} name`, detail: 'A long description that explains this stage in full detail with many words so that it cannot fit at all ' + i })), false);
+    const da = ev('(P, R) => planAtDensity(P, R, "auto")')(longP, R), df = ev('(P, R) => planMoreDesigns(P, R, new Set(), 4)')(longP, R);
+    res.d.density = { auto: da.density, why: da.why || '', fullFits: df.length };
+    // negative: no content and no saved plan -> nothing drawn, said; another layout -> nothing inserted
+    d.getElementById('content').value = ''; S.studioFillSources('text'); S.ST.designs = [];
+    await S.showDesigns(false);
+    res.d.emptyMsg = status().slice(0, 120); res.d.emptyDesigns = S.ST.designs.length;
+    d.getElementById('content').value = DE; S.studioFillSources('text'); await S.showDesigns(false);
+    await gateNow('Title Slide');
+    const before = leaves(M.slides[0]).length; S.ST.sel = 0; await S.insertDesign();
+    res.d.gateRefused = leaves(M.slides[0]).length === before;
+    await gateNow('Content_Slide');
+    res.d.ai = W.__ai.length;
+  }
+
+  /* ===== milestone 2: edit an inserted visual ===== */
+  {
+    M.reset(); M.realGroups = true; await gateNow('Content_Slide');
+    const sl = M.slides[0];
+    sl.items.find(x => x.name === 'Title 1').textFrame.textRange.text = 'Data engineering platform';
+    const note = sl.shapes.addTextBox('Presenter reminder', { left: 20, top: 650, width: 220, height: 40 });
+    W.localStorage.clear();
+    S.savePlan(plan, 'Claude AI result (request test)'); S.studioFillSources(); d.getElementById('stPlan').selectedIndex = 1; S.ST.seen = new W.Set();
+    d.getElementById('stDensity').value = 'auto';
+    await S.showDesigns(false);
+    S.ST.sel = S.ST.designs.findIndex(x => x.r.family === 'platform'); if (S.ST.sel < 0) S.ST.sel = 0;
+    const D0 = S.ST.designs[S.ST.sel];
+    await S.insertDesign();
+    const vis = () => leaves(sl).filter(x => tagOf(x, 'AIVB_V')), id0 = tagOf(vis()[0], 'AIVB_V');
+    const ids0 = sl.items.map(x => x.id), beforePrims = D0.r.prims;
+    // hand edit in PowerPoint: one description changed directly on the slide
+    const det = vis().find(x => tagOf(x, 'AIVB_F') === plan.items[1].id + '|D');
+    if (det) det.textFrame.textRange.text = 'Changed by hand on the slide';
+    // select one shape inside the visual's group
+    M.selShapes = [vis()[3]];
+    await S.editLoad();
+    const E = S.ST.edit;
+    res.e.load = { ok: !!E, kind: E && E.rec.kind, rows: d.querySelectorAll('#stEditForm .edrow').length, hand: E ? E.hand.map(x => x.to) : [], status: status().slice(0, 160),
+      layouts: d.getElementById('stEdLayout') ? d.getElementById('stEdLayout').options.length : 0 };
+    // text, icon, colours, spacing
+    const row0 = d.querySelector('#stEditForm .edrow[data-k="0"]');
+    row0.querySelector('.edL').value = plan.items[0].label + ' layer';
+    const ic = d.querySelector('#stEditForm .edrow[data-k="2"] .edI'); const icon0 = ic.value; ic.value = icon0 === 'database' ? 'server' : 'database';
+    d.getElementById('stEdColour').value = '3'; d.getElementById('stEdSpacing').value = 'open';
+    // more white space where this layout still fits with the changes, else the colours alone (a refusal is tested below)
+    const tOpen = S.editTarget(), openFits = ev('(P, k, R) => planRender(P, k, R).ok')(tOpen.plan, tOpen.layout, S.ST.edit.rec.rect);
+    if (!openFits) d.getElementById('stEdSpacing').value = 'fill';
+    res.e.openFits = openFits;
+    const pvOK = S.editPreview();
+    await S.editApply();
+    const t1 = textsOf(sl), rec1 = W.JSON.parse(ev(`localStorage.getItem('aivb.rec.AIVB_R_${id0}')`));
+    res.e.apply = { preview: pvOK, status: status().slice(0, 220), newLabel: t1.includes(plan.items[0].label + ' layer'), oldLabelGone: !t1.includes(plan.items[0].label), handKept: t1.includes('Changed by hand on the slide'),
+      sameId: vis().every(x => tagOf(x, 'AIVB_V') === id0), ver: rec1 && rec1.ver, style: rec1 && rec1.style, icon: rec1 && rec1.plan.items[2].icon !== icon0,
+      noteUntouched: sl.items.includes(note) && note.textFrame.textRange.text === 'Presenter reminder', titleUntouched: sl.items.find(x => x.name === 'Title 1').textFrame.textRange.text === 'Data engineering platform',
+      oldShapesGone: ids0.filter(x => !sl.items.some(y => y.id === x)).length, onlyVisualReplaced: sl.items.filter(x => !tagOf(x, 'AIVB_V')).every(x => ids0.includes(x.id)) };
+    shot('2. Edit: before (left) and after (right): text, icon, colours, spacing; the hand edit kept', [['before: ' + D0.r.name, beforePrims], ['after', ev('(P, k, R) => planRender(P, k, R).prims')(Object.assign({}, rec1.plan, { style: rec1.style }), rec1.layout, rec1.rect)]]);
+    // another layout
+    M.selShapes = [vis()[0]]; await S.editLoad();
+    const ls = d.getElementById('stEdLayout'), other = [...ls.options].find(o => o.value !== S.ST.edit.rec.layout && !/does not fit/.test(o.textContent));
+    ls.value = other ? other.value : ls.value;
+    await S.editApply();
+    const rec2 = W.JSON.parse(ev(`localStorage.getItem('aivb.rec.AIVB_R_${id0}')`));
+    res.e.layout = { to: other && other.textContent, applied: rec2 && rec2.layout === (other && other.value), status: status().slice(0, 160) };
+    // undo, and undo again (redo)
+    await S.editUndo();
+    const rec3 = W.JSON.parse(ev(`localStorage.getItem('aivb.rec.AIVB_R_${id0}')`));
+    await S.editUndo();
+    const rec4 = W.JSON.parse(ev(`localStorage.getItem('aivb.rec.AIVB_R_${id0}')`));
+    res.e.undo = { back: rec3 && rec3.layout === rec1.layout, redo: rec4 && rec4.layout === rec2.layout, status: status().slice(0, 120) };
+    // negatives: an object now overlapping the visual; an empty label; text too long for the layout; not our shape; nothing selected
+    M.selShapes = [vis()[0]]; await S.editLoad();
+    const blocker = sl.shapes.addGeometricShape('Rectangle', { left: 500, top: 330, width: 120, height: 60 }), idsB = sl.items.map(x => x.id).join();
+    d.querySelector('#stEditForm .edrow[data-k="0"] .edL').value = 'Blocked change';
+    await S.editApply();
+    res.e.blocked = { refused: /overlap/.test(status()), unchanged: sl.items.map(x => x.id).join() === idsB, status: status().slice(0, 160) };
+    blocker.delete();
+    await S.editLoad();
+    d.querySelector('#stEditForm .edrow[data-k="0"] .edL').value = '';
+    const idsE = sl.items.map(x => x.id).join(); await S.editApply();
+    res.e.emptyLabel = { refused: /needs a label/.test(status()), unchanged: sl.items.map(x => x.id).join() === idsE };
+    await S.editLoad();
+    d.querySelector('#stEditForm .edrow[data-k="0"] .edD').value = 'An extremely long description '.repeat(9).trim();
+    const idsL = sl.items.map(x => x.id).join(); await S.editApply();
+    res.e.tooLong = { refused: /does not fit|longer than/.test(status()), unchanged: sl.items.map(x => x.id).join() === idsL, status: status().slice(0, 200) };
+    M.selShapes = [note]; await S.editLoad();
+    res.e.notOurs = /not inserted by AI Visual Builder 10.12/.test(status());
+    M.selShapes = []; await S.editLoad();
+    res.e.nothingSelected = /Select the visual/.test(status());
+    // a PowerPoint that changes tag values: the record is kept on this PC, said, and editing still works
+    M.reset(); M.realGroups = true; M.tagUpper = true; await gateNow('Content_Slide');
+    S.ST.sel = 0; await S.insertDesign();
+    const pcNote = /on this PC only/.test(status());
+    M.selShapes = [leaves(M.slides[0]).find(x => x.type !== 'Placeholder')]; await S.editLoad();
+    res.e.tagUpper = { pcNote, editable: !!S.ST.edit && S.ST.edit.rec.kind === 'plan' };
+    M.tagUpper = false;
+    // a built-in suggestion (step 3): its texts edited in place, a too long text refused, undo
+    M.reset(); M.realGroups = true; await gateNow('Content_Slide');
+    d.getElementById('content').value = samples['ML workflow (5 stages, intro)'];
+    ev('state.sections = []; 1'); await ev('analyseContent()'); await ev('insertVisual()');
+    const sb = M.slides[0], bv = leaves(sb).filter(x => tagOf(x, 'AIVB_V'));
+    M.selShapes = [bv.find(x => x.type === 'Group') || bv[0]]; await S.editLoad();
+    const E2 = S.ST.edit, inputs = [...d.querySelectorAll('#stEditForm .edT')];
+    const tgt = inputs.find(x => x.value.length > 3), old = tgt && tgt.value;
+    if (tgt) tgt.value = old + ' now';
+    await S.editApply();
+    const bt = textsOf(sb);
+    res.e.builtin = { kind: E2 && E2.rec.kind, texts: inputs.length, redesign: !!d.getElementById('stEdLayout'), changed: bt.includes(old + ' now'), status: status().slice(0, 160) };
+    await S.editLoad();
+    const tgt2 = [...d.querySelectorAll('#stEditForm .edT')].find(x => x.value === old + ' now');
+    if (tgt2) tgt2.value = 'This text is far too long for its shape '.repeat(6).trim();
+    await S.editApply();
+    res.e.builtinTooLong = /does not fit its shape/.test(status());
+    await S.editLoad(); await S.editUndo();
+    res.e.builtinUndo = textsOf(sb).includes(old) && !textsOf(sb).includes(old + ' now');
+    res.e.ai = W.__ai.length;
+  }
+
+  /* ===== milestone 3: several slides ===== */
+  {
+    M.reset(); M.realGroups = true; await gateNow('Content_Slide');
+    W.localStorage.clear(); S.savePlan(plan, 'Claude AI result (request test)'); S.studioFillSources(); d.getElementById('stPlan').selectedIndex = 1;
+    S.studioTab('slides');
+    d.getElementById('stDensity').value = 'auto'; d.getElementById('stSplit').value = 'auto';
+    await S.planTheSlides();
+    res.s.auto = { parts: S.ST.slides && S.ST.slides.parts.length, note: d.getElementById('stSlideNote').textContent };
+    d.getElementById('stSplit').value = 'split';
+    await S.planTheSlides();
+    const SS = S.ST.slides;
+    res.s.split = { parts: SS.parts.map(p => `${p.plan.title} [${p.list[p.i].name}] ${p.plan.items.length}`), how: SS.how, missing: SS.missing, note: d.getElementById('stSlideNote').textContent };
+    shot('3. Several slides (Claude plan, always split): overview, main flow, functions across it', SS.parts.map((p, k) => [`slide ${k + 1}: ${p.plan.title}`, p.list[p.i].prims]));
+    // other layout on slide 2
+    const l0 = SS.parts[1].list[SS.parts[1].i].name; d.querySelector('#stSlides button[data-k="1"]') && d.querySelector('#stSlides button[data-k="1"]').click();
+    res.s.otherLayout = { from: l0, to: S.ST.slides.parts[1].list[S.ST.slides.parts[1].i].name };
+    const n0 = M.slides.length, sel0 = M.slides[0], sel0Items = sel0.items.length;
+    await S.insertSlides();
+    const added = M.slides.slice(1), bt = W.JSON.parse(M.presTags.getItemOrNullObject('AIVB_BATCH').value || '{}');
+    res.s.insert = { status: status().slice(0, 200), added: added.length, expected: SS.parts.length, titles: added.map(s => s.items.find(x => x.name === 'Title 1').textFrame.textRange.text),
+      tagged: added.every(s => leaves(s).some(x => tagOf(x, 'AIVB_V'))), records: added.every(s => s.tags.items.some(t => /^AIVB_R_/.test(t.key))), batch: bt.state, selectedUnchanged: sel0.items.length === sel0Items,
+      everyText: plan.items.every(i => added.some(s => textsOf(s).includes(i.label)) && (!i.detail || added.some(s => textsOf(s).includes(i.detail)))) };
+    await ev('removeLast()');
+    res.s.removeAll = M.slides.length === n0;
+    // a long sequence: split in order, numbers continued
+    const seq = ev('planFromItems')('Fourteen steps', Array.from({ length: 14 }, (_, i) => ({ label: ['Plan', 'Collect', 'Clean', 'Label', 'Split', 'Train', 'Tune', 'Validate', 'Test', 'Package', 'Deploy', 'Review', 'Retrain', 'Retire'][i] + ' stage', detail: 'what happens in this step of the work' })), true);
+    const sq = ev('(P, R) => planSlides(P, R, { slides: "auto", density: "auto", overview: true })')(seq, R);
+    const sqR = sq.parts.map(q => Object.assign({ overview: !!q.overview }, ev('(P, R) => planVariations(P, R, 1).list[0]')(q, R)));
+    // each part drawn in every numbered layout that fits it: the first number is the part's first step
+    const body = sq.parts.filter(q => !q.overview), numbered = q => Object.keys(ev('PLAN_LAYOUTS')).map(k => ev('(P, k, R) => planRender(P, k, R)')(q, k, R)).filter(r => r.ok)
+      .map(r => r.prims.filter(p => p.text && /^\d+$/.test(String(p.text))).map(p => +p.text)).filter(a => a.length);
+    const nums = body.map(q => (numbered(q)[0] || []));
+    res.s.sequence = { parts: sq.parts.map(q => `${q.title} [${q.items.length}, from ${q.start + 1}]`), how: sq.how, missing: ev('planCoverage')(seq, sqR), numbers: nums.map(a => a.join(',')),
+      continued: nums.length >= 2 && nums.every((a, k) => a.length && Math.min(...a) === body[k].start + 1 && Math.max(...a) === body[k].start + body[k].items.length) };
+    shot('3. Fourteen steps: split in order, numbers continued', sqR.map((r, k) => [sq.parts[k].title, r.prims]));
+    // grouped content: by group
+    const grp = ev('planFromItems')('Three domains', Array.from({ length: 12 }, (_, i) => ({ label: ['Ingest', 'Stream', 'Batch', 'Queue', 'Store', 'Index', 'Archive', 'Catalog', 'Report', 'Predict', 'Alert', 'Share'][i] + ' service', detail: 'a short description of this service' })), false);
+    grp.groups = [{ id: 'g1', name: 'Input', role: 'category' }, { id: 'g2', name: 'Storage', role: 'category' }, { id: 'g3', name: 'Use', role: 'category' }];
+    grp.items.forEach((it, i) => { it.group = 'g' + (1 + Math.floor(i / 4)); });
+    const gs = ev('(P, R) => planSlides(P, R, { slides: "split", density: "auto", overview: false })')(grp, R);
+    res.s.groups = { parts: gs.parts.map(q => q.title), how: gs.how };
+    // a point too long for any slide: refused with the reason
+    const huge = ev('planFromItems')('Too long', [{ label: 'One', detail: 'word '.repeat(220).trim() }, { label: 'Two', detail: 'short' }], false);
+    const hs = ev('(P, R) => planSlides(P, R, { slides: "split", density: "full" })')(huge, R);
+    res.s.tooLong = { parts: hs.parts.length, why: hs.why };
+    // a refused insertion on slide 3: every slide added is removed again, the presentation as it was
+    d.getElementById('stSplit').value = 'split'; await S.planTheSlides();
+    const nB = M.slides.length, last = S.ST.slides.parts[S.ST.slides.parts.length - 1];
+    M.failText = last.plan.items[0].label;
+    await S.insertSlides();
+    M.failText = null;
+    res.s.rollback = { status: status().slice(0, 160), slides: M.slides.length === nB, batchTag: M.presTags.getItemOrNullObject('AIVB_BATCH').isNullObject };
+    // an insertion interrupted earlier (PowerPoint closed during it): found and removed, nothing else
+    M.presTags.add('AIVB_BATCH', JSON.stringify({ id: 'BTEST', state: 'running', n: 3, at: '2026-11-03T10:00:00' }));
+    await ev('PowerPoint.run(async c => { c.presentation.slides.add({}); c.presentation.slides.add({}); })');
+    M.slides.slice(-2).forEach(s => s.tags.add('AIVB_BATCH', 'BTEST'));
+    const nR = M.slides.length;
+    await S.checkBatch();
+    const shown = !d.getElementById('stRecover').hidden;
+    await S.recoverBatch();
+    res.s.recover = { offered: shown, removed: nR - M.slides.length, keptFirst: M.slides[0] === sel0 || M.slides.length >= 1, cleared: M.presTags.getItemOrNullObject('AIVB_BATCH').isNullObject, status: status().slice(0, 120) };
+    res.s.ai = W.__ai.length;
+  }
+
+  const A = res.acceptance = [
+    ['D1 More designs of a saved plan: new layouts each round, nothing repeated, all complete at 22 pt and on brand', res.d.total >= 8 && res.d.unique && res.d.round2New && res.d.round1Kinds >= 3 && res.d.complete && res.d.minPt >= 22 && res.d.brand && res.d.distinctFamiliesPerRound,
+      `${res.d.total} designs in ${res.d.rounds.length} rounds; round 1 kinds ${res.d.round1Kinds}; min ${res.d.minPt} pt; ${JSON.stringify(res.d.rounds.slice(0, 2))}`],
+    ['D2 Panel: Show / More designs from step 1 (no request), insert = preview, every shape tagged, record on the slide', res.ui.cards >= 3 && res.ui.second.length >= 1 && res.d.insert.insertEqualsPreview && res.d.insert.tagged >= 10 && res.d.insert.sameId && res.d.insert.record && res.d.insert.fields >= 8,
+      JSON.stringify({ first: res.ui.first, second: res.ui.second, insert: res.d.insert })],
+    ['D3 Saved plans listed; automatic density: names when the descriptions cannot fit, said', res.d.savedListed && res.d.density.auto === 'names' && /do not fit/.test(res.d.density.why), JSON.stringify(res.d.density)],
+    ['D4 Negative: no content -> nothing drawn, said; not a Content_Slide -> nothing inserted', res.d.emptyDesigns === 0 && /Paste content/.test(res.d.emptyMsg) && res.d.gateRefused, res.d.emptyMsg],
+    ['E1 Edit: text, icon, colours, spacing applied; the hand edit kept; only the visual replaced (title, other shapes untouched)', res.e.load.ok && res.e.load.rows === plan.items.length && res.e.apply.newLabel && res.e.apply.oldLabelGone && res.e.apply.handKept && res.e.apply.sameId && res.e.apply.ver === 2 && res.e.apply.icon && res.e.apply.style.accent === 3 && res.e.apply.style.spacing === (res.e.openFits ? 'open' : 'fill') && res.e.apply.noteUntouched && res.e.apply.titleUntouched && res.e.apply.onlyVisualReplaced,
+      JSON.stringify({ load: res.e.load, apply: res.e.apply })],
+    ['E2 Edit: another layout; undo and redo', res.e.layout.applied && res.e.undo.back && res.e.undo.redo, JSON.stringify({ layout: res.e.layout, undo: res.e.undo })],
+    ['E3 Edit negatives: overlapping object, empty label, too long text -> refused, slide unchanged; other objects and nothing selected -> explained', res.e.blocked.refused && res.e.blocked.unchanged && res.e.emptyLabel.refused && res.e.emptyLabel.unchanged && res.e.tooLong.refused && res.e.tooLong.unchanged && res.e.notOurs && res.e.nothingSelected,
+      JSON.stringify({ blocked: res.e.blocked, tooLong: res.e.tooLong })],
+    ['E4 Edit a built-in suggestion: texts in place, too long refused, undo; a PowerPoint changing tag values: record on this PC, said', res.e.builtin.kind === 'fixed' && res.e.builtin.changed && res.e.builtin.redesign && res.e.builtinTooLong && res.e.builtinUndo && res.e.tagUpper.pcNote && res.e.tagUpper.editable,
+      JSON.stringify({ builtin: res.e.builtin, tagUpper: res.e.tagUpper })],
+    ['S1 Several slides: one slide when it fits; split by role with an overview, every point and description on the slides, each previewed', res.s.auto.parts === 1 && res.s.split.parts.length >= 3 && !res.s.split.missing.length && /by role/.test(res.s.split.how) && res.s.otherLayout.from !== res.s.otherLayout.to,
+      JSON.stringify(res.s.split)],
+    ['S2 Batch insertion after the selected slide (titles, tags, records, batch done), removed together', res.s.insert.added === res.s.insert.expected && res.s.insert.tagged && res.s.insert.records && res.s.insert.batch === 'done' && res.s.insert.selectedUnchanged && res.s.insert.everyText && res.s.removeAll,
+      JSON.stringify(res.s.insert)],
+    ['S3 Long sequence split in order with numbers continued; groups split by group; a point too long for a slide refused', res.s.sequence.continued && !res.s.sequence.missing.length && /in order/.test(res.s.sequence.how) && /by group/.test(res.s.groups.how) && res.s.groups.parts.length >= 2 && res.s.tooLong.parts === 0 && /too long/.test(res.s.tooLong.why),
+      JSON.stringify({ sequence: res.s.sequence, groups: res.s.groups, tooLong: res.s.tooLong })],
+    ['S4 Recovery: a refused insertion leaves nothing; an interrupted one is found and only its slides removed', res.s.rollback.slides && res.s.rollback.batchTag && res.s.recover.offered && res.s.recover.removed === 2 && res.s.recover.cleared, JSON.stringify({ rollback: res.s.rollback, recover: res.s.recover })],
+    ['No AI request in any of it (free)', res.d.ai === 0 && res.e.ai === 0 && res.s.ai === 0, `requests: ${res.d.ai}/${res.e.ai}/${res.s.ai}`],
+    ['No script errors in the panel', !errors.length, errors.join(' | ') || 'none'],
+  ].map(([name, ok, evidence]) => ({ name, ok: !!ok, evidence }));
+  out.textContent = JSON.stringify(res);
+}
+(async () => {
+  const F = document.getElementById('f');
+  for (let i = 0; i < 300; i++) { try { if (F.contentWindow.location.pathname === '/v10.html' && F.contentDocument.readyState === 'complete') break; } catch (e) {} await wait(100); }
+  await run();
+})().catch(e => { out.textContent = JSON.stringify({ fatal: String(e && e.stack || e), errors }); });
+</script></body></html>
