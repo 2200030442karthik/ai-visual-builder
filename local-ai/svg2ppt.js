@@ -16,10 +16,12 @@ const SVG_DROP = 'script, foreignObject, iframe, object, embed, audio, video, an
 const PIC_STYLE = ['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-dasharray', 'opacity',
   'font-family', 'font-size', 'font-weight', 'font-style', 'text-anchor', 'dominant-baseline', 'display', 'visibility'];
 
-/* The SVG element, cleaned: nothing that runs code or loads anything from outside. */
-function cleanSvg(text) {
+/* The SVG element, cleaned: nothing that runs code or loads anything from outside. o.fonts (10.12.1, the original
+   design as a picture): fonts embedded in the file itself (data:font) are kept; they load nothing. */
+function cleanSvg(text, o) {
   const doc = new DOMParser().parseFromString(String(text || ''), 'image/svg+xml'), root = doc.documentElement;
   if (!root || root.nodeName.toLowerCase() !== 'svg' || doc.getElementsByTagName('parsererror').length) throw new Error('The SVG could not be read.');
+  const ext = o && o.fonts ? /url\(\s*['"]?(?!#|data:(?:font\/|application\/(?:x-)?font))[^)]*\)/gi : /url\(\s*['"]?(?!#)[^)]*\)/gi;
   root.querySelectorAll(SVG_DROP).forEach(e => e.remove());
   for (const el of [root, ...root.querySelectorAll('*')]) for (const a of [...el.attributes]) {
     const n = a.name.toLowerCase(), v = a.value.trim();
@@ -27,7 +29,7 @@ function cleanSvg(text) {
     else if ((n === 'href' || n === 'xlink:href') && !/^(?:#|data:image\/(?:png|jpe?g|gif|webp);)/i.test(v)) el.removeAttribute(a.name);
     else if (n === 'style') el.setAttribute('style', v.replace(/url\(\s*['"]?(?!#)[^)]*\)/gi, 'none'));
   }
-  root.querySelectorAll('style').forEach(st => { st.textContent = st.textContent.replace(/@import[^;]*;?/gi, '').replace(/url\(\s*['"]?(?!#)[^)]*\)/gi, 'none'); });
+  root.querySelectorAll('style').forEach(st => { st.textContent = st.textContent.replace(/@import[^;]*;?/gi, '').replace(ext, 'none'); });
   return root;
 }
 

@@ -43,11 +43,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import access as A
 import claude_visual as C
 
-VERSION = '10.12.0'
+VERSION = '10.12.1'
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'AIVisualBuilder')
 STATIC = {'/': ('v10.html', 'text/html; charset=utf-8'), '/v10.html': ('v10.html', 'text/html; charset=utf-8'),
-          **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'napkin', 'studio')},
+          **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'original', 'napkin', 'studio')},
           # design packs (packs/*.js): layout families added without changing the application
           **{f'/packs/{n}': (f'packs/{n}', 'text/javascript; charset=utf-8') for n in os.listdir(os.path.join(HERE, 'packs')) if n.endswith('.js')}}
 MAX_BODY = 256 * 1024
@@ -66,6 +66,7 @@ if '--test' in sys.argv:    # tests only: also serve the test harness and its in
                    '/tests/diag.html': ('tests/diag.html', 'text/html; charset=utf-8'),
                    '/tests/probe.html': ('tests/probe.html', 'text/html; charset=utf-8'),
                    '/tests/studio.html': ('tests/studio.html', 'text/html; charset=utf-8'),
+                   '/tests/original.html': ('tests/original.html', 'text/html; charset=utf-8'),
                    '/tests/samples.js': ('tests/samples.js', 'text/javascript; charset=utf-8'),
                    '/tests/mock.js': ('tests/mock.js', 'text/javascript; charset=utf-8')})
     for _n in os.listdir(os.path.join(HERE, 'tests', 'fixtures')):   # saved real Napkin outputs (regression fixtures)

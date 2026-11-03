@@ -1,0 +1,263 @@
+<!doctype html>
+<!-- V10.12.1 acceptance: a Napkin result inserted as the editable version, as the original design (one SVG picture) or
+     both on two new slides. Loads the real panel (v10.html) in an iframe with the strict PowerPoint stand-in (mock.js),
+     uses the saved real Napkin results (tests/fixtures) through "Re-check last result" with a stand-in panel host (no
+     network, no credits), counts every provider request (none may happen on insertion), and writes JSON into
+     <pre id="out">; #evidence holds both versions of some variations for the screenshot (tests/run_tests.py). -->
+<html><head><meta charset="utf-8"><title>V10.12.1 original-design tests</title><script src="/tests/samples.js"></script><script src="/tests/mock.js"></script>
+<style>body{font:12px Segoe UI,Arial} #evidence{display:grid;grid-template-columns:repeat(2,560px);gap:8px;width:1140px} #evidence div{border:1px solid #ccc;padding:3px} #evidence svg{width:100%;height:auto;display:block} h3{grid-column:1/-1;margin:8px 0 0}</style></head>
+<body><iframe id="f" src="/v10.html" style="width:420px;height:900px"></iframe><pre id="out">running</pre><div id="evidence"></div>
+<script>
+const out = document.getElementById('out'), errors = [], EV = document.getElementById('evidence');
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const STYLE = 'EHH64S9R64R64C9DCMSKCSHD6GTPADHDC4SKJC1D68WP6CK66DJ32RV4CGVG';
+async function run() {
+  const F = document.getElementById('f'), W = F.contentWindow, ev = x => W.eval(x), d = W.document;
+  W.addEventListener('error', e => errors.push(String(e.message)));
+  for (let i = 0; i < 100 && !ev("typeof __studio === 'object' && typeof originalAsset === 'function'"); i++) await wait(100);
+  if (!ev("typeof originalAsset === 'function'")) throw new Error('original.js did not load');
+  installMock(W);
+  const M = W.__mock;
+  M.realGroups = true;
+  ev('state.inOffice = true; state.canGroup = true; state.canRotate = true; 1');
+  try { W.localStorage.clear(); } catch (e) {}
+  const samples = Object.fromEntries(EXAMPLES), fx = async n => (await fetch('/tests/fixtures/' + n)).text();
+  const res = { a: {}, b: {}, fail: {}, fit: {}, errors };
+  const status = () => d.getElementById('status').textContent;
+  const tagOf = (x, k) => { try { const t = x.tags.getItemOrNullObject(k); return t.isNullObject ? null : t.value; } catch (e) { return null; } };
+  const leaves = s => s.items.flatMap(x => x.type === 'Group' ? x.group.shapes.items : [x]);
+  const textsOf = s => leaves(s).map(x => String(x.textFrame && x.textFrame.textRange.text || '')).filter(t => t.trim());
+  const own = s => s.items.filter(x => x.type !== 'Placeholder');
+  const CA = ev('Object.assign({}, TEMPLATE.contentArea)');
+  const PN = () => W.__napkin, N = () => W.__napkin.N, item = () => N().result.items[N().sel];
+
+  /* the stand-in panel host: the last Napkin request's files (saved results), every provider call counted */
+  const ACC = `access: { configured: true, mode: 'windows', authorized: true, user: 'test', reason: '', template: { layout_name: 'Content_Slide', fingerprint: { shapes: { 'content placeholder': [101.7, 205, 1078.5, 435.2], 'heading placeholder': [101.7, 119.1, 1078.5, 71.2], 'section tag strip': [1287.2, 0, 80.8, 720.3] }, tolerance: 3 } } }`;
+  const SVC = `{ server: '10.12.1', ${ACC}, napkin: { configured: true, enabled: true, used_today: 0, max_per_day: 20, style_id: '${STYLE}', variations: [1, 4], last: true }, claude: { configured: false, enabled: false, sdk: true } }`;
+  W.__calls = [];
+  ev(`api = async (path, body) => { const C = window.__cfg || {};
+    if (/^\\/api\\/(napkin|claude)\\//.test(path)) window.__calls.push(path);
+    if (path.startsWith('/api/napkin/last')) return { id: 'job-last', format: C.fmt, asked: C.files };
+    if (path.startsWith('/api/napkin/status')) return { status: 'completed', files: C.files, style_id: '${STYLE}' };
+    return ${SVC}; }; 1`);
+  W.fetch = async url => { url = String(url); W.__calls.push(url); const C = W.__cfg, i = +(/[?&]i=(\d+)/.exec(url) || [0, 0])[1];
+    if (C.missing === i) return new Response('not found', { status: 404 });
+    return new Response(C.files_[i % C.files_.length], { status: 200 }); };
+  const gate = async () => { M.layoutName = 'Content_Slide'; ev(`state.svc = ${SVC}; renderNapkin(); 1`); await ev('checkSlide()'); ev('showGate(); updateButtons(); renderNapkin(); 1'); };
+  await gate();
+  /* a saved result, checked again against `text` (no new request): o.files = SVG texts or .pptx bytes */
+  async function load(text, files, o) {
+    o = o || {};
+    W.__cfg = { files: files.length, files_: files, fmt: o.fmt || 'svg', missing: o.missing };
+    d.getElementById('content').value = text;
+    ev('state.sections = []; 1');
+    N().result = null;
+    d.getElementById('status').textContent = '';
+    d.getElementById('napkinBox').open = true;
+    ev('renderNapkin(); 1');
+    d.getElementById('napkinLast').click();
+    for (let i = 0; i < 400 && (N().busy || !status()); i++) await wait(50);
+    for (let i = 0; i < 400 && N().busy; i++) await wait(50);
+    return N().result;
+  }
+  const usableE = it => !it.check.excluded && !(it.quality && it.quality.excluded) && !it.sameAs;
+  const origOK = it => !!it.orig && it.orig.ok && !it.orig.block.length && !it.sameAs;
+  const summary = R => R ? R.items.map(it => ({ n: it.n, edit: usableE(it), orig: origOK(it), origStatus: it.orig && it.orig.ok ? it.orig.status : (it.orig && it.orig.why) || '', minPt: it.orig && it.orig.minPt, warn: it.orig && it.orig.warn, block: it.orig && it.orig.block })) : null;
+  const pick = i => { const b = d.querySelector(`#napkinPreview button.gcard[data-i="${i}"]`); if (b) b.click(); else { N().sel = i; } };
+  const mode = m => { const s = d.getElementById('napkinMode'); s.value = m; s.dispatchEvent(new W.Event('change')); };
+  const insert = () => new Promise(done => { d.getElementById('napkinInsert').click(); const t0 = Date.now(); (function w() { if (!N().busy || Date.now() - t0 > 8000) done(); else setTimeout(w, 30); })(); });
+  const snapshot = () => M.slides.map(s => s.id + ':' + s.items.map(x => x.id).join(','));
+  const shot = (title, it) => EV.insertAdjacentHTML('beforeend', `<h3>${title}</h3><div>${ev('p => thumb(p)')(it.conv.prims)}<b>Editable version (as inserted)</b></div>` +
+    `<div>${ev('(a, R) => thumb([originalPrim(a, R)])')(it.orig, CA)}<b>Original design (as inserted, one picture): ${it.orig.status}, from ${it.orig.minPt} pt</b></div>`);
+
+  /* ===== A. Educational content, 4 real Napkin variations ===== */
+  {
+    const edu = []; for (let i = 0; i < 4; i++) edu.push(await fx(`napkin-edu-${i}.svg`));
+    const R = await load(samples['Educational content'], edu);
+    res.a.items = summary(R); res.a.loadStatus = status().slice(0, 260);
+    res.a.modeBox = !d.getElementById('napkinModeBox').hidden; res.a.defaultMode = d.getElementById('napkinMode').value;
+    res.a.insertLabel = d.getElementById('napkinInsert').textContent;
+    // every offered card: the original's preview is exactly the picture that is inserted (same SVG, same place)
+    const cards = [...d.querySelectorAll('#napkinPreview button.gcard')];
+    res.a.cards = cards.length;
+    res.a.previewIsInsert = cards.every(c => { const it = R.items[+c.dataset.i]; if (!it.orig || !it.orig.ok) return true;
+      const img = c.querySelectorAll('.gthumb')[1] && c.querySelectorAll('.gthumb')[1].querySelector('image'), p = ev('(a, R) => originalPrim(a, R)')(it.orig, CA);
+      return !!img && img.getAttribute('href') === it.orig.href && Math.abs(+img.getAttribute('x') - p.x) < 0.01 && Math.abs(+img.getAttribute('width') - p.w) < 0.01; });
+    res.a.badges = cards.map(c => [...c.querySelectorAll('.badge')].map(b => b.textContent));
+    const k = R.items.findIndex(it => usableE(it) && origOK(it));
+    res.a.k = k;
+    pick(k); const it = item();
+    shot(`Educational content, variation ${it.n}: both versions`, it);
+    res.a.note = d.getElementById('napkinNote').textContent.slice(0, 700);
+    W.__calls = [];
+
+    // A1 the default: the editable version on the selected slide; insert = preview; nothing else changed
+    M.reset(); await gate();
+    const s1 = M.slides[0];
+    s1.items.find(x => x.name === 'Title 1').textFrame.textRange.text = 'Education';
+    const note = s1.shapes.addTextBox('Presenter reminder', { left: 20, top: 650, width: 220, height: 40 });
+    pick(k);
+    await insert();
+    const newE = own(s1).filter(x => x !== note);
+    res.a.edit = { status: status().slice(0, 240), shapes: newE.length, tagged: leaves(s1).filter(x => tagOf(x, 'AIVB_V')).length, picture: leaves(s1).some(x => x.data === it.orig.svg),
+      insertEqualsPreview: JSON.stringify(it.conv.prims.filter(p => p.text).map(p => String(p.text)).sort()) === JSON.stringify(textsOf(s1).filter(t => t !== 'Education' && t !== 'Presenter reminder').sort()),
+      noteKept: s1.items.includes(note) && note.textFrame.textRange.text === 'Presenter reminder' };
+    await ev('removeLast()');
+    res.a.edit.removed = own(s1).length === 1 && s1.items.includes(note);
+
+    // A2 the original on the selected slide: one picture, the cleaned SVG, fitted and centred, tagged; a second press
+    // for a copy; step 5 explains that it is a picture
+    mode('orig');
+    res.a.origLabel = d.getElementById('napkinInsert').textContent;
+    const before = snapshot();
+    await insert();
+    const pics = own(s1).filter(x => x !== note), P0 = ev('(a, R) => originalPlace(a, R)')(it.orig, CA), pic = pics[0];
+    res.a.orig = { status: status().slice(0, 320), added: pics.length, svg: !!pic && pic.coercion === 'svg', same: !!pic && pic.data === it.orig.svg, noScript: !!pic && !/<script|onload=|https?:\/\/app\.napkin/i.test(pic.data),
+      at: pic && [pic.left, pic.top, pic.width, pic.height].map(v => Math.round(v * 10) / 10), want: [P0.x, P0.y, P0.w, P0.h].map(v => Math.round(v * 10) / 10),
+      placed: !!pic && Math.abs(pic.left - P0.x) < 0.5 && Math.abs(pic.top - P0.y) < 0.5 && Math.abs(pic.width - P0.w) < 0.5 && Math.abs(pic.height - P0.h) < 0.5,
+      ratio: pic ? Math.abs(pic.width / pic.height - it.orig.vw / it.orig.vh) / (it.orig.vw / it.orig.vh) : 1,
+      inside: !!pic && pic.left >= CA.x - 0.5 && pic.top >= CA.y - 0.5 && pic.left + pic.width <= CA.x + CA.w + 0.5 && pic.top + pic.height <= CA.y + CA.h + 0.5,
+      tag: pic && tagOf(pic, 'AIVB_O'), name: pic && pic.name, noteKept: s1.items.includes(note), calls: W.__calls.slice() };
+    await insert();
+    res.a.dup = { warned: /just inserted/.test(status()), added: own(s1).length - 1 - pics.length };
+    // another copy, asked for again: the slide is full with the first one, so it goes on a new slide
+    d.getElementById('newSlide').checked = true;
+    await insert();
+    d.getElementById('newSlide').checked = false;
+    res.a.dup.second = M.slides.length === 2 && own(M.slides[1]).length === 1 && own(M.slides[1])[0].data === it.orig.svg ? 1 : 0; res.a.dup.status = status().slice(0, 160);
+    await ev(`PowerPoint.run(async c => { c.presentation.setSelectedSlides(['${s1.id}']); })`);
+    M.selShapes = [pic]; await W.__studio.editLoad();
+    res.a.studio = /original design/.test(status());
+    M.selShapes = [];
+
+    // A3 both: two new slides right after the selected one, the editable version then the original; removed together
+    await ev('removeLast()');                     // the copy above taken out, so "Both" is not a duplicate of it
+    M.reset(); await gate();
+    await ev(`PowerPoint.run(async c => { c.presentation.slides.add({}); })`);
+    const first = M.slides[0], next = M.slides[1];
+    next.shapes.addTextBox('Existing next slide', { left: 100, top: 300, width: 400, height: 50 });
+    await ev(`PowerPoint.run(async c => { c.presentation.setSelectedSlides(['${first.id}']); })`);
+    const snap0 = snapshot();
+    mode('both');
+    res.a.bothLabel = d.getElementById('napkinInsert').textContent;
+    await insert();
+    const A = M.slides[1], B = M.slides[2], bt = W.JSON.parse(M.presTags.getItemOrNullObject('AIVB_BATCH').value || '{}');
+    res.a.both = { status: status().slice(0, 400), slides: M.slides.length, order: M.slides[0] === first && M.slides[3] === next,
+      editable: !!A && leaves(A).filter(x => tagOf(x, 'AIVB_V')).length > 0 && !own(A).some(x => x.data === it.orig.svg),
+      editTexts: !!A && JSON.stringify(it.conv.prims.filter(p => p.text).map(p => String(p.text)).sort()) === JSON.stringify(textsOf(A).sort()),
+      original: !!B && own(B).length === 1 && own(B)[0].data === it.orig.svg, layouts: !!A && !!B && A.layout.id === first.layout.id && B.layout.id === first.layout.id,
+      batch: bt.state, slideTags: !!A && !!B && tagOf(A, 'AIVB_BATCH') === bt.id && tagOf(B, 'AIVB_BATCH') === bt.id,
+      firstUnchanged: snapshot()[0] === snap0[0], nextUnchanged: snapshot()[3] === snap0[1], calls: W.__calls.slice() };
+    await ev('removeLast()');
+    res.a.both.removed = JSON.stringify(snapshot()) === JSON.stringify(snap0); res.a.both.removeStatus = status().slice(0, 160);
+
+    // failures: nothing is left behind, and the other slides are as they were
+    const fails = {};
+    const tryFail = async (name, m, set, unset) => { await ev(`PowerPoint.run(async c => { c.presentation.setSelectedSlides(['${first.id}']); })`); set(); const s0 = snapshot(); mode(m); await insert(); unset();
+      fails[name] = { status: status().slice(0, 220), unchanged: JSON.stringify(snapshot()) === JSON.stringify(s0), lastInsert: !!ev('state.lastInsert'), batch: M.presTags.getItemOrNullObject('AIVB_BATCH').isNullObject ? null : W.JSON.parse(M.presTags.getItemOrNullObject('AIVB_BATCH').value).state }; };
+    M.presTags.delete('AIVB_BATCH');
+    await tryFail('both: PowerPoint refuses the picture (2nd slide)', 'both', () => { M.failPicture = true; }, () => { M.failPicture = false; });
+    await tryFail('both: PowerPoint refuses a text (1st slide)', 'both', () => { M.failText = it.conv.prims.find(p => p.text).text; }, () => { M.failText = null; });
+    await tryFail('original: PowerPoint reports success but adds nothing', 'orig', () => { M.lostPicture = true; }, () => { M.lostPicture = false; });
+    await tryFail('original: the slide has no free space', 'orig', () => { M.slides[0].shapes.addGeometricShape('Rectangle', { left: 110, top: 210, width: 1000, height: 420 }); }, () => {});
+    res.fail = fails;
+    res.a.calls = W.__calls.filter(u => /\/api\/(napkin|claude)\//.test(u));
+  }
+
+  /* ===== B. validation: real and synthetic results ===== */
+  {
+    const one = async (name, text, files, o) => { M.reset(); await gate(); const R = await load(text, files, o); const r = { status: status().slice(0, 220), items: summary(R),
+      cards: d.querySelectorAll('#napkinPreview button.gcard').length, pick: d.getElementById('napkinPick').textContent.slice(0, 300) }; res.b[name] = r; return R; };
+    const auto = []; for (let i = 0; i < 4; i++) auto.push(await fx(`napkin-autoval-${i}.svg`));
+    await one('autoval', samples['Automation validation report'], auto);
+    // a tall design: text too small once fitted -> the original is blocked; the editable version is unaffected
+    await one('dataeng', samples['Data engineering platform (8 concepts)'], [await fx('napkin-dataeng-0.svg')]);
+    if (N().result) { pick(0); mode('orig'); res.b.dataeng.origInsertDisabled = d.getElementById('napkinInsert').disabled; res.b.dataeng.option = d.getElementById('napkinMode').selectedOptions[0].textContent; mode('edit'); }
+    // the real staircase: original fine, below 22 pt said
+    const R5 = await one('ml5', samples['ML workflow (5 stages, intro)'], [await fx('napkin-ml5.svg')]);
+    if (R5) shot('Machine learning workflow (real Napkin SVG): both versions', R5.items[0]);
+    // a category missing in Napkin's design: the editable version adds it, the original is flagged (and says so on insertion)
+    const GL = samples['Generative AI (list)'];
+    const cats = labels => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 300">' + labels.map((t, i) => `<rect x="${20 + i * 245}" y="100" width="215" height="110" rx="12" fill="#62B7E4"/><text x="${127 + i * 245}" y="162" text-anchor="middle" font-size="26" font-family="Open Sans">${t}</text>`).join('') + '</svg>';
+    await one('missingMusic', GL, [cats(['Text', 'Images', 'Videos', 'Code'])]);
+    if (N().result) { pick(0); mode('orig'); M.reset(); await gate(); await insert(); res.b.missingMusic.insertStatus = status().slice(0, 260); res.b.missingMusic.inserted = own(M.slides[0]).length; mode('edit'); }
+    // invented figures: neither version is offered
+    await one('wrongFigure', GL, [cats(['Text 87%', 'Images', 'Music', 'Videos', 'Code']).replace('viewBox="0 0 1000 300"', 'viewBox="0 0 1250 300"')]);
+    // the reconstruction fails but the original passes: the original alone can go in, "Both" cannot
+    await one('rebuildFails', GL, [cats(['Text', 'Images', 'Music', 'Code']).replace('</svg>', '<rect x="20" y="230" width="960" height="60" fill="#62B7E4"/><text x="500" y="270" text-anchor="middle" font-size="26">Videos</text></svg>')]);
+    if (N().result) {
+      const it = N().result.items[0];
+      it.quality = Object.assign({}, it.quality, { block: ['test: the rebuild could not repair this layout'], excluded: true });   // a failed reconstruction
+      ev('renderNapkin(); 1'); pick(0);
+      const opts = () => [...d.getElementById('napkinMode').options].map(o => o.textContent);
+      mode('edit'); const e0 = d.getElementById('napkinInsert').disabled; mode('both'); const b0 = d.getElementById('napkinInsert').disabled; mode('orig'); const o0 = d.getElementById('napkinInsert').disabled;
+      M.reset(); await gate(); await insert();
+      res.b.rebuildFails.independent = { editDisabled: e0, bothDisabled: b0, origEnabled: !o0, options: opts(), inserted: own(M.slides[0]).length === 1 && own(M.slides[0])[0].data === it.orig.svg, status: status().slice(0, 200),
+        card: d.querySelectorAll('#napkinPreview button.gcard').length };
+      mode('edit');
+    }
+    // missing and invalid files: reported, nothing offered or inserted
+    await one('missingFile', GL, [cats(['Text', 'Images', 'Music', 'Videos', 'Code']), cats(['Text', 'Images', 'Music', 'Videos', 'Code'])], { missing: 1 });
+    await one('invalidFile', GL, ['<svg xmlns="http://www.w3.org/2000/svg"><g><text>broken</svg>']);
+    res.b.filesUnchanged = M.slides.length === 1 && own(M.slides[0]).length === 0 && !N().result;
+    // Napkin's PowerPoint export (real file): the original is its first slide drawn as SVG
+    const ppt = new Uint8Array(await (await fetch('/tests/fixtures/napkin-genai.pptx')).arrayBuffer());
+    const RP = await one('pptx', samples['Generative AI (sentence)'], [ppt], { fmt: 'ppt' });
+    if (RP && RP.items[0] && origOK(RP.items[0])) { pick(0); mode('orig'); M.reset(); await gate(); await insert(); res.b.pptx.inserted = own(M.slides[0]).length === 1 && own(M.slides[0])[0].coercion === 'svg'; res.b.pptx.insertStatus = status().slice(0, 200); mode('edit'); }
+    res.b.calls = W.__calls.filter(u => /\/api\/napkin\/(visual)/.test(u)).length;
+  }
+
+  /* ===== C. fitting: every saved design in wide, narrow and short spaces - scaled by one factor, centred, inside ===== */
+  {
+    const names = ['napkin-autoval-0.svg', 'napkin-autoval-1.svg', 'napkin-autoval-2.svg', 'napkin-autoval-3.svg', 'napkin-dataeng-0.svg', 'napkin-edu-0.svg', 'napkin-edu-1.svg', 'napkin-edu-2.svg', 'napkin-edu-3.svg', 'napkin-facts-0.svg', 'napkin-facts-1.svg', 'napkin-facts-2.svg', 'napkin-facts-3.svg', 'napkin-ml5.svg'];
+    const rects = [CA, { x: 600, y: 205, w: 580, h: 435 }, { x: 102, y: 400, w: 1078, h: 240 }];
+    const bad = [], minPts = {};
+    for (const n of names) {
+      const src = await fx(n), a = ev('it => originalAsset(it)')({ fmt: 'svg', data: src });
+      if (!a.ok) { bad.push(n + ': ' + a.why); continue; }
+      minPts[n] = ev('(a, R) => originalPlace(a, R).minPt')(a, CA);
+      for (const R of rects) { const p = ev('(a, R) => originalPlace(a, R)')(a, R);
+        const inside = p.x >= R.x - 1e-6 && p.y >= R.y - 1e-6 && p.x + p.w <= R.x + R.w + 1e-6 && p.y + p.h <= R.y + R.h + 1e-6;
+        const ratio = Math.abs(p.w / p.h - a.vw / a.vh) < 1e-6 * (a.vw / a.vh), fills = Math.abs(p.w - R.w) < 1e-6 || Math.abs(p.h - R.h) < 1e-6;
+        const centred = Math.abs(p.x + p.w / 2 - (R.x + R.w / 2)) < 1e-6 && Math.abs(p.y + p.h / 2 - (R.y + R.h / 2)) < 1e-6;
+        if (!(inside && ratio && fills && centred)) bad.push(`${n} in ${R.w}x${R.h}`); }
+      if (/<script|https?:\/\/app\.napkin|@import/i.test(a.svg)) bad.push(n + ': unsafe content kept');
+      if (/data:font/.test(src) && !/data:font/.test(a.svg)) bad.push(n + ': embedded font not kept');
+    }
+    res.fit = { bad, minPts, checked: names.length };
+  }
+
+  const fl = res.fail, okFail = f => f && f.unchanged && !f.lastInsert && f.batch !== 'running';
+  const A_ = res.a, B_ = res.b;
+  res.acceptance = [
+    ['O1 Both versions previewed per variation; "Editable version" is the default; the original preview is the inserted picture', A_.modeBox && A_.defaultMode === 'edit' && A_.insertLabel === 'Insert editable version' && A_.cards >= 2 && A_.previewIsInsert && A_.k >= 0,
+      JSON.stringify({ items: A_.items, cards: A_.cards, badges: A_.badges.slice(0, 2), label: A_.insertLabel })],
+    ['O2 Insert editable: native tagged shapes, insert = preview, no picture of the original, other objects untouched, removable', A_.edit.shapes > 0 && A_.edit.tagged > 0 && !A_.edit.picture && A_.edit.insertEqualsPreview && A_.edit.noteKept && A_.edit.removed,
+      JSON.stringify(A_.edit)],
+    ['O3 Insert original: exactly one SVG picture (the cleaned file), fitted and centred in the content area, no distortion or cropping, tagged; step 5 explains it is a picture', A_.orig.added === 1 && A_.orig.svg && A_.orig.same && A_.orig.noScript && A_.orig.placed && A_.orig.ratio < 0.001 && A_.orig.inside && /\|/.test(A_.orig.tag || '') && /original design/.test(A_.orig.name || '') && A_.orig.noteKept && A_.studio,
+      JSON.stringify(A_.orig)],
+    ['O4 Insert both: two new slides right after the selected one (same layout), editable then original, batch recorded, other slides untouched, removed together', A_.both.slides === 4 && A_.both.order && A_.both.editable && A_.both.editTexts && A_.both.original && A_.both.layouts && A_.both.batch === 'done' && A_.both.slideTags && A_.both.firstUnchanged && A_.both.nextUnchanged && A_.both.removed,
+      JSON.stringify(A_.both)],
+    ['O5 Duplicate insertion prevented: a second press is asked for before another copy', A_.dup.warned && A_.dup.added === 0 && A_.dup.second === 1, JSON.stringify(A_.dup)],
+    ['O6 Failures leave nothing: picture refused on slide 2, text refused on slide 1, picture lost, no free space', Object.values(fl).length === 4 && Object.values(fl).every(okFail) && Object.values(fl).every(f => /Could not insert/.test(f.status)),
+      JSON.stringify(fl)],
+    ['O7 Readability: a tall design whose text would be 5-6 pt is blocked as an original (editable unaffected); below 22 pt flagged, never silently', B_.dataeng.items && B_.dataeng.items[0] && !B_.dataeng.items[0].orig && /unreadable/.test(B_.dataeng.items[0].block.join(' ')) && B_.dataeng.origInsertDisabled && /not available/.test(B_.dataeng.option) && B_.autoval.items.some(i => !i.orig && /unreadable/.test(i.block.join(' '))) && B_.ml5.items[0].orig && /typography/.test(B_.ml5.items[0].warn.join(' ')),
+      JSON.stringify({ dataeng: B_.dataeng.items, autoval: B_.autoval.items, ml5: B_.ml5.items })],
+    ['O8 Content: a point missing in the original is flagged (and said on insertion) while the editable version adds it; invented figures block both versions', B_.missingMusic.items[0].orig && /Music missing/.test(B_.missingMusic.items[0].origStatus) && B_.missingMusic.inserted === 1 && /Music missing/.test(B_.missingMusic.insertStatus) && B_.wrongFigure.cards === 0 && !B_.wrongFigure.items[0].orig && !B_.wrongFigure.items[0].edit,
+      JSON.stringify({ missingMusic: B_.missingMusic, wrongFigure: B_.wrongFigure.items })],
+    ['O9 The original can go in alone when the reconstruction fails ("Editable" and "Both" unavailable, said)', B_.rebuildFails.independent && B_.rebuildFails.independent.editDisabled && B_.rebuildFails.independent.bothDisabled && B_.rebuildFails.independent.origEnabled && B_.rebuildFails.independent.inserted && B_.rebuildFails.independent.card === 1,
+      JSON.stringify(B_.rebuildFails.independent)],
+    ['O10 Missing or invalid files: reported, nothing offered or inserted; Napkin PowerPoint export: its first slide goes in as an SVG picture', !B_.missingFile.items && /Could not download/.test(B_.missingFile.status) && !B_.invalidFile.items && /could not be read/i.test(B_.invalidFile.status) && B_.filesUnchanged && B_.pptx.inserted,
+      JSON.stringify({ missing: B_.missingFile.status, invalid: B_.invalidFile.status, pptx: B_.pptx })],
+    ['O11 Fitting: every saved design in wide, narrow and short spaces is scaled by one factor, centred and wholly inside; embedded fonts kept, scripts and external links removed', !res.fit.bad.length, JSON.stringify(res.fit)],
+    ['No provider request when inserting (saved files only)', A_.calls.length === 0 && B_.calls === 0 && !A_.orig.calls.length && !A_.both.calls.length, `insertion requests: ${A_.calls.length}; new generation requests: ${B_.calls}`],
+    ['No script errors in the panel', !errors.length, errors.join(' | ') || 'none'],
+  ].map(([name, ok, evidence]) => ({ name, ok: !!ok, evidence }));
+  out.textContent = JSON.stringify(res);
+}
+(async () => {
+  const F = document.getElementById('f');
+  for (let i = 0; i < 300; i++) { try { if (F.contentWindow.location.pathname === '/v10.html' && F.contentDocument.readyState === 'complete') break; } catch (e) {} await wait(100); }
+  await run();
+})().catch(e => { out.textContent = JSON.stringify({ fatal: String(e && e.stack || e), errors }); });
+</script></body></html>

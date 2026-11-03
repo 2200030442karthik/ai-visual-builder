@@ -16,3 +16,4 @@ local-ai/tests/.access-probe.json
 /git_diff_*.txt
 local-ai/tests/run_after_fix.json
 local-ai/tests/last-run-studio.json
+local-ai/tests/last-run-original.json

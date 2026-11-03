@@ -1,5 +1,5 @@
-AI VISUAL BUILDER V10.12
-========================
+AI VISUAL BUILDER V10.12.1
+==========================
 Authorized employee + Content Slide of the approved template -> paste content -> analyze -> accurate infographic and
 pictorial suggestions -> preview -> insert editable PowerPoint shapes. Lightweight: JavaScript in the panel, a small
 Python host, no AI models, no GPU. Optional Napkin AI (paid) with the approved Simplilearn brand style.
@@ -22,6 +22,7 @@ FILES (local-ai)
   pptx.js         Napkin PowerPoint files: reading and checks
   rebuild.js      a Napkin result rebuilt in the template in Napkin's own arrangement (ring, fan, row, column, grid;
                   card, pillar, badge or plain items); cards only as a reported fallback
+  original.js     a Napkin result's original design as one SVG picture (fitting, readability and content checks)
   napkin.js       optional Napkin AI and Claude AI sections
   studio.js       step 5 (free): more designs, several slides, editing inserted visuals
   server.py       panel host (https://localhost:44317), Napkin proxy; key never reaches the panel
@@ -105,6 +106,24 @@ INSTALL, RESTART, RECOVER
   powershell -File local-ai\start-ai-visual-builder.ps1 -Status shows the running version, the version on disk and copies.
 - The V10 add-in: local-ai\Install V10 add-in.bat registers it (by its own Id; V9 untouched), Remove V10 add-in.bat removes
   only V10. If PowerPoint still shows an old panel: close PowerPoint, run install-v10-addin.ps1 -ClearCache, start it again.
+
+NAPKIN AI: WHAT TO INSERT (V10.12.1, no extra request)
+Each variation shows two previews, each exactly as it goes in: the editable version and the original Napkin design.
+"What to insert" (under the result):
+- Editable version (the default): native PowerPoint shapes and text (Open Sans, 22 pt and up, approved colours);
+  icons may be small pictures. Editable later in step 5.
+- Original Napkin design: Napkin's own SVG as ONE picture (vector graphic): its illustrations, icons, connectors,
+  text, colours and composition exactly as returned (fonts embedded in the file are kept; scripts and external links
+  are removed). Scaled by one factor and centred in the free content area: never cropped or distorted. It is not
+  editable as shapes; in PowerPoint, right-click > Convert to Shape turns its parts into shapes.
+- Both: two new slides after the selected one, on its Content_Slide layout: the editable version, then the original.
+  "Remove last inserted visual" removes both. An insertion interrupted half-way is offered for removal (step 5).
+Each version is checked on its own. The original: its text against your content (a missing point is flagged on the
+card and in the status after insertion; invented figures block it) and its readability: Napkin's text is usually
+smaller than 22 pt once fitted (flagged, kept as designed); below 9 pt it is blocked (tall designs). When only one
+version passes, only that one can be inserted ("not available for this variation" on the other choices). The same
+version of the same variation pressed again right after inserting asks for a second press. Everything comes from the
+files already kept on this PC: no request, no credits.
 
 NAPKIN AI
 - Off until "Configure Napkin AI.bat" stores your API token (in %LOCALAPPDATA%\AIVisualBuilder\napkin.json).

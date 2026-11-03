@@ -1,4 +1,4 @@
-"""V10.12 acceptance run: starts a test panel host (plain HTTP, port 44398, test files enabled), opens tests/harness.html
+"""V10.12.1 acceptance run: starts a test panel host (plain HTTP, port 44398, test files enabled), opens tests/harness.html
 in ONE headless Edge, waits for the harness to finish and prints a summary; then the V10.12 studio tests
 (tests/studio.html: more designs, edits, several slides) in the same Edge, with a screenshot of their previews
 (tests/evidence/v10.12-studio.png). Lightweight on purpose: no AI models, no
@@ -69,7 +69,8 @@ def main():
         with open(out_json, 'w', encoding='utf-8') as f:
             json.dump(res, f, indent=1, ensure_ascii=False)
         report(res, time.time() - t0)
-        studio(cdp)
+        acceptance_page(cdp, 'studio.html', 'V10.12', 'last-run-studio.json', 'v10.12-studio.png')
+        acceptance_page(cdp, 'original.html', 'V10.12.1', 'last-run-original.json', 'v10.12.1-original.png')
     finally:
         subprocess.run([sys.executable, os.path.join(HERE, 'test_server.py')])
         subprocess.run([sys.executable, os.path.join(HERE, 'test_claude.py')])
@@ -88,9 +89,10 @@ def main():
         shutil.rmtree(PROFILE, ignore_errors=True)      # about 40 MB, rebuilt on every run
 
 
-def studio(cdp):
-    """V10.12: tests/studio.html in the same Edge; its previews saved as tests/evidence/v10.12-studio.png."""
-    cdp.js(f"location.href = 'http://localhost:{PORT}/tests/studio.html'")
+def acceptance_page(cdp, name, label, out_json, png):
+    """An acceptance page in the same Edge (V10.12 tests/studio.html, V10.12.1 tests/original.html); its previews saved
+    as tests/evidence/<png>."""
+    cdp.js(f"location.href = 'http://localhost:{PORT}/tests/{name}'")
     time.sleep(1)
     t0, txt = time.time(), 'loading'
     while time.time() - t0 < 180:
@@ -102,13 +104,13 @@ def studio(cdp):
             break
         time.sleep(1)
     if txt in ('running', 'loading'):
-        print('Studio tests did not finish; they were at:', cdp.js('document.title'))
+        print(f'{name} did not finish; it was at:', cdp.js('document.title'))
         return
     res = json.loads(txt)
-    with open(os.path.join(HERE, 'last-run-studio.json'), 'w', encoding='utf-8') as f:
+    with open(os.path.join(HERE, out_json), 'w', encoding='utf-8') as f:
         json.dump(res, f, indent=1, ensure_ascii=False)
     if 'fatal' in res:
-        print('STUDIO FATAL', res['fatal'], res.get('errors'))
+        print(f'{name} FATAL', res['fatal'], res.get('errors'))
         return
     try:
         cdp.js("document.getElementById('f').style.display = 'none'; document.getElementById('out').style.display = 'none'; 1")
@@ -116,13 +118,13 @@ def studio(cdp):
         shot = cdp.call('Page.captureScreenshot', format='png', captureBeyondViewport=True, clip={'x': 0, 'y': 0, 'width': 1260, 'height': h + 10, 'scale': 1})
         import base64
         os.makedirs(os.path.join(HERE, 'evidence'), exist_ok=True)
-        with open(os.path.join(HERE, 'evidence', 'v10.12-studio.png'), 'wb') as f:
+        with open(os.path.join(HERE, 'evidence', png), 'wb') as f:
             f.write(base64.b64decode(shot['data']))
-        print('studio previews: tests/evidence/v10.12-studio.png')
+        print(f'{name} previews: tests/evidence/{png}')
     except Exception as e:
-        print('studio screenshot not taken:', e)
+        print(f'{name} screenshot not taken:', e)
     acc = res.get('acceptance', [])
-    print(f"V10.12 acceptance: {sum(a['ok'] for a in acc)} of {len(acc)} passed")
+    print(f"{label} acceptance: {sum(a['ok'] for a in acc)} of {len(acc)} passed")
     for a in acc:
         print(f"  {'PASS' if a['ok'] else 'FAIL'}  {a['name']}  | {a['evidence'][:300]}")
 

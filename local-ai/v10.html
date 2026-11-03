@@ -85,7 +85,7 @@
   </style>
 </head>
 <body>
-  <h1>AI Visual Builder <span style="font-size:11px;font-weight:400;color:var(--muted)">version 10.12</span></h1>
+  <h1>AI Visual Builder <span style="font-size:11px;font-weight:400;color:var(--muted)">version 10.12.1</span></h1>
   <p class="sub">Turns your text into accurate, editable infographics in the Simplilearn template. Analyse your content, then generate: native infographics (built in, free), or Napkin AI or Claude AI (optional, paid, asked before each request); preview, then insert. Nothing is sent to the internet unless you use one of those two.</p>
 
   <div class="panel" id="aiStatus">
@@ -2434,7 +2434,7 @@
           await context.sync();
         });
         state.lastInsert = null;
-        const extra = (L.extraSlides || []).length ? ` and ${L.extraSlides.length} detail slide${L.extraSlides.length > 1 ? 's' : ''}` : '';
+        const extra = (L.extraSlides || []).length ? ` and ${L.extraWhat || `${L.extraSlides.length} detail slide${L.extraSlides.length > 1 ? 's' : ''}`}` : '';
         setStatus(L.newSlide ? `The new slide with the visual${extra} was removed.` : `Removed the ${L.ids.length} inserted object${L.ids.length === 1 ? '' : 's'}${extra}. (An empty placeholder that was replaced is not restored; add it back from Layout > Reset if needed.)`);
       } catch (e) { setStatus('Could not remove the visual (it may already have been changed or deleted): ' + errText(e), true); }
       finally { updateButtons(); }
@@ -2769,6 +2769,7 @@
   <script src="/rebuild.js"></script>
   <script src="/plan.js"></script>
   <script src="/packs/pro-10.11.js"></script>
+  <script src="/original.js"></script>
   <script src="/napkin.js"></script>
   <script src="/studio.js"></script>
 </body>

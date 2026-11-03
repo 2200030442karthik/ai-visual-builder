@@ -1,6 +1,6 @@
 # AI Visual Builder — project status
 
-## Current version: V10.12 (3 Nov 2026)
+## Current version: V10.12.1 (3 Nov 2026)
 Authorized employee + Content Slide of the approved template → paste content → analyze → accurate infographic and
 pictorial suggestions → preview → insert editable PowerPoint shapes. JavaScript panel + small Python host; no AI
 models, no GPU. Three ways to generate: native infographics (built in, free), and optionally Napkin AI (single approved
@@ -16,14 +16,30 @@ Simplilearn brand style) or Claude AI (Anthropic API), both paid, confirmed per 
 | Napkin PPTX | `local-ai/pptx.js` | reading and checks |
 | Napkin rebuild | `local-ai/rebuild.js` | `napkinFaithful`: Napkin's own arrangement (ring / fan / row / column / grid) and item look rebuilt natively; `napkinRebuild` (cards) for sequences and as a reported fallback |
 | Designs, slides, edits | `local-ai/studio.js` | step 5, free (no AI request): more designs of a saved content plan, content density, several slides (logical split, overview, batch insertion with recovery), editing of inserted visuals (PowerPoint tags `AIVB_V`/`AIVB_F` + a record on the slide, one undo) |
+| Original design | `local-ai/original.js` | 10.12.1: a drawn result's original (Napkin SVG, or the first slide of its PPTX drawn as SVG) as one SVG picture: cleaned (`cleanSvg` with embedded fonts kept), fitted by one factor and centred, readability (smallest text in pt; below 22 flagged, below `ORIGINAL_MIN_PT` 9 blocked) and content (its own text through `accuracy`) |
 | Napkin AI + Claude AI | `local-ai/napkin.js` | one provider panel per AI (`makePanel`): 1 or 4 variations, checks, previews (as inserted and as returned), not-offered variations kept for inspection, re-check without a new request, insertion, Napkin/Claude comparison |
 | Layout engine | `local-ai/plan.js`, `local-ai/packs/*.js` (`packs/README.txt`) | content plans (roles, groups, flow, sources), layout families registered in versioned design packs (core@10.10: 11, pro@10.11.0: 12), measured at 22 pt, checked |
 | Claude AI backend | `local-ai/claude_visual.py`, `configure-claude.ps1`, `Configure Claude.bat` | one design-specification request for 1 or 4 visuals (drawings kept for cached results and tests), `max_retries=0`, no fallback model; model / effort / max_tokens / prices in `%LOCALAPPDATA%\AIVisualBuilder\claude.json` |
 | Install / restart | `local-ai/start-ai-visual-builder.ps1` (+ `Restart AI Visual Builder.bat`), `install-v10-addin.ps1` (+ `Install V10 add-in.bat`, `Remove V10 add-in.bat`) | restart replaces every outdated copy; V10 registration by its own manifest Id, V9 never touched |
 | Access | `local-ai/access.py`, `access.example.json` | administrator policy in `%ProgramData%\AIVisualBuilder\access.json` |
-| Panel host | `local-ai/server.py` | 10.12.0; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
-| Manifest | `manifest-v10.xml` | 10.12.0.0 (SSO entry to add once the app is registered, see README) |
+| Panel host | `local-ai/server.py` | 10.12.1; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
+| Manifest | `manifest-v10.xml` | 10.12.1.0 (SSO entry to add once the app is registered, see README) |
 | Diagnosis | `local-ai/tests/run_diag.py`, `diag.html`, `diag_cases.py` | every layout considered with its reason; every Napkin variation with arrangement, status and preview |
+
+## V10.12.1 — insert the editable version, the original Napkin design, or both (3 Nov)
+"What to insert" in the Napkin section (`napkin.js`, `original.js`), no new request:
+
+| Choice | What goes in |
+|---|---|
+| Editable version (default) | as in V10.12: native shapes and text, tagged and recorded for step 5 |
+| Original design | the cleaned SVG as one picture through `setSelectedDataAsync` (XmlSvg), fitted into the slide's free content area, checked again there (readability), exactly one picture expected, placed where asked, named and tagged `AIVB_O` (step 5 says it is a picture) |
+| Both | two new slides after the selected one (same layout and master): editable, then original; `AIVB_BATCH` running/done like step 5's slides; removed together; any failure removes both |
+
+Each version validated separately; a variation is offered when either passes, and the other choices say "not available".
+The original's preview is the inserted picture (same SVG, same place). Duplicate guard: the same version of the same
+variation, just inserted, needs a second press. Tests: `tests/original.html` (O1-O11 + no request + no script errors,
+13 of 13; evidence `tests/evidence/v10.12.1-original.png`); regression 29 of 29, V10.12 studio 14 of 14, server and
+Claude ALL PASSED. **Not yet verified in real PowerPoint.**
 
 ## V10.12 — free design regeneration, editing inserted visuals, several slides (3 Nov)
 All in step 5 "Designs, slides and edits" (`studio.js`, pure functions in `plan.js`), no AI request:
@@ -97,13 +113,15 @@ and the new layouts in real PowerPoint.
 ## Limitations
 - PowerPoint's JS API cannot draw curves or set line spacing; curved Napkin icons stay separate pictures.
 - A rebuilt Napkin result keeps its arrangement, item look, wording, icons and colours, not its exact drawing (curved connectors, figures and globes are not redrawn; a half-disc hub becomes an ellipse).
-- Text is 22 pt or more everywhere; the guidelines' 18 pt infographic exception (p. 43) is not used.
+- The original Napkin design is a picture: its text keeps Napkin's sizes (usually 10-13 pt once fitted; flagged), it is not editable as shapes in the panel, and PowerPoint draws its SVG with its own renderer (Convert to Shape needs Microsoft 365).
+- Text is 22 pt or more everywhere in the editable versions; the guidelines' 18 pt infographic exception (p. 43) is not used.
 - The Test C original was not kept; its regression case is a reconstruction from the screenshot.
 - Designs that are not recognised (charts, matrices, labels around a picture) are converted shape by shape; a missing point is then reported (Partially complete), not added.
 - Built-in suggestions run in the panel (free); only paid Napkin calls are enforced server-side.
 - In Windows mode the PC's user, who holds the Napkin key, cannot be restricted; Entra mode with one shared host can.
 
 ## Change log
+- **V10.12.1** (3 Nov) — insert the editable version, the original Napkin design (one SVG picture) or both on two slides; separate validation, readability floor, duplicate guard; tests O1-O11.
 - **V10.12** (3 Nov 2026) — step 5: more designs of saved plans, content density, several slides with recovery, editing of inserted visuals (tags + records, undo); names-only insertion fix; tests Z and studio D1-S4.
 - **V10.11** (3 Nov) — design packs (23 families, 6 kinds), semantic roles, Claude design specification, one Generate action per provider.
 - **V10.10** (3 Nov) — Claude content plan, plan.js layout engine measured at 22 pt.
