@@ -9,8 +9,38 @@
    The PowerPoint JavaScript API cannot draw curves or free polygons, so each such part - or each group made only of
    such parts, i.e. an icon - becomes its own small picture at its exact place (never one picture for the whole visual;
    PowerPoint's "Convert to Shape" can make it editable). Colours go to the approved palette, text to Open Sans at
-   18 pt or more (the guideline's infographic text size, LVC guidelines p. 43), gradients become solid colours, shadows and filters are removed; the report lists every case. */
-const NAPKIN_MIN_PT = 18;    // LVC guidelines p. 43: infographic labels and descriptions in Open Sans 18 pt
+   18 pt or more (the guideline's infographic text size, LVC guidelines p. 43), gradients become solid colours, shadows and filters are removed; the report lists every case.
+   10.12.2, o.faithful ("Original editable", faithful.js): the design as drawn, as native objects where PowerPoint has
+   them. Curved outlines are measured (sampled along the path) and become the native shape they trace - box, rounded
+   box, pill, circle or ellipse - even when drawn in pieces; an open curved stroke becomes a connector of a few straight
+   segments; text keeps its place and size (scaled with the design, never raised), in a box without margins or
+   wrapping, Open Sans, the approved colours, and a readable contrast on what it sits on (WCAG: 4.5:1, large text 3:1).
+   Only icons and illustrations (free curves PowerPoint's API cannot draw) stay separate pictures. o.band = [y0, y1]
+   draws only the part of the design between those heights (continuation slides); o.k caps the scale. */
+const NAPKIN_MIN_PT = 18;
+const contrastOf = (a, b) => { const x = luminance(a), y = luminance(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+/* Douglas-Peucker: the fewest points within tol of the polyline. */
+function simplifyLine(P, tol) {
+  if (P.length < 3) return P.slice();
+  const [a, b] = [P[0], P[P.length - 1]], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+  let far = 0, at = 0;
+  for (let i = 1; i < P.length - 1; i++) { const d = Math.abs((b[0] - a[0]) * (a[1] - P[i][1]) - (a[0] - P[i][0]) * (b[1] - a[1])) / L; if (d > far) { far = d; at = i; } }
+  return far <= tol ? [a, b] : simplifyLine(P.slice(0, at + 1), tol).slice(0, -1).concat(simplifyLine(P.slice(at), tol));
+}
+/* The native shape a closed outline traces (points sampled along it, its drawn length), or null. */
+function nativeOutline(P, B, len) {
+  const w = B.w, h = B.h, cx = B.x + w / 2, cy = B.y + h / 2, m = Math.min(w, h), tol = Math.max(0.6, m * 0.025);
+  const ePer = Math.PI * (3 * (w + h) / 2 - Math.sqrt((1.5 * w + h / 2) * (w / 2 + 1.5 * h)));
+  const eErr = Math.max(...P.map(([x, y]) => Math.abs(Math.hypot((x - cx) / (w / 2), (y - cy) / (h / 2)) - 1))) * m / 2;
+  if (eErr < tol && Math.abs(len - ePer) < 0.05 * ePer) return { g: 'ellipse', name: Math.abs(w - h) < tol ? 'circle' : 'ellipse' };
+  const sd = (x, y, r) => { const qx = Math.abs(x - cx) - (w / 2 - r), qy = Math.abs(y - cy) - (h / 2 - r); return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r; };
+  let best = null;
+  for (let k = 0; k <= 24; k++) { const r = m / 2 * k / 24, err = Math.max(...P.map(p => Math.abs(sd(p[0], p[1], r)))); if (!best || err < best.err) best = { r, err }; }
+  const per = 2 * (w + h) - 8 * best.r + 2 * Math.PI * best.r;
+  if (best.err >= tol || Math.abs(len - per) >= 0.05 * per) return null;
+  const q = best.r / m;
+  return q > 0.45 ? { g: 'pill', name: 'pill' } : q > 0.03 ? { g: 'roundRect', name: 'rounded box', r: q } : { g: 'rect', name: 'box' };
+}    // LVC guidelines p. 43: infographic labels and descriptions in Open Sans 18 pt
 const SVG_SKIP = new Set(['defs', 'style', 'title', 'desc', 'metadata', 'clippath', 'mask', 'pattern', 'lineargradient', 'radialgradient', 'filter', 'symbol', 'marker', 'script']);
 const SVG_DROP = 'script, foreignObject, iframe, object, embed, audio, video, animate, set, animateTransform, animateMotion, a[href^="javascript"]';
 const PIC_STYLE = ['fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-dasharray', 'opacity',
@@ -83,8 +113,8 @@ function polygonShape(P) {
 }
 
 /* svgText -> { prims, report }. R: the slide area to fit into (pt). */
-function svgToPrims(svgText, R) {
-  const root = cleanSvg(svgText), host = document.createElement('div');
+function svgToPrims(svgText, R, o) {
+  const F = !!(o && o.faithful), root = cleanSvg(svgText, F ? { fonts: true } : undefined), host = document.createElement('div');
   // off-screen, not visibility:hidden (every child would inherit it and count as invisible); removed before anything paints
   host.style.cssText = 'position:absolute;left:-30000px;top:0;width:10px;height:10px;overflow:hidden';
   const svg = document.importNode(root, true), vb = root.viewBox && root.viewBox.baseVal;
@@ -141,6 +171,28 @@ function svgToPrims(svgText, R) {
       if (out.length && marker(el.getAttribute('marker-start') || s.markerStart)) out[0].tail = true;
       return out;
     };
+    /* 10.12.2: a curved path that is a native shape (its outline sampled), or an open curved stroke as a connector of a
+       few straight segments; null = a free curve (a picture). */
+    const curveItems = (el, M) => {
+      const sx = Math.hypot(M[0], M[1]), sy = Math.hypot(M[2], M[3]);
+      if (!axisAligned(M) || Math.abs(sx - sy) > sx * 0.01) return null;
+      let L = 0;
+      try { L = el.getTotalLength(); } catch (e) { return null; }
+      if (!(L > 0)) return null;
+      const n = 120, loc = [];
+      for (let i = 0; i <= n; i++) { const p = el.getPointAtLength(L * i / n); loc.push([p.x, p.y]); }
+      const P = loc.map(p => mApply(M, p[0], p[1])), B = bboxOf(P), fill = paint(el, 'fill'), stroke = paint(el, 'stroke');
+      const subs = (String(el.getAttribute('d') || '').match(/[Mm]/g) || []).length, closed = Math.hypot(P[0][0] - P[n][0], P[0][1] - P[n][1]) < Math.max(1, 0.01 * L * sx);
+      if (B.w > 2 && B.h > 2 && (fill || stroke)) {
+        const s = nativeOutline(P, B, L * sx);
+        if (s) { const sh = shape(el, s.g, B, 0); if (sh) { note(`curved ${s.name} drawn as a native shape`); return [sh]; } }
+      }
+      if (!fill && stroke && subs === 1 && !closed) {
+        const Q = simplifyLine(loc, Math.max(0.75, L * 0.012));
+        if (Q.length - 1 <= 6) { note('curved connector drawn as native straight segments'); return lineItems(el, Q, M); }
+      }
+      return null;
+    };
     const textItem = el => {
       const M = mOf(el);
       if (!axisAligned(M)) return null;
@@ -188,7 +240,7 @@ function svgToPrims(svgText, R) {
         let subs;
         if (tag === 'path') subs = straightPath(el.getAttribute('d'));
         else { const pts = [...el.points].map(p => [p.x, p.y]); subs = pts.length >= 2 ? [{ pts, closed: tag === 'polygon' }] : []; }
-        if (!subs) { note('curved path (kept as a picture)'); return [picOf(el)]; }
+        if (!subs) { const c = F && curveItems(el, M); if (c) return c; note(F ? 'free curve: icon or illustration part (kept as a picture)' : 'curved path (kept as a picture)'); return [picOf(el)]; }
         const filled = !!paint(el, 'fill'), out = [];
         for (const sp of subs) {
           // SVG fills black when no fill is given, but two points enclose nothing: a connector "M259,139 L271,139" is a line
@@ -228,9 +280,16 @@ function svgToPrims(svgText, R) {
     for (let i = items.length - 1; i >= 0; i--) { const o = items[i];
       if (o.kind === 'shape' && !o.fill && o.line && items.some(f => f !== o && f.kind === 'shape' && f.fill && same(f, o))) { items.splice(i, 1); note('outline drawn over a filled box merged'); } }
     if (!items.length) throw new Error('The SVG has nothing that can be drawn.');
+    // 10.12.2: every element's height span (for continuation slides), and only one band of the design when asked
+    const span = x => x.kind === 'line' ? [Math.min(x.y1, x.y2), Math.max(x.y1, x.y2)] : [x.y, x.y + x.h];
+    const rows = items.map(x => Object.assign(span(x), { line: x.kind === 'line' }));
+    if (F && o.band) { const keep = items.filter(x => { const [a, b] = span(x), c = (a + b) / 2; return c >= o.band[0] && c < o.band[1]; }); items.splice(0, items.length, ...keep); }
+    if (!items.length) throw new Error('Nothing of the design is in this part.');
     // Fit: the content's box into R, proportions kept, centered.
     const ext = bboxOf(items.flatMap(x => x.kind === 'line' ? [[x.x1, x.y1], [x.x2, x.y2]] : [[x.x, x.y], [x.x + x.w, x.y + x.h]]));
-    const k = Math.min(R.w / Math.max(ext.w, 1), R.h / Math.max(ext.h, 1)), ox = R.x + (R.w - ext.w * k) / 2 - ext.x * k, oy = R.y + (R.h - ext.h * k) / 2 - ext.y * k;
+    let k = Math.min(R.w / Math.max(ext.w, 1), R.h / Math.max(ext.h, 1));
+    if (F && o.k) k = Math.min(k, o.k);
+    const ox = R.x + (R.w - ext.w * k) / 2 - ext.x * k, oy = R.y + (R.h - ext.h * k) / 2 - ext.y * k;
     const X = v => ox + v * k, Y = v => oy + v * k, prims = [], picArea = [];
     let raised = 0;
     for (const it of items) {
@@ -241,6 +300,23 @@ function svgToPrims(svgText, R) {
         if (it.head) prims.push(...arrowSeg(x1, y1, x2, y2, it.color, w).map(p => Object.assign(p, { grp: it.grp })));
         else prims.push(Object.assign(seg(x1, y1, x2, y2, it.color, w, it.dash ? { dash: true } : {}), { grp: it.grp }));
         if (it.tail) prims.push(Object.assign(headAt(x1, y1, Math.atan2(y1 - y2, x1 - x2) * 180 / Math.PI, Math.max(14, w * 5), it.color), { grp: it.grp }));
+      } else if (it.kind === 'text' && F) {
+        // as drawn: its place and size scaled with the design, a tight box (no margins, no wrapping: its own lines)
+        const size = Math.max(1, Math.round(it.size * k * 2) / 2), lh = size * 1.362, h = it.lines.length * lh, w = it.w * k + size * 0.6;
+        const align = it.anchor === 'middle' ? 'center' : 'left', cx = X(it.x + it.w / 2), cy = Y(it.y + it.h / 2);
+        const x = align === 'center' ? cx - w / 2 : X(it.x) - size * 0.05, y = cy - h / 2;
+        if (it.anchor === 'end' && it.lines.length > 1) note('right-aligned text set left-aligned (LVC guidelines p. 40)');
+        // what it sits on: the last filled shape under its centre, else the white slide; its colour kept when readable
+        const under = prims.filter(p => p.t === 'shape' && p.fill && cx > p.x && cx < p.x + p.w && cy > p.y && cy < p.y + p.h).pop(), bg = under ? under.fill : '#FFFFFF';
+        const need = size >= 18 || (it.bold && size >= 14) ? 3 : 4.5;
+        let color = it.color;
+        if (contrastOf(color, bg) < need) {
+          color = readableOn(bg);
+          if (contrastOf(color, bg) < need) color = contrastOf('#FFFFFF', bg) > contrastOf(BRAND.ink, bg) ? '#FFFFFF' : BRAND.ink;
+          note(contrastOf(color, bg) < need ? 'small text below WCAG contrast on a mid-tone palette colour (the most readable approved text colour used)' : 'text colour changed for a readable contrast');
+        }
+        prims.push(label(Math.max(R.x, Math.min(x, R.x + R.w - w)), Math.max(R.y, Math.min(y, R.y + R.h - h)), Math.min(w, R.w), h, it.lines.join('\n'),
+          { size, bold: it.bold, color, font: BRAND.font, align, valign: 'middle', grp: it.grp, srcSize: it.size * k, tight: true }));
       } else if (it.kind === 'text') {
         const orig = it.size * k, size = Math.max(NAPKIN_MIN_PT, Math.round(orig * 2) / 2), grow = size / Math.max(orig, 1);
         if (orig < NAPKIN_MIN_PT - 0.25) raised++;
@@ -261,6 +337,7 @@ function svgToPrims(svgText, R) {
     const report = { shapes: prims.filter(p => p.t === 'shape').length, lines: prims.filter(p => p.t === 'line').length, texts: prims.filter(p => p.t === 'text').length, pictures: pics,
       notes, edit: pics ? 'partial' : 'full', layout: checkLayout(prims.filter(p => p.t !== 'image'), R) };
     report.native = report.shapes + report.lines + report.texts;
+    if (F) Object.assign(report, { rows, ext, scale: k, minPt: Math.min(...prims.filter(p => p.t === 'text').map(p => p.size)) });
     report.mostlyPictures = report.native < 3 || (picArea.reduce((a, b) => a + b, 0) > ext.w * ext.h * 0.6);
     report.quality = visualQuality(qualityItems(prims), R);
     return { prims, report };

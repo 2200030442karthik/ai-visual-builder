@@ -13,6 +13,9 @@
      Claude gets the brand rules (palette, Open Sans, 22 pt) in its instructions and returns SVG only.
    - SVG output goes in as native PowerPoint shapes where possible (svg2ppt.js); PPT output as Napkin's own slides,
      with Open Sans applied to their text.
+   - V10.12.2: "Original editable" - the original design drawn as native, editable objects (faithful.js): its look kept,
+     text, boxes, circles and connectors editable, only icons and illustrations pictures (counted), continuation slides
+     for a tall design.
    - V10.12.1: a drawn result (Napkin's SVG) goes in as the editable version (the default), as the original design (one
      SVG picture, original.js) or both, on two new slides; each version is validated on its own and the other can still
      be inserted when one fails.
@@ -25,7 +28,7 @@
      from its own items, at no extra cost, and they are marked as such. Before a request, a free check shows which
      layouts the content fits at 22 pt. Loaded after v10.html's scripts, gallery.js, understand.js, brand.js, svg2ppt.js,
      rebuild.js and plan.js. */
-const PANEL_VERSION = '10.12.1';      // must match server.py VERSION; a different host version is reported in the panel
+const PANEL_VERSION = '10.12.2';      // must match server.py VERSION; a different host version is reported in the panel
 const shortId = id => id ? `${id.slice(0, 4)}…${id.slice(-4)}` : '';
 /* Claude's time, tokens and estimated cost (from the prices in claude.json; the bill is in platform.claude.com). */
 const costText = c => `${c.model}${c.effort ? ' (effort ' + c.effort + ')' : ''}: ${c.seconds} s, ${c.usage.input_tokens} input + ${c.usage.output_tokens} output tokens` +
@@ -91,6 +94,7 @@ function makePanel(P) {
       <label class="check"><input type="checkbox" id="${P.key}Ok"> <span>I understand this sends the text in step 1 to ${P.name} and ${P.paid}.</span></label>
       <div id="${P.key}ModeBox" class="small" style="margin:6px 0 2px" hidden><b>What to insert</b><br>
         <select id="${P.key}Mode" aria-label="What to insert"><option value="edit" selected>Editable version (native PowerPoint shapes)</option>
+          <option value="origedit">Original ${P.short} design, editable (native shapes and text)</option>
           <option value="orig">Original ${P.short} design (one picture)</option><option value="both">Both: editable, then original, on two new slides</option></select></div>
       <div class="btn-row"><button id="${P.key}Go" class="secondary" type="button" disabled>Generate visuals with ${P.name}</button>
         <button id="${P.key}Insert" class="secondary" type="button" hidden>Insert ${P.short} result</button>
@@ -133,11 +137,13 @@ function makePanel(P) {
   // the editable version can go in; the original design can go in (validated on its own, original.js); either can
   const usable = it => !!it && !it.check.excluded && !(it.quality && it.quality.excluded) && !it.sameAs;
   const origOK = it => !!it && !!it.orig && it.orig.ok && !it.orig.block.length && !it.sameAs;
-  const offered = it => usable(it) || origOK(it);
+  const feOK = it => !!it && !!it.fe && it.fe.ok && !it.fe.block.length && !it.sameAs;
+  const offered = it => usable(it) || origOK(it) || feOK(it);
   const hasOrig = () => !!N.result && N.result.items.some(i => i.orig && i.orig.ok);
   const modeOf = () => hasOrig() ? $p('Mode').value : 'edit';
-  const canMode = (it, m) => m === 'orig' ? origOK(it) : m === 'both' ? usable(it) && origOK(it) : usable(it);
-  const MODE_NAMES = { edit: 'Editable version (native PowerPoint shapes)', orig: `Original ${P.short} design (one picture)`, both: 'Both: editable, then original, on two new slides' };
+  const canMode = (it, m) => m === 'orig' ? origOK(it) : m === 'origedit' ? feOK(it) : m === 'both' ? usable(it) && origOK(it) : usable(it);
+  const MODE_NAMES = { edit: 'Editable version (native PowerPoint shapes)', origedit: `Original ${P.short} design, editable (native shapes and text)`, orig: `Original ${P.short} design (one picture)`, both: 'Both: editable, then original, on two new slides' };
+  const VERSION_NAMES = { edit: 'editable version', origedit: 'editable original design', orig: 'original design' };
   function napkinButtons() {
     const st = state.svc && state.svc[P.key], has = !!$('content').value.trim();
     $p('Go').disabled = !(st && st.enabled && (!P.branded || st.style_id)) || !$p('Ok').checked || !has || N.busy || !gateOK();
@@ -146,7 +152,8 @@ function makePanel(P) {
     $p('ModeBox').hidden = !hasOrig();
     [...$p('Mode').options].forEach(o => { o.textContent = MODE_NAMES[o.value] + (it && !canMode(it, o.value) ? ' - not available for this variation' : ''); });
     $p('Insert').hidden = !N.result || !N.result.items.length;
-    $p('Insert').textContent = !hasOrig() ? `Insert ${P.short} result` : mode === 'orig' ? `Insert original ${P.short} design` : mode === 'both' ? 'Insert both (2 new slides)' : 'Insert editable version';
+    $p('Insert').textContent = !hasOrig() ? `Insert ${P.short} result` : mode === 'orig' ? `Insert original ${P.short} design` : mode === 'both' ? 'Insert both (2 new slides)'
+      : mode === 'origedit' ? `Insert original, editable${it && it.fe && it.fe.ok && it.fe.parts.length > 1 ? ` (${it.fe.parts.length} slides)` : ''}` : 'Insert editable version';
     $p('Insert').disabled = !state.inOffice || N.busy || !canMode(it, mode) || !gateOK();
     $p('More').hidden = !resultPlan(); $p('More').disabled = N.busy;
   }
@@ -403,6 +410,9 @@ function makePanel(P) {
       // the original design as returned (one SVG picture): its own text checked against the content, its readability
       it.orig = originalAsset(it);
       if (it.orig.ok) originalReview(it.orig, accuracy(prep, it.orig.texts, { heading: napkinHeading(it) }));
+      // 10.12.2: the same design as native, editable objects (faithful.js), its text checked the same way
+      it.fe = it.orig.ok ? faithfulBuild(it, Object.assign({}, TEMPLATE.contentArea)) : { ok: false, why: '' };
+      if (it.fe.ok) faithfulReview(it.fe, accuracy(prep, it.fe.texts, { heading: napkinHeading(it) }));
       items.push(it);
     }
     // every variation stays listed (for inspection); one that goes on the slide exactly like an earlier one (same
@@ -553,11 +563,12 @@ function makePanel(P) {
     const local = R.items.filter(it => it.local).length;
     setStatus((fmt === 'plan' ? `${P.name} (1 request): ${R.items.length} visual${R.items.length === 1 ? '' : 's'} designed, ${ok} usable after the accuracy and layout checks` + (ok < variations ? ` (fewer than ${variations}: the other compositions do not fit this content at 22 pt; see “Not offered”)` : '') + '. '
       : `${P.name} returned ${R.items.length - local} of ${variations} requested${local ? `, and ${local} more layout${local > 1 ? 's were' : ' was'} drawn here from its items (no extra cost)` : ''}. ${ok} usable after the accuracy and layout checks. `) +
-      (hasOrig() ? `${origs} original design${origs === 1 ? '' : 's'} can go in as ${P.short} drew ${origs === 1 ? 'it' : 'them'}. ` : '') +
+      (hasOrig() ? `${origs} original design${origs === 1 ? '' : 's'} can go in as ${P.short} drew ${origs === 1 ? 'it' : 'them'}` +
+        `${R.items.some(feOK) ? ` (${R.items.filter(feOK).length} also as native, editable objects)` : ''}. ` : '') +
       (!ok && !origs ? 'None is good enough to insert (see the reasons under each); nothing is regenerated automatically and your own suggestions above are unaffected.'
-        : !ok ? `No editable version passed the checks; the original design can still be inserted (choose it under “What to insert”). Nothing is regenerated automatically.`
+        : !ok && (origs || R.items.some(feOK)) ? `No editable version passed the checks; the original design can still be inserted (choose it under “What to insert”). Nothing is regenerated automatically.`
         : `Pick one, click a Content_Slide, then press “${hasOrig() ? 'Insert editable version' : `Insert ${P.short} result`}” (tick “Insert on a new slide” to keep that slide unchanged)` +
-          (hasOrig() ? '; “What to insert” also offers the original design, or both on two new slides.' : '.')));
+          (hasOrig() ? '; “What to insert” also offers the original design (editable, or as one picture), or both on two new slides.' : '.')));
   }
 
   /* Every variation as a preview of exactly what goes on the slide, with its status and checks. */
@@ -585,17 +596,21 @@ function makePanel(P) {
       // the preview is the insertion itself: the same build, in the template's content area
       const bad = verdict(it), ed = !it.conv.report ? 'Not drawable' : it.conv.report.edit === 'full' ? 'Fully editable' : 'Editable, icons as pictures';
       const pic = it.conv.prims.length ? thumb(it.conv.prims) : '<div class="small" style="padding:8px">No preview: nothing in the file can be drawn.</div>';
-      const orig = originalThumb(it), o = it.orig && it.orig.ok ? it.orig : null;
+      const orig = originalThumb(it), o = it.orig && it.orig.ok ? it.orig : null, fe = it.fe && it.fe.ok ? it.fe : null;
       const more = [`request ${shortId(it.rid || '')}`].concat(it.pptInfo ? [it.pptInfo.slides > 1 ? `${it.pptInfo.slides} slides, the first used` : ''].concat(it.conv.rebuilt ? [] : it.pptInfo.notes.map(n => 'conversion: ' + n)).filter(Boolean) : []);
       return `<button type="button" class="gcard${i === N.sel ? ' sel' : ''}" data-i="${i}"${bad && !origOK(it) ? ' style="opacity:.7"' : ''} aria-pressed="${i === N.sel}" aria-label="Variation ${it.n}">` +
         `<div class="gthumb">${pic}</div><div class="gname">Variation ${it.n}${i === N.sel ? ' · selected' : ''} <span class="small">(${o ? 'editable version, ' : ''}as inserted${it.fmt === 'plan' ? ': ' + esc(it.conv.arrangement) + (it.local ? ` - local layout from ${P.short}'s variation ${it.fromN}` : '') + (it.conv.namesOnly ? ', point names only' : '')
           : it.conv.asDrawn ? `: ${P.short}'s design, kept as designed` : it.conv.rebuilt && it.conv.report && /local replacement/.test(Object.keys(it.conv.report.notes).join(' ')) ? `: local replacement of ${P.short}'s design` : it.conv.rebuilt ? `: ${P.short}'s arrangement, rebuilt` : ''})</span></div>` +
         `<span class="badge ${bad ? 'image' : it.check.status === 'partial' || (it.conv.added && it.conv.added.length) ? 'partial' : it.conv.report.edit}">${esc(bad ? (o ? 'Editable version: ' : '') + bad : (o ? 'Editable: ' : '') + statusOf(it) + ' · ' + ed)}</span>` +
+        // the original as native objects (10.12.2): as inserted (its first slide), what is editable and what is a picture
+        (fe ? `<div class="small" style="margin-top:6px">Original ${P.short} design, editable, as inserted${fe.parts.length > 1 ? ` (slide 1 of ${fe.parts.length})` : ''}:</div><div class="gthumb">${thumb(fe.parts[0])}</div>` +
+          `<span class="badge ${fe.block.length ? 'image' : fe.report.pictures || fe.warn.length ? 'partial' : 'full'}">${esc(fe.block.length ? 'Original editable blocked: ' + fe.block[0]
+            : `Original editable: ${fe.status} · ${fe.report.native} native objects, ` + (fe.report.pictures ? `${fe.report.pictures} picture${fe.report.pictures > 1 ? 's' : ''}` : 'no pictures'))}</span>` : '') +
         // the original as it goes in (one picture, fitted and centred): its own status, never "editable"
         (o ? `<div class="small" style="margin-top:6px">Original ${P.short} design, as inserted (one picture):</div><div class="gthumb">${orig}</div>` +
           `<span class="badge ${o.block.length ? 'image' : o.warn.length ? 'partial' : 'full'}">${esc((o.block.length ? 'Original blocked: ' + o.block[0] : 'Original: ' + o.status + ' · picture, not editable as shapes'))}</span>`
           : orig ? `<div class="small" style="margin-top:4px">As ${P.short} returned it:</div><div class="gthumb" style="opacity:.85">${orig}</div>` : '') +
-        `<div class="gwhy">${esc(reasons(it).concat(o && o.warn.length && !o.block.length ? ['original: ' + o.warn.join('; ')] : [], more).join('; '))}</div></button>`;
+        `<div class="gwhy">${esc(reasons(it).concat(fe && fe.warn.length && !fe.block.length ? ['original editable: ' + fe.warn.join('; ')] : [], o && o.warn.length && !o.block.length ? ['original: ' + o.warn.join('; ')] : [], more).join('; '))}</div></button>`;
     }).join('');
     $p('Preview').hidden = false;
     const rej = R.items.filter(it => !offered(it));
@@ -617,7 +632,8 @@ function makePanel(P) {
   const hideReason = it => it.sameAs ? `the same design as variation ${it.sameAs}`
     : it.check.excluded ? (it.check.missing && it.check.missing.length && it.check.coverage > 0 ? `shows only part of your content (missing ${it.check.missing.slice(0, 3).join(', ')}${it.check.missing.length > 3 ? ', …' : ''})` : 'does not show your content')
     : 'layout cannot be repaired (' + ((it.quality && it.quality.block[0]) || 'layout faults') + ')' +
-      (it.orig && it.orig.ok && it.orig.block.length ? `; the original design is blocked too (${it.orig.block[0]})` : '');
+      (it.orig && it.orig.ok && it.orig.block.length ? `; the original design is blocked too (${it.orig.block[0]})` : '') +
+      (it.fe && it.fe.ok && it.fe.block.length ? `; its editable original too (${it.fe.block[0]})` : '');
   /* What will go in for the selected variation: editable parts, pictures, corrections; never "fully editable" with pictures. */
   function showNote() {
     const it = N.result && N.result.items[N.sel], el = $p('Note');
@@ -648,6 +664,16 @@ function makePanel(P) {
         (o.warn.length ? `<br><span style="color:var(--warn)">Original: ${esc(o.warn.join('; '))}.</span>` : '.') +
         (modeOf() === 'both' ? '<br>“Both”: two new slides after the selected one, the editable version first, then the original; “Remove last inserted visual” removes both.' : '');
     }
+    const fe = it.fe && it.fe.ok ? it.fe : null;
+    if (fe) {
+      // the editability report: what is native and editable, what stays a picture and why
+      const nn = fe.report.notes, list = re => Object.entries(nn).filter(([k]) => re.test(k)).map(([k, v]) => `${v} × ${k}`);
+      h += `<br><b>Original ${P.short} design, editable</b>${fe.block.length ? ` <span style="color:var(--warn)">(blocked: ${esc(fe.block.join('; '))})</span>` : ''}: ${P.short}'s composition redrawn` +
+        ` in the content area as ${esc(faithfulEditText(fe.report))}${fe.report.slides > 1 ? `, on ${fe.report.slides} slides` : ''}. Every text is its own text box (Open Sans, its place and size kept; click it to edit); boxes, circles and connectors are native shapes and lines.` +
+        (list(/native/).length ? ` Recognised: ${esc(list(/native/).join('; '))}.` : '') +
+        (fe.report.pictures ? ` <b>Not editable as shapes</b>: ${esc(list(/picture/).join('; ') || fe.report.pictures + ' pictures')} (PowerPoint's API cannot draw free curves; right-click › Convert to Shape in PowerPoint).` : ' Nothing is a picture.') +
+        ` Content: ${esc(fe.status)}.` + (fe.warn.length ? `<br><span style="color:var(--warn)">Original editable: ${esc(fe.warn.join('; '))}.</span>` : '');
+    }
     el.innerHTML = h; el.hidden = !h;
   }
 
@@ -661,23 +687,31 @@ function makePanel(P) {
      "Insert on a new slide" keeps the selected slide unchanged. Napkin's own slide and layout are never imported. All
      or nothing: anything a failed insertion added - shapes, the picture, new slides - is removed again. */
   const fullErr = () => Object.assign(new Error('full'), { full: true });
-  async function putEditable(context, slide, it) {
-    const before = new Set(await shapeIds(context, slide)), fa = freeArea(await readSlide(context, slide));
-    if (!fa.rect || fa.rect.w < 520 || fa.rect.h < 260) throw fullErr();
-    const b = it.plan ? planBuildFor(it, fa.rect) : napkinBuild(it, fa.rect, it.check.add || [], it.ordered, it.order, it.drop), prims = b.prims, pics = prims.filter(p => p.t === 'image');
+  /* Primitives onto `slide`: pictures behind (large backgrounds), native shapes and text, then pictures on top (icons sit
+     on their badges); recorded for editing in step 5 (V10.12: a plan layout everything; a drawing its texts, and its
+     items for a redesign). */
+  async function drawPrims(context, slide, prims, it, rect, name) {
     if (!prims.length) throw new Error('nothing in this result can be drawn on a slide');
-    // pictures behind (large backgrounds), native shapes and text, then pictures on top (icons sit on their badges)
+    const before = new Set(await shapeIds(context, slide)), pics = prims.filter(p => p.t === 'image');
+    slide.load('id');
+    await context.sync();
+    if (pics.length) { context.presentation.setSelectedSlides([slide.id]); await context.sync(); }   // pictures go in through the selection
     for (const p of pics.filter(q => q.under)) await insertSvgAt(p.svg, p);
     const meta = typeof studioMeta === 'function' ? studioMeta(it.plan ? (it.density === 'names' ? planNames(it.plan) : it.plan) : null) : null;
-    await drawOnSlide(context, slide, prims.filter(p => p.t !== 'image'), P.name, meta);
+    await drawOnSlide(context, slide, prims.filter(p => p.t !== 'image'), name, meta);
     for (const p of pics.filter(q => !q.under)) await insertSvgAt(p.svg, p);
     const ids = (await shapeIds(context, slide)).filter(id => !before.has(id));
-    // V10.12: recorded for editing in step 5 (a plan layout: everything; a drawing: its texts, and its items for a redesign)
     let rec = null;
     if (meta) { const from = `${P.name} (request ${shortId(it.rid || '')}, variation ${it.n})`, rp = it.plan ? null : resultPlan();
-      rec = await studioAfterInsert(context, slide, ids, meta, it.plan ? { plan: it.plan, layout: it.layout, name: it.conv.arrangement, density: it.density, rect: fa.rect, from }
-        : { plan: rp && rp.plan, rect: fa.rect, from }); }
-    return { b, ids, rec };
+      rec = await studioAfterInsert(context, slide, ids, meta, it.plan ? { plan: it.plan, layout: it.layout, name: it.conv.arrangement, density: it.density, rect, from }
+        : { plan: rp && rp.plan, rect, from }); }
+    return { ids, rec };
+  }
+  async function putEditable(context, slide, it) {
+    const fa = freeArea(await readSlide(context, slide));
+    if (!fa.rect || fa.rect.w < 520 || fa.rect.h < 260) throw fullErr();
+    const b = it.plan ? planBuildFor(it, fa.rect) : napkinBuild(it, fa.rect, it.check.add || [], it.ordered, it.order, it.drop);
+    return Object.assign({ b }, await drawPrims(context, slide, b.prims, it, fa.rect, P.name));
   }
   /* The original as one picture in the slide's free part: validated again for that space, exactly one picture added,
      at its fitted place; named and tagged (AIVB_O) so step 5 recognises it. */
@@ -713,15 +747,47 @@ function makePanel(P) {
       all.load('items/id');
       await context.sync();
       if (!cnt.value) throw new Error('Click a slide in the slide list on the left first.');
-      const slidesBefore = new Set(all.items.map(x => x.id)), batch = both ? (typeof newId === 'function' ? newId('B') : 'B' + Date.now().toString(36)) : '';
+      // the editable original, drawn for the free part of the slide it goes on (a new slide: the whole content area),
+      // checked again there; a tall design continues on new slides after it
+      let fe = null;
+      if (mode === 'origedit') {
+        const fa = onNew ? freeArea([]) : freeArea(await readSlide(context, sel.getItemAt(0)));
+        if (!fa.rect || fa.rect.w < 520 || fa.rect.h < 260) throw fullErr();
+        fe = faithfulBuild(it, fa.rect);
+        if (!fe.ok || fe.block.length) throw new Error(`the editable original design cannot be inserted here (${fe.ok ? fe.block[0] : fe.why})`);
+        fe.rect = fa.rect; fe.check = it.fe.check; fe.status = it.fe.status;   // the same texts: the content check of the preview holds
+      }
+      const many = both || (fe && fe.parts.length > 1), n = both ? 2 : fe ? fe.parts.length : 1;
+      const slidesBefore = new Set(all.items.map(x => x.id)), batch = many ? (typeof newId === 'function' ? newId('B') : 'B' + Date.now().toString(36)) : '';
       const mark = async (slide, v) => { if (!batch) return; try { if (slide) slide.tags.add('AIVB_BATCH', batch); else pres.tags.add('AIVB_BATCH', JSON.stringify(v)); await context.sync(); } catch (e) { /* no tags in this PowerPoint */ } };
       let slide = sel.getItemAt(0), before = null, made = [];
       try {
-        await mark(null, { id: batch, state: 'running', n: 2, at: new Date().toISOString() });
+        await mark(null, { id: batch, state: 'running', n, at: new Date().toISOString() });
         if (onNew) slide = await newSlideAfter(context, slide, '');
         slide.load('id');
         before = new Set(await shapeIds(context, slide));
         if (onNew) { made.push(slide.id); await mark(slide); }
+        if (fe) {
+          const more = [];
+          let f = null, prev = slide;
+          for (let k = 0; k < fe.parts.length; k++) {
+            let sl = slide;
+            if (k) {
+              setStatus(`Inserting slide ${k + 1} of ${fe.parts.length} (the design continues)…`);
+              sl = await newSlideAfter(context, prev, '');
+              sl.load('id');
+              await context.sync();
+              made.push(sl.id); more.push(sl.id); await mark(sl);
+            }
+            const d = await drawPrims(context, sl, fe.parts[k], it, fe.rect, `${P.name} original design (editable)`);
+            if (!k) f = d;
+            prev = sl;
+          }
+          await mark(null, { id: batch, state: 'done', n, slides: made });
+          state.lastInsert = { slideId: slide.id, ids: f.ids, newSlide: onNew, extraSlides: more, extraWhat: more.length ? `${more.length} continuation slide${more.length > 1 ? 's' : ''}` : '' };
+          out = { f: Object.assign(f, { fe }) };
+          return;
+        }
         const e = mode === 'orig' ? null : await putEditable(context, slide, it);
         let o = mode === 'orig' ? await putOriginal(context, slide, it) : null, slide2 = null;
         if (both) {
@@ -754,10 +820,10 @@ function makePanel(P) {
     const R = N.result, it = R && R.items[N.sel], mode = modeOf();
     if (!canMode(it, mode) || !state.inOffice || N.busy) return;
     // the same version of the same variation, just inserted and still there: a second press is needed for another copy
-    const key = `${it.rid || ''}|${it.n}`, vers = mode === 'both' ? ['edit', 'orig'] : [mode], L = N.last;
+    const key = `${it.rid || ''}|${it.n}`, vers = mode === 'both' ? ['edit', 'orig'] : [mode], L = N.last;   // edit, origedit, orig
     if (L && L.ref === state.lastInsert && L.key === key && vers.some(v => L.vers.includes(v)) && N.dupOk !== key + mode) {
       N.dupOk = key + mode;
-      setStatus(`Variation ${it.n} (${vers.filter(v => L.vers.includes(v)).map(v => v === 'edit' ? 'editable version' : 'original design').join(' and ')}) was just inserted and is still in the presentation. Press “${$p('Insert').textContent}” again to insert another copy, or “Remove last inserted visual” to take it out.`, true);
+      setStatus(`Variation ${it.n} (${vers.filter(v => L.vers.includes(v)).map(v => VERSION_NAMES[v]).join(' and ')}) was just inserted and is still in the presentation. Press “${$p('Insert').textContent}” again to insert another copy, or “Remove last inserted visual” to take it out.`, true);
       return;
     }
     N.dupOk = '';
@@ -773,11 +839,16 @@ function makePanel(P) {
       const orig = r.o && (() => { const a = it.orig, at = r.o.at;
         return { what: `the original design as one picture (SVG graphic, ${Math.round(at.w)} × ${Math.round(at.h)} pt, centred in the free content area, not cropped or distorted; not editable as shapes: right-click › Convert to Shape in PowerPoint to edit its parts), smallest text ${at.minPt} pt` + (at.minPt < BRAND.minPt ? ` (${P.short}'s typography kept, below the ${BRAND.minPt} pt brand minimum)` : ''),
           note: a.check.missing.length ? `Original: partially complete, ${a.check.missing.join(', ')} missing in ${P.short}'s design${usable(it) && a.check.missing.every(m => (it.conv.added || []).includes(m)) ? ` (the editable version adds ${a.check.missing.length > 1 ? 'them' : 'it'})` : ''}.` : 'Original: every point of your content is in it.' }; })();
-      setStatus(mode === 'both' ? `Inserted ${who} on two new slides after the selected one: 1) editable version, ${edit.what}; 2) ${orig.what}. ${edit.note} ${orig.note}${typeof editNote === 'function' ? editNote(r.e.rec) : ''} “Remove last inserted visual” removes both slides.`
+      const fed = r.f && (() => { const fe = r.f.fe, x = fe.report;
+        return `${fe.check.missing.length ? `Original editable: partially complete, ${fe.check.missing.join(', ')} missing in ${P.short}'s design.` : 'Original editable: every point of your content is in it.'} ${who} inserted as the original design, editable` +
+          `${onNew ? ' on a new slide with the same layout' : ''}${x.slides > 1 ? `, continued on ${x.slides - 1} more new slide${x.slides > 2 ? 's' : ''} after it (the design is tall)` : ''}: ${faithfulEditText(x)}; text from ${x.minPt} pt` +
+          `${x.minPt < BRAND.minPt ? ` (${P.short}'s typography, scaled; below the ${BRAND.minPt} pt brand minimum)` : ''}. Click any text to edit it, any shape to restyle it${x.pictures ? '; pictures: right-click › Convert to Shape' : ''}.` +
+          `${typeof editNote === 'function' ? editNote(r.f.rec) : ''} “Remove last inserted visual” takes ${x.slides > 1 ? 'all of it' : 'it'} out again.`; })();
+      setStatus(mode === 'origedit' ? fed : mode === 'both' ? `Inserted ${who} on two new slides after the selected one: 1) editable version, ${edit.what}; 2) ${orig.what}. ${edit.note} ${orig.note}${typeof editNote === 'function' ? editNote(r.e.rec) : ''} “Remove last inserted visual” removes both slides.`
         : mode === 'orig' ? `${orig.note} ${who} inserted${onNew ? ' on a new slide with the same layout' : ''}: ${orig.what}. “Remove last inserted visual” takes it out again.`
         : `${edit.note} ${who} inserted: ${edit.what}${onNew ? ' on a new slide with the same layout' : ''}.${typeof editNote === 'function' ? editNote(r.e.rec) : ''} “Remove last inserted visual” takes it out again.`);
-    } catch (e) { setStatus(`Could not insert the ${P.name} result, so nothing was added${mode === 'both' ? ' (neither slide)' : ''}: ` + (e.full ? 'this slide has no free space.' : errText(e)), true); }
-    finally { N.busy = false; napkinButtons(); updateButtons(); if (mode === 'both' && typeof checkBatch === 'function') checkBatch(); }
+    } catch (e) { setStatus(`Could not insert the ${P.name} result, so nothing was added${mode === 'both' ? ' (neither slide)' : mode === 'origedit' ? ' (no slide)' : ''}: ` + (e.full ? 'this slide has no free space.' : errText(e)), true); }
+    finally { N.busy = false; napkinButtons(); updateButtons(); if (mode !== 'edit' && mode !== 'orig' && typeof checkBatch === 'function') checkBatch(); }
   }
   $p('Go').addEventListener('click', create);
   $p('Insert').addEventListener('click', insert);

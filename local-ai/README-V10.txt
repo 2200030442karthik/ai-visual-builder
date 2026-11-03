@@ -1,4 +1,4 @@
-AI VISUAL BUILDER V10.12.1
+AI VISUAL BUILDER V10.12.2
 ==========================
 Authorized employee + Content Slide of the approved template -> paste content -> analyze -> accurate infographic and
 pictorial suggestions -> preview -> insert editable PowerPoint shapes. Lightweight: JavaScript in the panel, a small
@@ -23,6 +23,7 @@ FILES (local-ai)
   rebuild.js      a Napkin result rebuilt in the template in Napkin's own arrangement (ring, fan, row, column, grid;
                   card, pillar, badge or plain items); cards only as a reported fallback
   original.js     a Napkin result's original design as one SVG picture (fitting, readability and content checks)
+  faithful.js     the original design as native, editable objects (continuation slides, checks, editability report)
   napkin.js       optional Napkin AI and Claude AI sections
   studio.js       step 5 (free): more designs, several slides, editing inserted visuals
   server.py       panel host (https://localhost:44317), Napkin proxy; key never reaches the panel
@@ -107,11 +108,23 @@ INSTALL, RESTART, RECOVER
 - The V10 add-in: local-ai\Install V10 add-in.bat registers it (by its own Id; V9 untouched), Remove V10 add-in.bat removes
   only V10. If PowerPoint still shows an old panel: close PowerPoint, run install-v10-addin.ps1 -ClearCache, start it again.
 
-NAPKIN AI: WHAT TO INSERT (V10.12.1, no extra request)
-Each variation shows two previews, each exactly as it goes in: the editable version and the original Napkin design.
+NAPKIN AI: WHAT TO INSERT (V10.12.2, no extra request)
+Each variation shows three previews, each exactly as it goes in: the editable version, the original design as
+editable objects, and the original design as one picture.
 "What to insert" (under the result):
 - Editable version (the default): native PowerPoint shapes and text (Open Sans, 22 pt and up, approved colours);
   icons may be small pictures. Editable later in step 5.
+- Original Napkin design, editable (V10.12.2): Napkin's own composition redrawn as native PowerPoint objects -
+  positions, proportions, spacing and hierarchy as designed. Every text is its own text box (Open Sans, its size and
+  place, no margins, its own line breaks; click to edit). Boxes, rounded boxes, pills, circles and ellipses are native
+  shapes even where Napkin draws them as curves; connectors are native lines. Only icons and illustrations (free
+  curves, which PowerPoint's API cannot draw) stay separate pictures; the card and the status count them - it is never
+  called "fully editable" while a picture remains. Approved colours only; a text colour that is not readable on its
+  shape is changed (WCAG 4.5:1, large text 3:1; on the mid-tone palette colours no approved text colour reaches 4.5:1
+  for small text: the most readable one is used and this is flagged). Napkin's typography is kept (usually 10-15 pt,
+  flagged below 22 pt). A tall design continues on 1-2 new slides, cut only where nothing crosses; when no readable fit
+  exists it is blocked. A word Napkin broke across lines is joined again when it is in your text and fits its shape.
+  Step 5 edits its texts in place (with undo); "Remove last inserted visual" removes it with any continuation slides.
 - Original Napkin design: Napkin's own SVG as ONE picture (vector graphic): its illustrations, icons, connectors,
   text, colours and composition exactly as returned (fonts embedded in the file are kept; scripts and external links
   are removed). Scaled by one factor and centred in the free content area: never cropped or distorted. It is not

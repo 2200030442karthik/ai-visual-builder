@@ -81,7 +81,7 @@ async function run() {
     const cards = [...d.querySelectorAll('#napkinPreview button.gcard')];
     res.a.cards = cards.length;
     res.a.previewIsInsert = cards.every(c => { const it = R.items[+c.dataset.i]; if (!it.orig || !it.orig.ok) return true;
-      const img = c.querySelectorAll('.gthumb')[1] && c.querySelectorAll('.gthumb')[1].querySelector('image'), p = ev('(a, R) => originalPrim(a, R)')(it.orig, CA);
+      const img = [...c.querySelectorAll('.gthumb image')].find(x => x.getAttribute('href') === it.orig.href), p = ev('(a, R) => originalPrim(a, R)')(it.orig, CA);
       return !!img && img.getAttribute('href') === it.orig.href && Math.abs(+img.getAttribute('x') - p.x) < 0.01 && Math.abs(+img.getAttribute('width') - p.w) < 0.01; });
     res.a.badges = cards.map(c => [...c.querySelectorAll('.badge')].map(b => b.textContent));
     const k = R.items.findIndex(it => usableE(it) && origOK(it));

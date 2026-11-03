@@ -1,0 +1,241 @@
+<!doctype html>
+<!-- V10.12.2 acceptance: "Original editable" - Napkin's original design as native, editable PowerPoint objects. Loads the
+     real panel (v10.html) with the strict PowerPoint stand-in (mock.js), uses the saved real Napkin results (tests/fixtures)
+     through "Re-check last result" with a stand-in panel host (no network, no credits), checks the objects that go on the
+     slide (not just their look), compares each design with its original (rendered and measured), and writes JSON into
+     <pre id="out">; #evidence holds original / before (V10.12.1 editable) / after (original editable) for the screenshot. -->
+<html><head><meta charset="utf-8"><title>V10.12.2 original-editable tests</title><script src="/tests/samples.js"></script><script src="/tests/mock.js"></script>
+<style>body{font:12px Segoe UI,Arial} #evidence{display:grid;grid-template-columns:repeat(3,400px);gap:6px;width:1220px} #evidence>div{border:1px solid #ccc;padding:3px} #evidence svg{width:100%;height:auto;display:block} h3{grid-column:1/-1;margin:8px 0 0;font-size:13px}</style></head>
+<body><iframe id="f" src="/v10.html" style="width:420px;height:900px"></iframe><pre id="out">running</pre><div id="evidence"></div>
+<script>
+const out = document.getElementById('out'), errors = [], EV = document.getElementById('evidence');
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const STYLE = 'EHH64S9R64R64C9DCMSKCSHD6GTPADHDC4SKJC1D68WP6CK66DJ32RV4CGVG';
+const APPROVED = new Set(['#8ECDB7', '#62B7E4', '#7EA2C8', '#9B99C7', '#DDB945', '#E6A157', '#E58F6D', '#B88968', '#D98CA1', '#C1A5C6', '#FFFFFF', '#F2F2F2', '#D9D9D9', '#7F7F7F', '#404040']);
+async function run() {
+  const F = document.getElementById('f'), W = F.contentWindow, ev = x => W.eval(x), d = W.document;
+  W.addEventListener('error', e => errors.push(String(e.message)));
+  for (let i = 0; i < 100 && !ev("typeof __studio === 'object' && typeof faithfulBuild === 'function'"); i++) await wait(100);
+  if (!ev("typeof faithfulBuild === 'function'")) throw new Error('faithful.js did not load');
+  installMock(W);
+  const M = W.__mock;
+  M.realGroups = true;
+  ev('state.inOffice = true; state.canGroup = true; state.canRotate = true; 1');
+  try { W.localStorage.clear(); } catch (e) {}
+  const samples = Object.fromEntries(EXAMPLES), fx = async n => (await fetch('/tests/fixtures/' + n)).text();
+  const res = { conv: [], visual: [], ins: {}, cont: {}, modes: {}, more: {}, errors };
+  const status = () => d.getElementById('status').textContent;
+  const tagOf = (x, k) => { try { const t = x.tags.getItemOrNullObject(k); return t.isNullObject ? null : t.value; } catch (e) { return null; } };
+  const leaves = s => s.items.flatMap(x => x.type === 'Group' ? x.group.shapes.items : [x]);
+  const own = s => s.items.filter(x => x.type !== 'Placeholder');
+  const CA = ev('Object.assign({}, TEMPLATE.contentArea)'), INK = ev('INK');
+  const N = () => W.__napkin.N, item = () => N().result.items[N().sel];
+  const contrast = (a, b) => ev('(a, b) => contrastOf(a, b)')(a, b);
+
+  /* the stand-in panel host (as tests/original.html): the last Napkin request's saved files, every provider call counted */
+  const ACC = `access: { configured: true, mode: 'windows', authorized: true, user: 'test', reason: '', template: { layout_name: 'Content_Slide', fingerprint: { shapes: { 'content placeholder': [101.7, 205, 1078.5, 435.2], 'heading placeholder': [101.7, 119.1, 1078.5, 71.2], 'section tag strip': [1287.2, 0, 80.8, 720.3] }, tolerance: 3 } } }`;
+  const SVC = `{ server: '10.12.2', ${ACC}, napkin: { configured: true, enabled: true, used_today: 0, max_per_day: 20, style_id: '${STYLE}', variations: [1, 4], last: true }, claude: { configured: false, enabled: false, sdk: true } }`;
+  W.__calls = [];
+  ev(`api = async (path, body) => { const C = window.__cfg || {};
+    if (/^\\/api\\/(napkin|claude)\\//.test(path)) window.__calls.push(path);
+    if (path.startsWith('/api/napkin/last')) return { id: 'job-last', format: C.fmt, asked: C.files };
+    if (path.startsWith('/api/napkin/status')) return { status: 'completed', files: C.files, style_id: '${STYLE}' };
+    return ${SVC}; }; 1`);
+  W.fetch = async url => { url = String(url); W.__calls.push(url); const C = W.__cfg, i = +(/[?&]i=(\d+)/.exec(url) || [0, 0])[1]; return new Response(C.files_[i % C.files_.length], { status: 200 }); };
+  const gate = async () => { M.layoutName = 'Content_Slide'; ev(`state.svc = ${SVC}; renderNapkin(); 1`); await ev('checkSlide()'); ev('showGate(); updateButtons(); renderNapkin(); 1'); };
+  await gate();
+  async function load(text, files, o) {
+    o = o || {};
+    W.__cfg = { files: files.length, files_: files, fmt: o.fmt || 'svg' };
+    d.getElementById('content').value = text;
+    ev('state.sections = []; 1'); N().result = null; d.getElementById('status').textContent = ''; d.getElementById('napkinBox').open = true;
+    ev('renderNapkin(); 1');
+    d.getElementById('napkinLast').click();
+    for (let i = 0; i < 600 && (N().busy || !status()); i++) await wait(50);
+    for (let i = 0; i < 600 && N().busy; i++) await wait(50);
+    return N().result;
+  }
+  const pick = i => { const b = d.querySelector(`#napkinPreview button.gcard[data-i="${i}"]`); if (b) b.click(); else N().sel = i; };
+  const mode = m => { const s = d.getElementById('napkinMode'); s.value = m; s.dispatchEvent(new W.Event('change')); };
+  const insert = () => new Promise(done => { d.getElementById('napkinInsert').click(); const t0 = Date.now(); (function w() { if (!N().busy || Date.now() - t0 > 15000) done(); else setTimeout(w, 30); })(); });
+  const snapshot = () => M.slides.map(s => s.id + ':' + s.items.map(x => x.id).join(','));
+  const sel = async id => ev(`PowerPoint.run(async c => { c.presentation.setSelectedSlides(['${id}']); })`);
+
+  /* rendering for the visual comparison: the panel's own preview SVG, with its texts as SVG text (a canvas cannot read
+     HTML text); the original as the picture it is */
+  const textAsSvg = p => { const r = p, lines = String(p.text).split('\n'), lh = p.size * (p.tight ? 1.362 : 1.2), pad = p.tight ? 0 : 7.2;
+    const y0 = r.y + (r.h - lines.length * lh) / 2, x = p.align === 'left' ? r.x + pad : r.x + r.w / 2, a = p.align === 'left' ? 'start' : 'middle';
+    return lines.map((l, i) => `<text x="${x}" y="${y0 + i * lh + p.size * 1.03}" text-anchor="${a}" font-family="Open Sans, sans-serif" font-size="${p.size}" font-weight="${p.bold ? 700 : 400}" fill="${p.color || INK}" style="white-space:pre">${l.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text>`).join(''); };
+  const svgFor = prims => { const t0 = W.textSVG; W.textSVG = p => p.t === 'text' || p.text ? (p.t === 'text' ? textAsSvg(p) : textAsSvg(Object.assign({}, p, ev('(g, x, y, w, h) => textRect(g, x, y, w, h)')(p.g, p.x, p.y, p.w, p.h)))) : '';
+    try { return W.thumb(prims); } finally { W.textSVG = t0; } };
+  const raster = svg => new Promise(res2 => { const img = new Image(), u = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+    img.onload = () => { const c = document.createElement('canvas'); c.width = 330; c.height = Math.round(330 * (CA.h + 24) / (CA.w + 24)); const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+      try { res2(g.getImageData(0, 0, c.width, c.height)); } catch (e) { res2(null); } URL.revokeObjectURL(u); };
+    img.onerror = () => res2(null); img.src = u; });
+  // ink overlap (non-white pixels, a 1-pixel tolerance) and colour difference where either has ink
+  const compare = (A, B) => { if (!A || !B) return null; const w = A.width, h = A.height, ink = D => { const m = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) { const r = D.data[i * 4], g = D.data[i * 4 + 1], b = D.data[i * 4 + 2]; m[i] = (r + g + b) / 3 < 235 ? 1 : 0; } return m; };
+    const a = ink(A), b = ink(B), grow = m => { const o = new Uint8Array(m); for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) if (m[y * w + x]) { o[y * w + x - 1] = o[y * w + x + 1] = o[(y - 1) * w + x] = o[(y + 1) * w + x] = 1; } return o; };
+    const ga = grow(a), gb = grow(b); let both = 0, either = 0, diff = 0, nd = 0;
+    for (let i = 0; i < w * h; i++) { if (a[i] || b[i]) { either++; if ((a[i] && gb[i]) || (b[i] && ga[i])) both++; diff += (Math.abs(A.data[i * 4] - B.data[i * 4]) + Math.abs(A.data[i * 4 + 1] - B.data[i * 4 + 1]) + Math.abs(A.data[i * 4 + 2] - B.data[i * 4 + 2])) / 765; nd++; } }
+    return { overlap: Math.round(100 * both / Math.max(1, either)) / 100, colour: Math.round(100 * (1 - diff / Math.max(1, nd))) / 100 }; };
+
+  /* ===== G1/G2: every saved real Napkin SVG, converted and compared ===== */
+  const FIX = [['napkin-edu-0.svg', 'Educational content'], ['napkin-edu-1.svg', 'Educational content'], ['napkin-edu-2.svg', 'Educational content'], ['napkin-edu-3.svg', 'Educational content'],
+    ['napkin-facts-0.svg', 'Quick facts'], ['napkin-facts-1.svg', 'Quick facts'], ['napkin-facts-2.svg', 'Quick facts'], ['napkin-facts-3.svg', 'Quick facts'],
+    ['napkin-autoval-0.svg', 'Automation validation report'], ['napkin-autoval-1.svg', 'Automation validation report'], ['napkin-autoval-2.svg', 'Automation validation report'], ['napkin-autoval-3.svg', 'Automation validation report'],
+    ['napkin-ml5.svg', 'ML workflow (5 stages, intro)'], ['napkin-dataeng-0.svg', 'Data engineering platform (8 concepts)']];
+  for (const [n, sample] of FIX) {
+    const R0 = await load(samples[sample], [await fx(n)]), it = R0 && R0.items[0];
+    if (!it) { res.conv.push({ n, error: status().slice(0, 200) }); continue; }
+    const fe = it.fe, r = { n };
+    if (!fe || !fe.ok) { r.error = fe ? fe.why : 'no editable original'; res.conv.push(r); continue; }
+    const all = fe.parts.flat(), T = all.filter(p => p.t === 'text');
+    r.contentAsOriginal = (fe.check.status === 'unusable') === (it.orig.check.status === 'unusable');
+    Object.assign(r, { slides: fe.parts.length, native: fe.report.native, shapes: fe.report.shapes, lines: fe.report.lines, texts: fe.report.texts, pictures: fe.report.pictures, minPt: fe.report.minPt,
+      recognised: Object.entries(fe.report.notes).filter(([k]) => /native/.test(k)).reduce((a, [, v]) => a + v, 0), status: fe.status, block: fe.block, warn: fe.warn,
+      brand: all.every(p => (!p.fill || APPROVED.has(p.fill)) && (!p.line || APPROVED.has(p.line)) && (!p.color || APPROVED.has(p.color))), font: T.every(p => p.font === 'Open Sans'),
+      tight: T.every(p => p.tight), inside: all.every(p => p.t === 'line' ? [p.x1, p.x2].every(x => x >= CA.x - 1 && x <= CA.x + CA.w + 1) && [p.y1, p.y2].every(y => y >= CA.y - 1 && y <= CA.y + CA.h + 1) : p.x >= CA.x - 1 && p.y >= CA.y - 1 && p.x + p.w <= CA.x + CA.w + 1 && p.y + p.h <= CA.y + CA.h + 1) });
+    // contrast of every text on what it sits on (the smallest filled shape under its centre, else the white slide)
+    r.contrast = fe.parts.every(pr => pr.filter(p => p.t === 'text').every(t => { const cx = t.x + t.w / 2, cy = t.y + t.h / 2, u = pr.slice(0, pr.indexOf(t)).filter(s => s.t === 'shape' && s.fill && cx > s.x && cx < s.x + s.w && cy > s.y && cy < s.y + s.h).pop();
+      // WCAG 4.5:1 (large text 3:1); where no approved text colour reaches it (mid-tone palette fills), the best approved one, flagged
+      const bg = u ? u.fill : '#FFFFFF', need = t.size >= 18 || (t.bold && t.size >= 14) ? 3 : 4.5, best = Math.max(contrast('#FFFFFF', bg), contrast(INK, bg));
+      if (contrast(t.color, bg) < need) r.lowContrast = (r.lowContrast || 0) + 1;
+      return contrast(t.color, bg) >= need || (contrast(t.color, bg) >= best - 0.01 && fe.warn.some(w => /WCAG/.test(w))); }));
+    // every number, formula and value of the design as text, word for word
+    const nums = s => (String(s).match(/[\d][\d.,%:]*|[=×+]/g) || []);
+    r.figures = it.orig.texts.flatMap(nums).every(x => T.some(p => p.text.replace(/\s+/g, '').includes(x)));
+    // visual: the original picture, before (V10.12.1 editable version), after (original editable, slide 1)
+    if (fe.parts.length === 1) {
+      const o = await raster(svgFor([ev('(a, R) => originalPrim(a, R)')(it.orig, CA)])), b = it.conv.prims.length ? await raster(svgFor(it.conv.prims)) : null, a = await raster(svgFor(fe.parts[0]));
+      r.before = compare(o, b); r.after = compare(o, a);
+      res.visual.push({ n, before: r.before, after: r.after });
+    }
+    if (/edu-0|ml5|autoval-0|facts-1|edu-3|dataeng/.test(n)) EV.insertAdjacentHTML('beforeend', `<h3>${n}: original (picture) · before: V10.12.1 editable version · after: V10.12.2 original editable${fe.parts.length > 1 ? ' (slide 1 of ' + fe.parts.length + ')' : ''} - ${fe.report.native} native objects, ${fe.report.pictures} pictures</h3>` +
+      `<div>${W.thumb([ev('(a, R) => originalPrim(a, R)')(it.orig, CA)])}</div><div>${W.thumb(it.conv.prims)}</div><div>${W.thumb(fe.parts[0])}</div>` +
+      (fe.parts.length > 1 ? `<div></div><div></div><div>${W.thumb(fe.parts[1])}<b>slide 2</b></div>` : ''));
+    res.conv.push(r);
+  }
+
+  /* ===== G3: inserted as genuinely editable PowerPoint objects ===== */
+  {
+    const edu = []; for (let i = 0; i < 4; i++) edu.push(await fx(`napkin-edu-${i}.svg`));
+    M.reset(); await gate();
+    const R0 = await load(samples['Educational content'], edu);
+    const k = R0.items.findIndex(it => it.fe && it.fe.ok && !it.fe.block.length && it.fe.report.shapes > 0 && it.fe.parts.length === 1);
+    pick(k); const it = item(), fe = it.fe, P0 = fe.parts[0];
+    res.ins.k = k; res.ins.option = [...d.getElementById('napkinMode').options].map(o => o.value + ':' + o.textContent);
+    res.ins.card = [...d.querySelectorAll(`#napkinPreview button.gcard[data-i="${k}"] .badge`)].map(b => b.textContent);
+    res.ins.note = d.getElementById('napkinNote').textContent.slice(0, 3000);
+    const s1 = M.slides[0]; s1.items.find(x => x.name === 'Title 1').textFrame.textRange.text = 'Education';
+    const note = s1.shapes.addTextBox('Presenter reminder', { left: 20, top: 660, width: 220, height: 40 });
+    W.__calls = []; const pics0 = M.pictures || 0;
+    mode('origedit'); res.ins.label = d.getElementById('napkinInsert').textContent;
+    await insert();
+    const L = leaves(s1).filter(x => x !== note && x.type !== 'Placeholder' && x.type !== 'Group');
+    const tb = L.filter(x => x.type === 'TextBox'), gs = L.filter(x => x.type === 'GeometricShape' && x.kind !== 'picture'), ln = L.filter(x => x.type === 'Line'), pc = L.filter(x => x.kind === 'picture');
+    const want = P0.filter(p => p.t === 'text');
+    const near = (a, b) => Math.abs(a - b) < 0.6;
+    res.ins.objects = { status: status().slice(0, 400), texts: tb.length, wantTexts: want.length, shapes: gs.length, wantShapes: P0.filter(p => p.t === 'shape').length, lines: ln.length, wantLines: P0.filter(p => p.t === 'line').length,
+      pictures: pc.length, wantPictures: P0.filter(p => p.t === 'image').length, picturesAdded: (M.pictures || 0) - pics0,
+      kinds: [...new Set(gs.map(x => x.kind))].sort(), wantKinds: [...new Set(P0.filter(p => p.t === 'shape').map(p => ev('g => geomType(g)')(p.g)))].sort(),
+      // every text: its own text box, exact text, Open Sans, its size, colour, no margins, no wrapping, at its previewed place
+      textsExact: want.every(p => tb.some(x => x.textFrame.textRange.text === p.text && x.textFrame.textRange.font.name === 'Open Sans' && x.textFrame.textRange.font.size === p.size && x.textFrame.textRange.font.color === p.color &&
+        x.textFrame.leftMargin === 0 && x.textFrame.rightMargin === 0 && x.textFrame.wordWrap === false && near(x.left, Math.round(p.x * 10) / 10) && near(x.top, Math.round(p.y * 10) / 10))),
+      shapesFilled: gs.every(x => !x.fillColor || APPROVED.has(x.fillColor)), tagged: L.filter(x => tagOf(x, 'AIVB_V')).length, record: s1.tags.items.some(t => /^AIVB_R_.*_N$/.test(t.key)),
+      noteKept: s1.items.includes(note) && note.textFrame.textRange.text === 'Presenter reminder', calls: W.__calls.filter(u => /\/api\//.test(u)).length };
+    // edit one text in step 5 (in place) and undo it: the objects are the panel's own editable visual
+    const S = W.__studio, target = tb.find(x => x.textFrame.textRange.text === want.find(p => /\w{4}/.test(p.text) && !/\n/.test(p.text)).text);
+    M.selShapes = [target]; await S.editLoad();
+    const E = S.ST.edit, inputs = [...d.querySelectorAll('#stEditForm .edT')], inp = inputs.find(x => x.value === target.textFrame.textRange.text);
+    const old = target.textFrame.textRange.text;
+    const neu = old.includes(' ') ? old.split(' ').reverse().join(' ') : old.slice(0, -1);   // fits its tight box
+    if (inp) inp.value = neu;
+    await S.editApply();
+    const changed = leaves(s1).some(x => x.textFrame && x.textFrame.textRange.text === neu), applyStatus = status().slice(0, 200);
+    await S.editLoad(); await S.editUndo();
+    res.ins.step5 = { kind: E && E.rec.kind, texts: inputs.length, from: old, to: neu, changed, applyStatus, undone: leaves(s1).some(x => x.textFrame && x.textFrame.textRange.text === old) && !leaves(s1).some(x => x.textFrame && x.textFrame.textRange.text === neu), status: status().slice(0, 160) };
+    M.selShapes = [];
+    // duplicate guard, then removal
+    await insert(); res.ins.dup = /just inserted/.test(status());
+    await ev('removeLast()');
+    res.ins.removed = own(s1).length === 1 && s1.items.includes(note);
+    // the other choices still work after it (editable, original picture, both)
+    for (const m of ['edit', 'orig', 'both']) { M.reset(); await gate(); mode(m); await insert(); res.modes[m] = { status: status().slice(0, 140), slides: M.slides.length, objects: M.slides.reduce((a, s) => a + own(s).length, 0) }; await ev('removeLast()'); res.modes[m].removed = M.slides.length === 1 && own(M.slides[0]).length === 0; }
+    mode('edit');
+  }
+
+  /* ===== G4: a tall design continues on new slides; rollback; removal ===== */
+  {
+    M.reset(); await gate();
+    await ev(`PowerPoint.run(async c => { c.presentation.slides.add({}); })`);
+    const first = M.slides[0], next = M.slides[1]; await sel(first.id);
+    const R0 = await load(samples['Data engineering platform (8 concepts)'], [await fx('napkin-dataeng-0.svg')]);
+    pick(0); const it = item(), fe = it.fe;
+    res.cont.parts = fe.ok ? fe.parts.length : 0; res.cont.block = fe.block; res.cont.origBlocked = !!(it.orig.block && it.orig.block.length);
+    mode('origedit'); res.cont.label = d.getElementById('napkinInsert').textContent;
+    d.getElementById('newSlide').checked = true;
+    const snap0 = snapshot();
+    await insert();
+    const added = M.slides.filter(s => s !== first && s !== next), bt = W.JSON.parse(M.presTags.getItemOrNullObject('AIVB_BATCH').value || '{}');
+    const textsOn = added.flatMap(s => leaves(s).filter(x => x.type === 'TextBox').map(x => x.textFrame.textRange.text));
+    res.cont.insert = { status: status().slice(0, 300), added: added.length, order: M.slides[0] === first && M.slides[M.slides.length - 1] === next, batch: bt.state,
+      everyText: fe.texts.every(t => textsOn.includes(t)), firstUnchanged: snapshot()[0] === snap0[0] };
+    await ev('removeLast()');
+    res.cont.removed = JSON.stringify(snapshot()) === JSON.stringify(snap0);
+    // PowerPoint refuses a text on the second slide: neither slide stays
+    await sel(first.id); M.presTags.delete('AIVB_BATCH');
+    M.failText = fe.parts[1].find(p => p.t === 'text').text;
+    await insert(); M.failText = null;
+    res.cont.rollback = { status: status().slice(0, 200), unchanged: JSON.stringify(snapshot()) === JSON.stringify(snap0), batch: M.presTags.getItemOrNullObject('AIVB_BATCH').isNullObject, lastInsert: !!ev('state.lastInsert') };
+    // PowerPoint refuses a picture (icon) on the first slide: nothing stays
+    await sel(first.id); M.failPicture = true; await insert(); M.failPicture = false;
+    res.cont.rollbackPicture = { unchanged: JSON.stringify(snapshot()) === JSON.stringify(snap0), status: status().slice(0, 160) };
+    d.getElementById('newSlide').checked = false; mode('edit');
+  }
+
+  /* ===== G5: Napkin's PowerPoint export; a design that cannot be made readable; no requests ===== */
+  {
+    M.reset(); await gate();
+    const ppt = new Uint8Array(await (await fetch('/tests/fixtures/napkin-genai.pptx')).arrayBuffer());
+    const RP = await load(samples['Generative AI (sentence)'], [ppt], { fmt: 'ppt' }), ip = RP && RP.items[0];
+    res.more.pptx = ip ? { ok: !!(ip.fe && ip.fe.ok && !ip.fe.block.length), report: ip.fe && ip.fe.report && { native: ip.fe.report.native, pictures: ip.fe.report.pictures, texts: ip.fe.report.texts }, status: ip.fe && ip.fe.status } : null;
+    if (ip && ip.fe && ip.fe.ok && !ip.fe.block.length) { pick(0); mode('origedit'); await insert(); res.more.pptx.inserted = own(M.slides[0]).length > 0 && /editable/.test(status()); await ev('removeLast()'); mode('edit'); }
+    // one very wide row of tiny text: no clean place to continue, so blocked (said), never squeezed in
+    const tiny = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 6000 120">' + ['Text', 'Images', 'Music', 'Videos', 'Code'].map((t, i) => `<rect x="${20 + i * 1190}" y="20" width="1150" height="80" rx="40" fill="#62B7E4"/><text x="${595 + i * 1190}" y="70" text-anchor="middle" font-size="16">${t}</text>`).join('') + '</svg>';
+    const RT = await load(samples['Generative AI (list)'], [tiny]), itT = RT && RT.items[0];
+    if (itT) { pick(0); mode('origedit'); }
+    res.more.tiny = itT ? { fe: itT.fe && itT.fe.ok ? { block: itT.fe.block, slides: itT.fe.parts.length } : itT.fe, disabled: d.getElementById('napkinInsert').disabled, option: d.getElementById('napkinMode').selectedOptions[0].textContent } : null;
+    mode('edit');
+    res.more.calls = W.__calls.filter(u => /\/api\/napkin\/visual/.test(u)).length;
+  }
+
+  const C = res.conv, V = res.visual.filter(v => v.before && v.after), I = res.ins.objects, avg = a => Math.round(100 * a.reduce((x, y) => x + y, 0) / Math.max(1, a.length)) / 100;
+  res.summary = { fixtures: C.length, converted: C.filter(r => !r.error && !r.block.length).length, native: C.reduce((a, r) => a + (r.native || 0), 0), pictures: C.reduce((a, r) => a + (r.pictures || 0), 0),
+    recognised: C.reduce((a, r) => a + (r.recognised || 0), 0), overlapBefore: avg(V.map(v => v.before.overlap)), overlapAfter: avg(V.map(v => v.after.overlap)), colourBefore: avg(V.map(v => v.before.colour)), colourAfter: avg(V.map(v => v.after.colour)) };
+  res.acceptance = [
+    ['G1 Every saved real Napkin SVG converts: all text native and word for word (figures, formulas), on brand, Open Sans, readable contrast, inside the content area, readable size; blocked only where its content is (as its original picture is)', C.length === 14 && C.every(r => !r.error && r.contentAsOriginal && (!r.block.length || /covers|missing/.test(r.block.join(' '))) && r.texts > 0 && r.brand && r.font && r.tight && r.inside && r.contrast && r.figures && r.minPt >= 9),
+      JSON.stringify(C.map(r => r.error ? `${r.n}: ${r.error}` : `${r.n}: ${r.native} native (${r.shapes} shapes, ${r.lines} lines, ${r.texts} texts) + ${r.pictures} pictures, ${r.slides} slide(s), from ${r.minPt} pt${r.block.length ? ' BLOCKED ' + r.block[0] : ''}${!r.contrast ? ' CONTRAST' : ''}${!r.figures ? ' FIGURES' : ''}${!r.brand ? ' BRAND' : ''}${!r.inside ? ' OUTSIDE' : ''}`))],
+    ['G2 Native recognition: curved boxes, pills, circles and connectors become native shapes and lines; only free curves stay pictures', res.summary.recognised >= 50 && C.filter(r => r.recognised > 0).length >= 9, `${res.summary.recognised} curved outlines drawn natively; ${res.summary.native} native objects, ${res.summary.pictures} pictures in 14 designs`],
+    ['G3 Visual comparison with the original: closer than the V10.12.1 editable version (ink overlap and colour)', V.length >= 10 && res.summary.overlapAfter >= 0.6 && res.summary.overlapAfter > res.summary.overlapBefore && res.summary.colourAfter >= res.summary.colourBefore && V.filter(v => v.after.overlap >= v.before.overlap).length >= V.length * 0.75,
+      JSON.stringify({ summary: res.summary, each: V.map(v => `${v.n}: ${v.before.overlap}/${v.before.colour} -> ${v.after.overlap}/${v.after.colour}`) })],
+    ['G4 Inserted as genuinely editable objects: one text box per text (exact text, Open Sans, size, colour, no margins, no wrapping, at its previewed place), native shape types and lines, pictures only for icons, tagged, recorded', I.texts === I.wantTexts && I.textsExact && I.shapes === I.wantShapes && JSON.stringify(I.kinds) === JSON.stringify(I.wantKinds) && I.lines === I.wantLines && I.pictures === I.wantPictures && I.shapesFilled && I.tagged >= I.texts + I.shapes && I.record && I.noteKept && I.calls === 0 && /native, editable objects/.test(I.status),
+      JSON.stringify(I)],
+    ['G5 Panel: "Original editable" offered beside Editable / Original / Both; card and note report editable objects and pictures, never "fully editable" with pictures', res.ins.option.length === 4 && /origedit/.test(res.ins.option.join()) && res.ins.card.some(b => /Original editable: .*native objects, \d+ picture/.test(b)) && /Not editable as shapes/.test(res.ins.note) && !/Fully editable/.test(res.ins.card.filter(b => /Original editable/.test(b)).join()),
+      JSON.stringify({ option: res.ins.option, card: res.ins.card, note: res.ins.note.slice(0, 400) })],
+    ['G6 Step 5 edits its texts in place and undoes; duplicate guard; removal leaves the slide as it was', res.ins.step5.kind === 'fixed' && res.ins.step5.changed && res.ins.step5.undone && res.ins.dup && res.ins.removed, JSON.stringify({ step5: res.ins.step5, dup: res.ins.dup, removed: res.ins.removed })],
+    ['G7 A tall design continues on new slides (batch recorded, every text on them), removed together; a refused text or picture leaves nothing', res.cont.parts >= 2 && res.cont.insert.added === res.cont.parts && res.cont.insert.order && res.cont.insert.batch === 'done' && res.cont.insert.everyText && res.cont.insert.firstUnchanged && res.cont.removed && res.cont.rollback.unchanged && res.cont.rollback.batch && !res.cont.rollback.lastInsert && res.cont.rollbackPicture.unchanged,
+      JSON.stringify(res.cont)],
+    ['G8 Editable, Original and Both still insert and remove', ['edit', 'orig', 'both'].every(m => res.modes[m] && res.modes[m].objects > 0 && res.modes[m].removed), JSON.stringify(res.modes)],
+    ['G9 Napkin PowerPoint export converts and inserts; a design with no readable fit is blocked (said), not squeezed', res.more.pptx && res.more.pptx.ok && res.more.pptx.inserted && res.more.tiny && res.more.tiny.disabled && /not available/.test(res.more.tiny.option),
+      JSON.stringify(res.more)],
+    ['No provider request (saved files only)', res.more.calls === 0 && I.calls === 0, `requests: ${res.more.calls}`],
+    ['No script errors in the panel', !errors.length, errors.join(' | ') || 'none'],
+  ].map(([name, ok, evidence]) => ({ name, ok: !!ok, evidence }));
+  out.textContent = JSON.stringify(res);
+}
+(async () => {
+  const F = document.getElementById('f');
+  for (let i = 0; i < 300; i++) { try { if (F.contentWindow.location.pathname === '/v10.html' && F.contentDocument.readyState === 'complete') break; } catch (e) {} await wait(100); }
+  await run();
+})().catch(e => { out.textContent = JSON.stringify({ fatal: String(e && e.stack || e), errors }); });
+</script></body></html>

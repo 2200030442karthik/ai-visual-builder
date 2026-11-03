@@ -1,4 +1,4 @@
-"""V10.12.1 acceptance run: starts a test panel host (plain HTTP, port 44398, test files enabled), opens tests/harness.html
+"""V10.12.2 acceptance run: starts a test panel host (plain HTTP, port 44398, test files enabled), opens tests/harness.html
 in ONE headless Edge, waits for the harness to finish and prints a summary; then the V10.12 studio tests
 (tests/studio.html: more designs, edits, several slides) in the same Edge, with a screenshot of their previews
 (tests/evidence/v10.12-studio.png). Lightweight on purpose: no AI models, no
@@ -71,6 +71,7 @@ def main():
         report(res, time.time() - t0)
         acceptance_page(cdp, 'studio.html', 'V10.12', 'last-run-studio.json', 'v10.12-studio.png')
         acceptance_page(cdp, 'original.html', 'V10.12.1', 'last-run-original.json', 'v10.12.1-original.png')
+        acceptance_page(cdp, 'faithful.html', 'V10.12.2', 'last-run-faithful.json', 'v10.12.2-faithful.png')
     finally:
         subprocess.run([sys.executable, os.path.join(HERE, 'test_server.py')])
         subprocess.run([sys.executable, os.path.join(HERE, 'test_claude.py')])
@@ -95,7 +96,7 @@ def acceptance_page(cdp, name, label, out_json, png):
     cdp.js(f"location.href = 'http://localhost:{PORT}/tests/{name}'")
     time.sleep(1)
     t0, txt = time.time(), 'loading'
-    while time.time() - t0 < 180:
+    while time.time() - t0 < 400:
         try:
             txt = cdp.js("document.getElementById('out') ? document.getElementById('out').textContent : 'loading'")
         except Exception:
