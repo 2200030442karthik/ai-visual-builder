@@ -493,6 +493,8 @@ function planCandidates(P) {
     grouped ? ['capmap', 'stack3d', 'tree', 'capability', 'layers', 'swimlanes'] : [],
     seq ? ['pipeline', 'scene', 'timeline', 'stair'] : [],
     !seq && !support ? ['ecosystem', 'modules'] : [],
+    // 10.13: families of later packs say which content they suit (suits(P)); they come before the general ones
+    Object.values(PLAN_LAYOUTS).filter(L => L.suits && !L.hidden && (() => { try { return L.suits(P); } catch (e) { return false; } })()).map(L => L.key),
     ['hub', 'grid', 'columns', 'rows']);
   // Claude's own composition first, then its ranking (a core layout by its V10.11 successor), then what the structure suits
   const up = k => (PLAN_UPGRADE[k] && base.includes(PLAN_UPGRADE[k]) ? PLAN_UPGRADE[k] : k);

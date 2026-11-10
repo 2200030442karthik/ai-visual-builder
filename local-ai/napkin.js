@@ -28,7 +28,7 @@
      from its own items, at no extra cost, and they are marked as such. Before a request, a free check shows which
      layouts the content fits at 22 pt. Loaded after v10.html's scripts, gallery.js, understand.js, brand.js, svg2ppt.js,
      rebuild.js and plan.js. */
-const PANEL_VERSION = '10.12.2';      // must match server.py VERSION; a different host version is reported in the panel
+const PANEL_VERSION = '10.13.0';      // must match server.py VERSION; a different host version is reported in the panel
 const shortId = id => id ? `${id.slice(0, 4)}…${id.slice(-4)}` : '';
 /* Claude's time, tokens and estimated cost (from the prices in claude.json; the bill is in platform.claude.com). */
 const costText = c => `${c.model}${c.effort ? ' (effort ' + c.effort + ')' : ''}: ${c.seconds} s, ${c.usage.input_tokens} input + ${c.usage.output_tokens} output tokens` +
@@ -868,8 +868,26 @@ function makePanel(P) {
       editable: ok.filter(it => it.conv.report && it.conv.report.edit === 'full').length,
       rejected: R.items.filter(it => !usable(it)).map(it => `${it.n}: ${verdict(it) || 'not usable'}`) };
   };
-  window['__' + P.key] = { accuracy, pptxInfo, prepared, preflight, N };     // for the test harness
-  return { render, summary, prepared, plan: resultPlan };
+  /* 10.13: the app's one "Generate visuals" (orchestrator.js) drives this provider without its controls. Pressing
+     Generate is the user's request; whether a paid provider is used at all is the administrator's policy there. */
+  const auto = {
+    key: P.key, name: P.name,
+    available: () => { const st = state.svc && state.svc[P.key]; return !!(st && st.enabled && (!P.branded || st.style_id)); },
+    // the result the panel host kept, when it was made from this very text: reused, no request and no credits
+    async cached(text) {
+      if (N.result && N.result.items[0] && N.result.items[0].source === text) return N.result;
+      try { const last = await api(`/api/${P.key}/last`, null, 10000); if (!last.id || last.source !== text) return null; } catch (e) { return null; }
+      await recheckLast();
+      return N.result && N.result.items.length ? N.result : null;
+    },
+    // one request (4 variations); null when it did not give a result (the reason is in the status line)
+    async request(asked) { $p('Var').value = String(asked === 1 ? 1 : 4); await create(); return N.result && N.result.items.length ? N.result : null; },
+    usable, origOK, feOK, offered,
+    async insert(i, mode) { N.sel = i; if (hasOrig()) $p('Mode').value = mode; N.dupOk = `${N.result.items[i].rid || ''}|${N.result.items[i].n}${mode}`; await insert(); },
+    get busy() { return N.busy; }
+  };
+  window['__' + P.key] = { accuracy, pptxInfo, prepared, preflight, N, auto };     // for the test harness
+  return { render, summary, prepared, plan: resultPlan, auto };
 }
 
 /* Napkin and Claude side by side for the same text: how many variations came back, how many are usable and complete

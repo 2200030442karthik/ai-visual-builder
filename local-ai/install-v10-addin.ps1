@@ -36,4 +36,4 @@ if ($Remove) {
 New-Item -Path $Key -Force | Out-Null
 New-ItemProperty -Path $Key -Name $Id -Value $Manifest -PropertyType String -Force | Out-Null
 Write-Host "Registered AI Visual Builder V10 ($Ver) for PowerPoint desktop: $Manifest" -ForegroundColor Green
-Write-Host 'Restart PowerPoint; the button "AI Visual Builder V10" is on the Home tab. V9 is unchanged.'
+Write-Host 'Restart PowerPoint; the add-in is on its own "Simplilearn" tab (Generate visuals, Several slides, Edit a visual). V9 is unchanged.'

@@ -6,7 +6,7 @@
      <pre id="out">; #evidence holds original / before (V10.12.1 editable) / after (original editable) for the screenshot. -->
 <html><head><meta charset="utf-8"><title>V10.12.2 original-editable tests</title><script src="/tests/samples.js"></script><script src="/tests/mock.js"></script>
 <style>body{font:12px Segoe UI,Arial} #evidence{display:grid;grid-template-columns:repeat(3,400px);gap:6px;width:1220px} #evidence>div{border:1px solid #ccc;padding:3px} #evidence svg{width:100%;height:auto;display:block} h3{grid-column:1/-1;margin:8px 0 0;font-size:13px}</style></head>
-<body><iframe id="f" src="/v10.html" style="width:420px;height:900px"></iframe><pre id="out">running</pre><div id="evidence"></div>
+<body><iframe id="f" src="/v10.html?dev=1" style="width:420px;height:900px"></iframe><pre id="out">running</pre><div id="evidence"></div>
 <script>
 const out = document.getElementById('out'), errors = [], EV = document.getElementById('evidence');
 const wait = ms => new Promise(r => setTimeout(r, ms));

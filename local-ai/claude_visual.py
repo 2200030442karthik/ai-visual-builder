@@ -77,7 +77,8 @@ Answer with the SVG only: start with <svg and end with </svg>, no explanation an
 # request for every variation; the drawing - where generated SVGs fail (clipped labels, crossing connectors) - is done by
 # code that measures it. The lists below must match the panel's (tests/test_claude.py checks them).
 PLAN_LAYOUTS = ['platform', 'stack3d', 'scene', 'capmap', 'swimlanes', 'planes', 'ecosystem', 'modules', 'pyramid', 'cycle', 'funnel', 'versus',
-                'architecture', 'layers', 'capability', 'tree', 'pipeline', 'timeline', 'stair', 'hub', 'grid', 'columns', 'rows']
+                'architecture', 'layers', 'capability', 'tree', 'pipeline', 'timeline', 'stair', 'hub', 'grid', 'columns', 'rows',
+                'roadmap', 'pillars', 'quadrant']
 PICTORIALS = ['collect', 'evaluate', 'clean', 'features', 'train', 'mlcore', 'predict', 'deploy', 'problem', 'database', 'dataset', 'folder', 'document',
               'server', 'cloud', 'gateway', 'app', 'window', 'code', 'gear', 'monitor', 'chartUp', 'shield', 'lock', 'checklist', 'magnifier', 'filter',
               'warning', 'calendar', 'team', 'person', 'org', 'chat', 'sheet', 'pages', 'image', 'text', 'video', 'music', 'cyber', 'fraud', 'bank', 'cart',

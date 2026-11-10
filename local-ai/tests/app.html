@@ -1,0 +1,213 @@
+<!doctype html>
+<!-- V10.13 acceptance: the simple app (app.js) and its hidden engine choice (orchestrator.js). Loads the real panel
+     (v10.html) with the strict PowerPoint stand-in (mock.js). Napkin and Claude are stand-ins inside the page (saved
+     real results; every provider call is counted) - the test panel host refuses paid requests anyway (server.py
+     TEST_NO_PAID). Writes JSON into <pre id="out">; #evidence holds the gallery for the screenshot. -->
+<html><head><meta charset="utf-8"><title>V10.13 app tests</title><script src="/tests/samples.js"></script><script src="/tests/mock.js"></script>
+<style>body{font:12px Segoe UI,Arial} iframe{width:420px;height:900px} #evidence{width:1240px}</style></head>
+<body><iframe id="f" src="/v10.html"></iframe><iframe id="g" src="about:blank"></iframe><pre id="out">running</pre><div id="evidence"></div>
+<script>
+const out = document.getElementById('out'), errors = [], wait = ms => new Promise(r => setTimeout(r, ms));
+const STYLE = 'EHH64S9R64R64C9DCMSKCSHD6GTPADHDC4SKJC1D68WP6CK66DJ32RV4CGVG';
+const loaded = async (F, path) => { for (let i = 0; i < 300; i++) { try { if (F.contentWindow.location.pathname === '/v10.html' && F.contentDocument.readyState === 'complete' && F.contentWindow.__app) return; } catch (e) {} await wait(100); } throw new Error('the panel did not load: ' + path); };
+async function run() {
+  const F = document.getElementById('f');
+  await loaded(F, '/v10.html');
+  const W = F.contentWindow, ev = x => W.eval(x), d = W.document;      // the panel's document, once it has loaded
+  W.addEventListener('error', e => errors.push(String(e.message)));
+  installMock(W);
+  const M = W.__mock; M.realGroups = true;
+  ev('state.inOffice = true; state.canGroup = true; state.canRotate = true; 1');
+  try { W.localStorage.clear(); } catch (e) {}
+  const samples = Object.fromEntries(EXAMPLES), fx = async n => (await fetch('/tests/fixtures/' + n)).text(), res = { ui: {}, gen: {}, ins: {}, paid: {}, flows: {}, dev: {}, errors };
+  const A = W.__app, status = () => d.getElementById('status').textContent, vis = id => { const e = d.getElementById(id); return !!e && e.offsetParent !== null; };
+  const leaves = s => s.items.flatMap(x => x.type === 'Group' ? x.group.shapes.items : [x]), own = s => s.items.filter(x => x.type !== 'Placeholder');
+
+  /* the stand-in panel host and providers: every provider call counted; C.napkin / C.claude say what each answers */
+  const ACC = `access: { configured: true, mode: 'windows', authorized: true, user: 'test', reason: '', template: { layout_name: 'Content_Slide', fingerprint: { shapes: { 'content placeholder': [101.7, 205, 1078.5, 435.2], 'heading placeholder': [101.7, 119.1, 1078.5, 71.2], 'section tag strip': [1287.2, 0, 80.8, 720.3] }, tolerance: 3 } } }`;
+  W.__cfg = { napkin: 'off', claude: 'off', policy: 'when-needed' };
+  W.__svc = () => { const C = W.__cfg; return eval(`({ server: '10.13.0', ${ACC}, napkin: { configured: true, enabled: ${'C.napkin !== "off"'}, used_today: 0, max_per_day: 20, style_id: '${STYLE}', variations: [1, 4], last: true },
+    claude: { configured: true, enabled: ${'C.claude !== "off"'}, sdk: true, model: 'claude-opus-5-5', effort: 'high', prices: [4, 20], variations: [1, 4], last: true }, orchestrate: { paid: C.policy, order: ['napkin', 'claude'] } })`); };
+  W.__calls = [];
+  ev(`api = async (path, body) => { const C = window.__cfg;
+    if (/^\\/api\\/(napkin|claude)\\//.test(path)) window.__calls.push(path);
+    if (path.startsWith('/api/napkin/visual')) return { id: 'job-n', status: 'pending', style_id: '${STYLE}', style_rejected: false };
+    if (path.startsWith('/api/napkin/last')) return C.napkinLast || {};
+    if (path.startsWith('/api/napkin/status')) return C.napkin === 'fail' ? { status: 'failed', files: 0, error: 'test failure' } : { status: 'completed', files: C.napkinFiles.length, style_id: '${STYLE}' };
+    if (path.startsWith('/api/claude/visual')) return { id: 'job-c', status: 'pending', format: 'plan' };
+    if (path.startsWith('/api/claude/last')) return C.claudeLast || {};
+    if (path.startsWith('/api/claude/status')) return C.claude === 'fail' ? { status: 'failed', files: 0, error: 'test failure' } : { status: 'completed', files: 1, usage: { input_tokens: 1, output_tokens: 1 }, seconds: 1, model: 'claude-opus-5-5', effort: 'high', cost_usd: 0.01 };
+    return window.__svc(); }; 1`);
+  W.fetch = async url => { url = String(url); W.__calls.push(url); const C = W.__cfg, i = +(/[?&]i=(\d+)/.exec(url) || [0, 0])[1];
+    if (/\/api\/claude\/file/.test(url)) return new Response(C.claudePlan, { status: 200 });
+    return new Response(C.napkinFiles[i % C.napkinFiles.length], { status: 200 }); };
+  const gate = async () => { M.layoutName = 'Content_Slide'; await ev('refreshStatus()'); await ev('checkSlide()'); ev('showGate(); updateButtons(); 1'); };
+  await gate();
+  const edu = []; for (let i = 0; i < 4; i++) edu.push(await fx(`napkin-edu-${i}.svg`));
+  W.__cfg.napkinFiles = edu; W.__cfg.claudePlan = await fx('claude-dataeng-plan.json');
+  const gen = async text => { d.getElementById('content').value = text; d.getElementById('content').dispatchEvent(new W.Event('input')); await A.appGenerate(); return A.APP.list; };
+  const fresh = () => { A.ORCH.memo.clear(); try { W.localStorage.removeItem('aivb.paid.v1'); } catch (e) {} W.__calls = []; ev('state.runText = ""; state.sections = []; 1');
+    ['napkin', 'claude'].forEach(k => { W['__' + k].N.result = null; }); };
+  const paidCalls = () => W.__calls.filter(u => /\/api\/(napkin|claude)\/visual/.test(u)).length;
+
+  /* ===== U: what the user sees ===== */
+  const technical = ['aiStatus', 'setupBox', 'analysePanel', 'analyse', 'step3', 'perfBox', 'perf', 'napkinPanel', 'claudePanel', 'napkinVar', 'napkinOk', 'napkinLast', 'claudeLast', 'insert', 'insertAll', 'stPlanRow', 'stTab_designs'];
+  res.ui.before = { technicalVisible: technical.filter(vis), simple: d.body.classList.contains('simple'), version: d.querySelector('h1 > span').offsetParent !== null,
+    sub: d.querySelector('.sub').offsetParent !== null, gen: vis('appGen') && d.getElementById('appGen').textContent.trim(), empty: vis('appEmpty'), insertBar: vis('appInsert'), stPanel: vis('stPanel') };
+
+  /* ===== G: one button: analysis inside, 10-20 varied editable visuals, selection, preview ===== */
+  {
+    const L = await gen(samples['ML workflow (5 stages, intro)']);
+    const sigs = L.map(c => ev('p => signature(p)')(c.prims));
+    res.gen.ml = { n: L.length, cats: [...new Set(L.map(c => c.category))], families: L.map(c => c.family), uniqueLayouts: new Set(sigs).size === sigs.length, analysed: ev('state.sections.length') > 0 && ev('state.runText') === samples['ML workflow (5 stages, intro)'].trim(),
+      analyseClicked: d.getElementById('analyse').textContent !== 'Analyze content' ? 'analysis ran (button text changed)' : 'not run', cards: d.querySelectorAll('#appGrid .gcard').length, thumbs: 0, editable: L.filter(c => c.edit === 'full').length,
+      selected: d.querySelectorAll('#appGrid .gcard.sel').length, status: status().slice(0, 160), timingsVisible: vis('perfBox'), providerWords: /Napkin|Claude|request|token|credit/i.test(d.getElementById('appMain').textContent), paid: paidCalls() };
+    await wait(400); res.gen.ml.thumbs = d.querySelectorAll('#appGrid .gcard .gthumb svg').length;
+    d.querySelectorAll('#appGrid .gcard')[3].click();
+    res.gen.pick = { sel: A.APP.sel, pressed: d.querySelectorAll('#appGrid .gcard[aria-pressed="true"]').length, title: d.getElementById('appPvT').textContent, sameAsCard: d.getElementById('appPvT').textContent === A.APP.list[3].title, bigPreview: !!d.querySelector('#appPv svg') };
+    // filters by kind
+    const chip = [...d.querySelectorAll('#appChips button')].find(b => b.dataset.k !== 'All');
+    if (chip) { chip.click(); res.gen.filter = { k: chip.dataset.k, cards: d.querySelectorAll('#appGrid .gcard').length, all: [...d.querySelectorAll('#appGrid .gcard')].every(b => A.APP.list[+b.dataset.i].category === chip.dataset.k) }; d.querySelector('#appChips button[data-k="All"]').click(); }
+    // more visuals: new ones first, nothing repeated
+    const before = new Set(A.APP.list.map(c => c.id));
+    await A.appMore();
+    res.gen.more = { fresh: A.APP.list.filter(c => !before.has(c.id)).length, total: A.APP.list.length, unique: new Set(A.APP.list.map(c => c.id)).size === A.APP.list.length, status: status().slice(0, 120) };
+    // the content changes: the gallery is out of date, insert waits for Generate
+    d.getElementById('content').value += '\n6. Monitoring'; d.getElementById('content').dispatchEvent(new W.Event('input'));
+    res.gen.stale = { note: vis('appStale'), insertDisabled: d.getElementById('appInsert').disabled };
+    // other content kinds
+    for (const [k, t] of [['edu', 'Educational content'], ['de', 'Data engineering platform (8 concepts)'], ['facts', 'Quick facts'], ['records', 'Project scores'], ['genai', 'Generative AI (list)']]) {
+      const L2 = await gen(samples[t]); res.gen[k] = { n: L2.length, cats: [...new Set(L2.map(c => c.category))].length, err: d.getElementById('appErr').textContent };
+    }
+    // nothing to show: meaningless text is refused, nothing drawn, said plainly
+    const L3 = await gen(samples['Meaningless text']);
+    res.gen.meaningless = { n: L3.length, err: d.getElementById('appErr').textContent.slice(0, 160), errShown: vis('appErr') };
+    res.gen.empty = (() => { d.getElementById('content').value = ''; d.getElementById('content').dispatchEvent(new W.Event('input')); return { genDisabled: d.getElementById('appGen').disabled }; })();
+  }
+
+  /* ===== I: insertion of each kind, editable; duplicate guard; undo ===== */
+  {
+    const L = await gen(samples['Educational content']);
+    const kinds = {};
+    for (const eng of ['builtin', 'designs']) {
+      const i = L.findIndex(c => c.engine === eng);
+      if (i < 0) { kinds[eng] = 'none offered'; continue; }
+      M.reset(); await gate(); A.appSelect(i);
+      const want = L[i].prims.filter(p => p.text).map(p => String(p.text)).sort();
+      await A.appInsert();
+      const s = M.slides[0], T = leaves(s).filter(x => x.type === 'TextBox' || (x.type === 'GeometricShape' && x.textFrame && x.textFrame.textRange.text)).map(x => String(x.textFrame.textRange.text)).filter(t => t.trim() && !/^Click/.test(t)).sort();
+      kinds[eng] = { title: L[i].title, status: status().slice(0, 200), objects: own(s).length, native: leaves(s).filter(x => x.kind !== 'picture' && x.type !== 'Placeholder').length, pictures: leaves(s).filter(x => x.kind === 'picture').length, edit: L[i].edit,
+        insertEqualsPreview: JSON.stringify(want) === JSON.stringify(T), tagged: leaves(s).some(x => { try { return !x.tags.getItemOrNullObject('AIVB_V').isNullObject; } catch (e) { return false; } }) };
+      if (eng === 'designs') { await A.appInsert(); kinds.dup = { warned: /just inserted/.test(status()), objects: own(s).length === kinds[eng].objects }; }
+      await ev('removeLast()'); kinds[eng].undone = own(M.slides[0]).length === 0;
+    }
+    res.ins = kinds;
+  }
+
+  /* ===== P: the hidden engine choice: policy, reuse of kept results, cost control, fallback ===== */
+  {
+    const prose = samples['Explanatory paragraph'], eduT = samples['Educational content'];
+    // never: no paid request even for prose
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'ok', claude: 'ok', policy: 'never', napkinLast: {}, claudeLast: {} }); await gate();
+    let L = await gen(prose); res.paid.never = { paid: paidCalls(), n: L.length, engines: [...new Set(L.map(c => c.engine))] };
+    // when-needed, enough strong free visuals: no request
+    fresh(); W.__cfg.policy = 'when-needed'; await gate();
+    L = await gen(samples['ML workflow (5 stages, intro)']); res.paid.notNeeded = { paid: paidCalls(), n: L.length, log: A.ORCH.log.slice(-1)[0].what };
+    // always, Napkin answers (the Educational content designs): one request, its designs as editable objects among the rest
+    fresh(); W.__cfg.policy = 'always'; await gate();
+    L = await gen(eduT);
+    const nk = L.filter(c => c.engine === 'napkin');
+    res.paid.always = { paid: paidCalls(), napkin: nk.length, total: L.length, editable: nk.every(c => c.prims.some(p => p.t === 'text')), status: status().slice(0, 200), providerNamed: /Napkin|Claude/.test(status() + d.getElementById('appMain').textContent) };
+    // the same text again: no new request (reused in this session)
+    W.__calls = []; L = await gen(eduT + ' '); res.paid.again = { paid: paidCalls(), n: L.length };
+    // a new session on the same text: the kept result is reused (free) - and without it, the 24-hour guard stops a resend
+    A.ORCH.memo.clear(); W.__calls = []; ['napkin'].forEach(k => { W['__' + k].N.result = null; });
+    W.__cfg.napkinLast = { id: 'job-last', format: 'svg', asked: 4, source: eduT.trim() };
+    L = await gen(eduT); res.paid.kept = { paid: paidCalls(), napkin: L.filter(c => c.engine === 'napkin').length, lastRead: W.__calls.filter(u => /napkin\/last/.test(u)).length };
+    A.ORCH.memo.clear(); W.__calls = []; W.__napkin.N.result = null; W.__cfg.napkinLast = {};
+    L = await gen(eduT); res.paid.guard = { paid: paidCalls(), log: A.ORCH.log.slice(-3).map(x => x.what) };
+    // insert an AI-designed one: editable objects, friendly status
+    const ni = A.APP.list.findIndex(c => c.engine === 'napkin');
+    fresh(); W.__cfg.policy = 'always'; await gate(); L = await gen(eduT);
+    const k2 = L.findIndex(c => c.engine === 'napkin');
+    if (k2 >= 0) { M.reset(); await gate(); A.appSelect(k2); await A.appInsert(); const s = M.slides.find(x => own(x).length) || M.slides[0];
+      res.paid.insert = { title: L[k2].title, slides: M.slides.length, texts: leaves(s).filter(x => x.type === 'TextBox').length, pictures: leaves(s).filter(x => x.kind === 'picture').length, status: status().slice(0, 220), providerNamed: /Napkin|Claude|request/.test(status()) };
+      await ev('removeLast()'); res.paid.insert.undone = M.slides.reduce((a, x) => a + own(x).length, 0) === 0 && M.slides.length === 1; }
+    // fallback: Napkin fails -> Claude is asked; both fail -> the free visuals, with a plain note
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'fail', claude: 'ok', policy: 'always' }); await gate();
+    L = await gen(samples['Data engineering platform (8 concepts)']);
+    res.paid.fallback = { engines: [...new Set(L.map(c => c.engine))], napkinAsked: W.__calls.filter(u => /napkin\/visual/.test(u)).length, claudeAsked: W.__calls.filter(u => /claude\/visual/.test(u)).length, n: L.length, log: A.ORCH.log.slice(-4).map(x => x.what) };
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'fail', claude: 'fail', policy: 'always' }); await gate();
+    L = await gen(samples['Data engineering platform (8 concepts)']);
+    res.paid.allFail = { n: L.length, engines: [...new Set(L.map(c => c.engine))], status: status().slice(0, 200), paid: paidCalls() };
+    // a provider not configured: not tried
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'off', claude: 'off', policy: 'always' }); await gate();
+    L = await gen(prose); res.paid.unavailable = { paid: paidCalls(), n: L.length };
+    W.__cfg.policy = 'when-needed'; await gate();
+  }
+
+  /* ===== F: several slides and edit a visual from the app ===== */
+  {
+    M.reset(); await gate(); fresh();
+    await gen(samples['Data engineering platform (8 concepts)']);
+    d.getElementById('appSlides').click();
+    res.flows.slides = { open: vis('stPanel'), title: d.getElementById('stAppTitle').textContent, tab: d.getElementById('stTab_slides').classList.contains('sel') };
+    await W.__studio.planTheSlides();
+    const n0 = M.slides.length; await W.__studio.insertSlides();
+    res.flows.slides.inserted = M.slides.length - n0; res.flows.slides.status = status().slice(0, 140);
+    await ev('removeLast()'); res.flows.slides.removed = M.slides.length === n0;
+    await ev(`PowerPoint.run(async c => { c.presentation.setSelectedSlides(['${M.slides[0].id}']); })`);   // PowerPoint selects a slide that is still there
+    // insert a design, then edit it
+    const L = A.APP.list, i = L.findIndex(c => c.engine === 'designs'); A.appSelect(i); await A.appInsert();
+    d.getElementById('appEdit').click();
+    res.flows.edit = { open: vis('stPanel'), title: d.getElementById('stAppTitle').textContent, tab: d.getElementById('stTab_edit').classList.contains('sel') };
+    const vshape = leaves(M.slides[0]).find(x => { try { return !x.tags.getItemOrNullObject('AIVB_V').isNullObject; } catch (e) { return false; } });
+    M.selShapes = [vshape]; await W.__studio.editLoad();
+    res.flows.edit.loaded = !!W.__studio.ST.edit; res.flows.edit.status = status().slice(0, 140);
+    M.selShapes = []; d.getElementById('stAppClose').click(); res.flows.closed = !vis('stPanel');
+    await ev('removeLast()');
+  }
+  res.ui.after = { technicalVisible: technical.filter(vis) };
+
+  /* ===== D: ribbon deep links and the developer mode (a second copy of the panel) ===== */
+  {
+    const G = document.getElementById('g');
+    for (const [k, q] of [['edit', '?open=edit'], ['slides', '?open=slides'], ['dev', '?dev=1'], ['back', '?dev=0']]) {
+      G.src = '/v10.html' + q; await wait(300); await loaded(G, q); await wait(300);
+      const D = G.contentDocument, v = id => { const e = D.getElementById(id); return !!e && e.offsetParent !== null; };
+      res.dev[k] = { simple: D.body.classList.contains('simple'), stPanel: v('stPanel'), editTab: D.getElementById('stTab_edit').classList.contains('sel'), slidesTab: D.getElementById('stTab_slides').classList.contains('sel'),
+        aiStatus: v('aiStatus'), napkin: v('napkinPanel'), analyse: v('analyse'), perf: !!D.getElementById('perfBox') && D.getElementById('perfBox').offsetParent !== null, devbar: !!D.querySelector('.devbar'), version: D.querySelector('h1 > span').offsetParent !== null };
+    }
+  }
+
+  // the gallery for the screenshot
+  { const L = await gen(samples['Educational content']); document.getElementById('evidence').innerHTML = '<div style="display:grid;grid-template-columns:repeat(5,240px);gap:6px">' + L.map(c => `<div style="border:1px solid #ccc;padding:3px">${W.thumb(c.prims)}<b>${c.title}</b><br>${c.category} · ${c.edit === 'full' ? 'Editable' : 'Editable, icons as pictures'}</div>`).join('') + '</div>'; }
+
+  const U = res.ui, Gn = res.gen, I = res.ins, Pd = res.paid, Fl = res.flows, Dv = res.dev;
+  res.acceptance = [
+    ['A1 Normal UI: no version, host status, setup, analysis step, timings, provider sections, "how many", credit tick, re-check buttons, plan source, raw insert controls', U.before.simple && !U.before.technicalVisible.length && !U.before.version && !U.before.sub && U.before.gen === 'Generate visuals' && U.before.empty && U.before.insertBar && !U.before.stPanel && !U.after.technicalVisible.length,
+      JSON.stringify(U)],
+    ['A2 One button: Generate runs the analysis itself and gives 10-20 varied, editable visuals (no duplicates), no provider words, no timings', Gn.ml.n >= 10 && Gn.ml.n <= 20 && Gn.ml.cats.length >= 5 && Gn.ml.uniqueLayouts && Gn.ml.analysed && Gn.ml.cards === Gn.ml.n && Gn.ml.thumbs >= Math.min(8, Gn.ml.n) && Gn.ml.editable === Gn.ml.n && Gn.ml.selected === 1 && !Gn.ml.timingsVisible && !Gn.ml.providerWords && Gn.ml.paid === 0,
+      JSON.stringify(Gn.ml)],
+    ['A3 Gallery: selection state, large preview of the selected one, kind filters, More visuals (new first, nothing repeated), out-of-date content blocks insert', Gn.pick.sel === 3 && Gn.pick.pressed === 1 && Gn.pick.sameAsCard && Gn.pick.bigPreview && (!Gn.filter || Gn.filter.all) && Gn.more.unique && Gn.more.fresh >= 1 && Gn.stale.note && Gn.stale.insertDisabled,
+      JSON.stringify({ pick: Gn.pick, filter: Gn.filter, more: Gn.more, stale: Gn.stale })],
+    ['A4 Other content: 10-20 visuals for lists, prose-like items, records; meaningless text refused plainly; empty content cannot generate', ['edu', 'de', 'facts', 'genai'].every(k => Gn[k].n >= 10 && Gn[k].n <= 20 && Gn[k].cats >= 4) && Gn.records.n >= 1 && Gn.meaningless.n === 0 && Gn.meaningless.errShown && Gn.empty.genDisabled,
+      JSON.stringify({ edu: Gn.edu, de: Gn.de, facts: Gn.facts, genai: Gn.genai, records: Gn.records, meaningless: Gn.meaningless })],
+    ['A5 Insert selected: built-in and design visuals go in as native, tagged objects, insert = preview; a repeat asks first; undo takes it out', ['builtin', 'designs'].every(k => I[k] && I[k].objects > 0 && I[k].insertEqualsPreview && I[k].tagged && I[k].undone && (I[k].edit === 'partial' || I[k].pictures === 0)) && I.dup && I.dup.warned && I.dup.objects,
+      JSON.stringify(I)],
+    ['A6 Paid providers by policy only: never -> none; when-needed with enough strong free visuals -> none; always -> one request, its designs editable, never named', Pd.never.paid === 0 && Pd.notNeeded.paid === 0 && Pd.always.paid === 1 && Pd.always.napkin >= 1 && Pd.always.editable && !Pd.always.providerNamed,
+      JSON.stringify({ never: Pd.never, notNeeded: Pd.notNeeded, always: Pd.always })],
+    ['A7 Cost control: the same text again -> no request; a kept result for the text -> reused (no request); otherwise not resent within 24 hours', Pd.again.paid === 0 && Pd.kept.paid === 0 && Pd.kept.napkin >= 1 && Pd.guard.paid === 0 && Pd.guard.log.some(x => /24 hours/.test(x)),
+      JSON.stringify({ again: Pd.again, kept: Pd.kept, guard: Pd.guard })],
+    ['A8 Fallback: Napkin fails -> Claude asked and its designs shown; both fail -> the free visuals with a plain note; a provider not set up is not tried', Pd.fallback.napkinAsked === 1 && Pd.fallback.claudeAsked === 1 && Pd.fallback.engines.includes('claude') && Pd.allFail.n >= 10 && Pd.allFail.engines.every(e => e === 'builtin' || e === 'designs') && Pd.unavailable.paid === 0,
+      JSON.stringify({ fallback: Pd.fallback, allFail: Pd.allFail, unavailable: Pd.unavailable })],
+    ['A9 An AI-designed visual inserts as editable text and shapes; the status never names the provider; undo removes it', !!Pd.insert && Pd.insert.texts > 0 && !Pd.insert.providerNamed && Pd.insert.undone, JSON.stringify(Pd.insert)],
+    ['A10 Several slides and Edit a visual open from the app and still work (insert, remove, load an inserted visual)', Fl.slides.open && Fl.slides.tab && Fl.slides.inserted >= 2 && Fl.slides.removed && Fl.edit.open && Fl.edit.tab && Fl.edit.loaded && Fl.closed, JSON.stringify(Fl)],
+    ['A11 Ribbon deep links open the panel on Edit / Several slides; developer mode shows every technical section again, ?dev=0 leaves it', Dv.edit.simple && Dv.edit.stPanel && Dv.edit.editTab && Dv.slides.slidesTab && Dv.slides.stPanel && !Dv.dev.simple && Dv.dev.aiStatus && Dv.dev.napkin && Dv.dev.analyse && Dv.dev.devbar && Dv.dev.version && Dv.back.simple && !Dv.back.aiStatus,
+      JSON.stringify(Dv)],
+    ['No script errors in the panel', !errors.length, errors.join(' | ') || 'none'],
+  ].map(([name, ok, evidence]) => ({ name, ok: !!ok, evidence }));
+  out.textContent = JSON.stringify(res);
+}
+run().catch(e => { out.textContent = JSON.stringify({ fatal: String(e && e.stack || e), errors }); });
+</script></body></html>

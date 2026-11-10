@@ -43,22 +43,30 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import access as A
 import claude_visual as C
 
-VERSION = '10.12.2'
+VERSION = '10.13.0'
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'AIVisualBuilder')
 STATIC = {'/': ('v10.html', 'text/html; charset=utf-8'), '/v10.html': ('v10.html', 'text/html; charset=utf-8'),
-          **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'original', 'faithful', 'napkin', 'studio')},
+          **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'original', 'faithful', 'napkin', 'studio', 'orchestrator', 'app')},
+          # the ribbon's icons (manifest-v10.xml), served by this host like the panel itself
+          **{f'/assets/icon-{n}.png': (f'assets/icon-{n}.png', 'image/png') for n in (16, 32, 64, 80)},
           # design packs (packs/*.js): layout families added without changing the application
           **{f'/packs/{n}': (f'packs/{n}', 'text/javascript; charset=utf-8') for n in os.listdir(os.path.join(HERE, 'packs')) if n.endswith('.js')}}
 MAX_BODY = 256 * 1024
 MAX_TEXT = 10000
 
-CONFIG = {'port': 44317, 'napkin_base': 'https://api.napkin.ai', 'napkin_max_per_day': 0, 'napkin_timeout_s': 60, 'claude_max_per_day': 0, 'claude_timeout_s': 300}
+# paid_policy (10.13, orchestrator.js): whether "Generate visuals" may use the paid providers: never | when-needed | always;
+# paid_order: which one first (the next is the fallback). Set by the administrator; the app shows neither.
+CONFIG = {'port': 44317, 'napkin_base': 'https://api.napkin.ai', 'napkin_max_per_day': 0, 'napkin_timeout_s': 60, 'claude_max_per_day': 0, 'claude_timeout_s': 300,
+          'paid_policy': 'when-needed', 'paid_order': ['napkin', 'claude']}
 try:
     with open(os.path.join(HERE, 'config.json'), encoding='utf-8') as f:
         CONFIG.update({k: v for k, v in json.load(f).items() if k in CONFIG})
 except (OSError, ValueError):
     pass
+if CONFIG['paid_policy'] not in ('never', 'when-needed', 'always'):
+    CONFIG['paid_policy'] = 'when-needed'
+CONFIG['paid_order'] = [k for k in CONFIG['paid_order'] if k in ('napkin', 'claude')] if isinstance(CONFIG['paid_order'], list) else ['napkin', 'claude']
 PORT = int(sys.argv[sys.argv.index('--port') + 1]) if '--port' in sys.argv else int(CONFIG['port'])   # --port: tests only
 ALLOWED_HOSTS = {f'localhost:{PORT}', f'127.0.0.1:{PORT}'}
 if '--test' in sys.argv:    # tests only: also serve the test harness and its inputs
@@ -68,11 +76,14 @@ if '--test' in sys.argv:    # tests only: also serve the test harness and its in
                    '/tests/studio.html': ('tests/studio.html', 'text/html; charset=utf-8'),
                    '/tests/original.html': ('tests/original.html', 'text/html; charset=utf-8'),
                    '/tests/faithful.html': ('tests/faithful.html', 'text/html; charset=utf-8'),
+                   '/tests/app.html': ('tests/app.html', 'text/html; charset=utf-8'),
                    '/tests/samples.js': ('tests/samples.js', 'text/javascript; charset=utf-8'),
                    '/tests/mock.js': ('tests/mock.js', 'text/javascript; charset=utf-8')})
     for _n in os.listdir(os.path.join(HERE, 'tests', 'fixtures')):   # saved real Napkin outputs (regression fixtures)
         STATIC['/tests/fixtures/' + _n] = ('tests/fixtures/' + _n, 'application/octet-stream')
 SCHEME = 'https'
+# --test hosts never send a paid request, whatever keys this PC has (10.13: Generate decides on its own)
+TEST_NO_PAID = '--test' in sys.argv
 CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' https://appsforoffice.microsoft.com; "
        "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://appsforoffice.microsoft.com; "
        "font-src 'self' data:; connect-src 'self' https://*.microsoft.com https://*.office.com https://*.office.net; "
@@ -586,7 +597,10 @@ class Handler(BaseHTTPRequestHandler):
                 if who['ok']:
                     claude.update({'last': bool(napkin_last(cache=CLAUDE_CACHE).get('id')), 'used_today': cused['requests'], 'max_per_day': clim['per_day'],
                                    'max_per_user_per_day': clim['per_user_per_day'], 'mine_today': cused.get('users', {}).get(who['user'], 0)})
-                return self.send(200, {'server': VERSION, 'access': access, 'napkin': napkin, 'claude': claude})
+                if TEST_NO_PAID:     # a test panel host: both paid providers shown as switched off
+                    napkin['enabled'] = claude['enabled'] = False
+                orchestrate = {'paid': CONFIG['paid_policy'], 'order': CONFIG['paid_order']}
+                return self.send(200, {'server': VERSION, 'access': access, 'napkin': napkin, 'claude': claude, 'orchestrate': orchestrate})
             if path.startswith(('/api/napkin/', '/api/claude/')) and not self.authorized():
                 return
             if path == '/api/napkin/status':
@@ -623,6 +637,9 @@ class Handler(BaseHTTPRequestHandler):
             if n > MAX_BODY or 'application/json' not in self.headers.get('Content-Type', ''):
                 return self.fail(400, 'JSON up to 256 KB expected.')
             b = json.loads(self.rfile.read(n) or b'{}')
+            # a test panel host never makes a paid request (the tests use saved results and stand-ins)
+            if TEST_NO_PAID and path in ('/api/napkin/visual', '/api/claude/visual'):
+                return self.fail(403, 'Paid requests are switched off on a test panel host.')
             if path == '/api/napkin/visual':
                 who = self.authorized()
                 return who and self.send(200, napkin_create(b, who))

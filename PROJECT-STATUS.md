@@ -1,6 +1,6 @@
 # AI Visual Builder — project status
 
-## Current version: V10.12.2 (3 Nov 2026)
+## Current version: V10.13 (10 Nov 2026)
 Authorized employee + Content Slide of the approved template → paste content → analyze → accurate infographic and
 pictorial suggestions → preview → insert editable PowerPoint shapes. JavaScript panel + small Python host; no AI
 models, no GPU. Three ways to generate: native infographics (built in, free), and optionally Napkin AI (single approved
@@ -16,6 +16,9 @@ Simplilearn brand style) or Claude AI (Anthropic API), both paid, confirmed per 
 | Napkin PPTX | `local-ai/pptx.js` | reading and checks |
 | Napkin rebuild | `local-ai/rebuild.js` | `napkinFaithful`: Napkin's own arrangement (ring / fan / row / column / grid) and item look rebuilt natively; `napkinRebuild` (cards) for sequences and as a reported fallback |
 | Designs, slides, edits | `local-ai/studio.js` | step 5, free (no AI request): more designs of a saved content plan, content density, several slides (logical split, overview, batch insertion with recovery), editing of inserted visuals (PowerPoint tags `AIVB_V`/`AIVB_F` + a record on the slide, one undo) |
+| App (end users) | `local-ai/app.js` | 10.13: content → Generate visuals → gallery (10-20, filters, selection, large preview) → insert; More visuals, Several slides, Edit a visual; loading/empty/error/stale states; plain status words; developer mode (`?dev=1`, Ctrl+Alt+Shift+D) restores every technical section |
+| Engine choice | `local-ai/orchestrator.js` | 10.13: engines builtin, designs (free), napkin, claude (paid, `registerEngine`); paid policy `never` / `when-needed` / `always` (config.json `paid_policy`, `paid_order`); kept results reused, 24-hour resend guard, one request + one fallback; ranking (accuracy, editability, richness, readability), dedupe, variety |
+| Design pack "modern" | `local-ai/packs/modern-10.13.js` | 10.13: roadmap, pillars, quadrant framework; families say which content they `suits` (plan.js `planCandidates`) |
 | Original editable | `local-ai/faithful.js` + `svg2ppt.js` (`svgToPrims(..., { faithful })`) | 10.12.2: the original design as native objects: curved outlines sampled and matched to box / rounded box / pill / circle / ellipse, open curved strokes as straight-segment connectors, text boxes at the design's place and size (`tight`: no margins, no wrap), brand colours and contrast, icons and illustrations as separate pictures; `faithfulSplit` (continuation slides at clean gaps, one scale), `faithfulJoin` (words broken by Napkin), checks and editability report |
 | Original design | `local-ai/original.js` | 10.12.1: a drawn result's original (Napkin SVG, or the first slide of its PPTX drawn as SVG) as one SVG picture: cleaned (`cleanSvg` with embedded fonts kept), fitted by one factor and centred, readability (smallest text in pt; below 22 flagged, below `ORIGINAL_MIN_PT` 9 blocked) and content (its own text through `accuracy`) |
 | Napkin AI + Claude AI | `local-ai/napkin.js` | one provider panel per AI (`makePanel`): 1 or 4 variations, checks, previews (as inserted and as returned), not-offered variations kept for inspection, re-check without a new request, insertion, Napkin/Claude comparison |
@@ -23,9 +26,22 @@ Simplilearn brand style) or Claude AI (Anthropic API), both paid, confirmed per 
 | Claude AI backend | `local-ai/claude_visual.py`, `configure-claude.ps1`, `Configure Claude.bat` | one design-specification request for 1 or 4 visuals (drawings kept for cached results and tests), `max_retries=0`, no fallback model; model / effort / max_tokens / prices in `%LOCALAPPDATA%\AIVisualBuilder\claude.json` |
 | Install / restart | `local-ai/start-ai-visual-builder.ps1` (+ `Restart AI Visual Builder.bat`), `install-v10-addin.ps1` (+ `Install V10 add-in.bat`, `Remove V10 add-in.bat`) | restart replaces every outdated copy; V10 registration by its own manifest Id, V9 never touched |
 | Access | `local-ai/access.py`, `access.example.json` | administrator policy in `%ProgramData%\AIVisualBuilder\access.json` |
-| Panel host | `local-ai/server.py` | 10.12.2; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
-| Manifest | `manifest-v10.xml` | 10.12.2.0 (SSO entry to add once the app is registered, see README) |
+| Panel host | `local-ai/server.py` | 10.13.0; `orchestrate` in /api/status; ribbon icons; `--test` hosts refuse paid requests; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
+| Manifest | `manifest-v10.xml` | 10.13.0.0: own ribbon tab "Simplilearn", group "AI Visual Builder", buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
 | Diagnosis | `local-ai/tests/run_diag.py`, `diag.html`, `diag_cases.py` | every layout considered with its reason; every Napkin variation with arrangement, status and preview |
+
+## V10.13 — a simple app: one "Generate visuals", the engine chosen behind it (10 Nov)
+The normal panel shows only: your content, Generate visuals, the gallery (10-20, best first, filters by kind, large
+preview), Insert selected visual, More visuals, Several slides, Edit a visual. Hidden from it (developer mode only):
+version, panel host status, setup and checks, the analysis step, timings, Napkin AI / Claude AI sections ("how many",
+credit tick, usage, tokens, re-check, insertion choices), the design studio's plan source, raw messages.
+Generate analyses the content itself, runs the free engines, then a paid one only by the administrator's policy
+(default when-needed), ranks, dedupes and varies the result. New layout families: roadmap, pillars, quadrant
+framework. Ribbon: own "Simplilearn" tab. Tests `tests/app.html` A1-A11 + no script errors: 12 of 12; ribbon check
+(13 URLs) passed; V10.12.2 11/11, V10.12.1 13/13, V10.12 14/14, regression 29/29, server and Claude ALL PASSED.
+A real Napkin request (4 variations, the Educational content sample) was sent once during development by a probe
+that drove Generate against a test host with this PC's key; test hosts now refuse paid requests (`TEST_NO_PAID`).
+**Not yet verified in real PowerPoint.**
 
 ## V10.12.2 — "Original editable": Napkin's design as native, editable objects (3 Nov)
 A fourth choice under "What to insert" (Editable / **Original editable** / Original / Both), no new request.
@@ -124,6 +140,7 @@ and the new layouts in real PowerPoint.
 ## Limitations
 - PowerPoint's JS API cannot draw curves or set line spacing; curved Napkin icons stay separate pictures.
 - A rebuilt Napkin result keeps its arrangement, item look, wording, icons and colours, not its exact drawing (curved connectors, figures and globes are not redrawn; a half-disc hub becomes an ellipse).
+- Ribbon: Office places an add-in's custom tab after the built-in tabs (it cannot be put between them), and an add-in cannot add buttons to built-in groups; the three buttons share one task pane - when it is already open, PowerPoint may keep its current page instead of opening the section asked for (the panel's own buttons do the same). The ribbon icons are served by the panel host: if it is not running when PowerPoint starts, generic icons are shown. A changed manifest needs "Install V10 add-in.bat" again and a PowerPoint restart.
 - Original editable: icons and illustrations stay pictures (PowerPoint's JavaScript API has no free-form shapes); rounded boxes use PowerPoint's default corner radius (slightly rounder than Napkin's); text uses PowerPoint's single line spacing (the API cannot set it), so multi-line text can sit a little taller; Napkin's bold renders as Open Sans Bold (Napkin embeds only the regular face, so its own picture shows a synthesised bold); small text on the mid-tone palette colours cannot reach WCAG 4.5:1 with an approved text colour (flagged); its text is Napkin's size (10-15 pt, below the 22 pt of the editable version; flagged); continuation slides only where the design has a clean horizontal gap.
 - The original Napkin design is a picture: its text keeps Napkin's sizes (usually 10-13 pt once fitted; flagged), it is not editable as shapes in the panel, and PowerPoint draws its SVG with its own renderer (Convert to Shape needs Microsoft 365).
 - Text is 22 pt or more everywhere in the editable versions; the guidelines' 18 pt infographic exception (p. 43) is not used.
@@ -133,6 +150,7 @@ and the new layouts in real PowerPoint.
 - In Windows mode the PC's user, who holds the Napkin key, cannot be restricted; Entra mode with one shared host can.
 
 ## Change log
+- **V10.13** (10 Nov) — simple app (app.js), hidden engine choice with policy and cost control (orchestrator.js), modern design pack, ribbon tab, developer mode; tests A1-A11 and the ribbon check.
 - **V10.12.2** (3 Nov) — "Original editable": Napkin's design as native objects (curved shapes recognised, tight text boxes, contrast, continuation slides, word joins), editability report; pills drawn as PowerPoint's stadium shape; tests G1-G9.
 - **V10.12.1** (3 Nov) — insert the editable version, the original Napkin design (one SVG picture) or both on two slides; separate validation, readability floor, duplicate guard; tests O1-O11.
 - **V10.12** (3 Nov 2026) — step 5: more designs of saved plans, content density, several slides with recovery, editing of inserted visuals (tags + records, undo); names-only insertion fix; tests Z and studio D1-S4.

@@ -1,16 +1,40 @@
-AI VISUAL BUILDER V10.12.2
-==========================
-Authorized employee + Content Slide of the approved template -> paste content -> analyze -> accurate infographic and
-pictorial suggestions -> preview -> insert editable PowerPoint shapes. Lightweight: JavaScript in the panel, a small
-Python host, no AI models, no GPU. Optional Napkin AI (paid) with the approved Simplilearn brand style.
+AI VISUAL BUILDER V10.13
+========================
+Your content -> Generate visuals -> up to 20 editable designs -> insert the one you like, in the Simplilearn template.
+Lightweight: JavaScript in the panel, a small Python host on this PC, no AI models, no GPU.
 
-HOW TO USE
-1. Once: double-click local-ai\Set up AI Visual Builder.bat (localhost certificate + start at sign-in).
-2. If PowerPoint says "Sorry, we can't load the add-in": double-click local-ai\Start AI Visual Builder.bat, reopen the
-   panel. After an update, restart it once (Stop, then Start AI Visual Builder.bat).
-3. PowerPoint: select a slide that uses the template's "Content_Slide" layout (LVC_Template.pptx). Home > AI Visual Builder V10. Paste text (or "Use
-   text from the selected slide") > Analyze content > pick a suggestion > Insert visual. "Remove last inserted visual"
+HOW TO USE (V10.13)
+1. Once: double-click local-ai\Set up AI Visual Builder.bat (localhost certificate + start at sign-in), then
+   "Install V10 add-in.bat". If PowerPoint says "Sorry, we can't load the add-in": double-click
+   local-ai\Start AI Visual Builder.bat and reopen the panel.
+2. PowerPoint: open the "Simplilearn" tab > Generate visuals (also: Several slides, Edit a visual). Select a slide that
+   uses the template's "Content_Slide" layout.
+3. Paste your content (or "Use text from the selected slide") and press Generate visuals. The content is read
+   automatically; you get 10-20 designs, best first, each built from your content as editable PowerPoint shapes and
+   text. Filter by kind (Process, Roadmap, Pillars, Framework, Hub and spoke, ...), click one to see it large.
+4. Press "Insert selected visual" (tick "On a new slide" to keep the selected slide as it is). "Undo last insert"
    takes out exactly what was inserted.
+5. Optional: "More visuals" (new layouts first, then colour and spacing variants), "Several slides" (long content on
+   several slides), "Edit a visual" (change the texts, icons, colours or layout of a visual you inserted).
+
+WHAT HAPPENS BEHIND "GENERATE VISUALS" (orchestrator.js)
+- The built-in layouts and the design packs always run (free, on this PC). The AI design services (Napkin AI, Claude
+  AI) are used only as the administrator's policy allows, and their designs go in as editable shapes and text like
+  every other visual; the user never chooses or sees a provider.
+- Policy (local-ai\config.json, "paid_policy"): "never" | "when-needed" (default: one request when the built-in
+  designs are few, or for explanatory prose; never for records of exact values) | "always". "paid_order" sets which
+  service is asked first; the other is the fallback when the first fails or gives nothing usable.
+- Cost control: a result the panel host kept for the same text is reused (free); a text already sent from this PC in
+  the last 24 hours is not sent again; at most one request per Generate (plus one fallback); daily caps and duplicate
+  guards of the panel host stay in force. Test panel hosts (--test) never send a paid request.
+- Ranking: accuracy to the content, editability, design richness and readability; duplicates removed; kinds
+  alternated so the list is varied.
+
+DEVELOPER MODE (administrators and testing)
+- Add ?dev=1 to the panel address, or press Ctrl+Alt+Shift+D in the panel (remembered on this PC; ?dev=0 or the
+  "Leave" button ends it). It shows every V10.12.2 section again - panel host status, setup and checks, the analysis
+  step, timings, the Napkin AI and Claude AI sections (requests, credits, tokens, kept results, the four insertion
+  choices), the design studio's plan sources - plus the generation log and a paid-policy override for this PC.
 
 FILES (local-ai)
   v10.html        panel: reading, layout engine, insertion, access gate (user + Content Slide)
@@ -24,12 +48,16 @@ FILES (local-ai)
                   card, pillar, badge or plain items); cards only as a reported fallback
   original.js     a Napkin result's original design as one SVG picture (fitting, readability and content checks)
   faithful.js     the original design as native, editable objects (continuation slides, checks, editability report)
-  napkin.js       optional Napkin AI and Claude AI sections
+  napkin.js       Napkin AI and Claude AI (shown in the developer mode; driven by orchestrator.js otherwise)
+  orchestrator.js  "Generate visuals": the engines, the paid-provider policy, cost control, ranking (V10.13)
+  app.js          what end users see: content, Generate, gallery, insert; the developer mode (V10.13)
+  packs\modern-10.13.js  roadmap, pillars and quadrant framework layouts (V10.13)
+  assets\icon-*.png  the ribbon icons, served by the panel host
   studio.js       step 5 (free): more designs, several slides, editing inserted visuals
   server.py       panel host (https://localhost:44317), Napkin proxy; key never reaches the panel
   access.py       who may generate (the administrator's policy), checked in the panel host
   access.example.json  policy template for administrators
-  config.json     port, optional Napkin daily cap (0 = none), timeout
+  config.json     port, optional Napkin daily cap (0 = none), timeout; paid_policy and paid_order (V10.13)
   tests\run_tests.py   all tests incl. the V10.8 acceptance cases A-I (headless Edge, stand-ins for PowerPoint and
                        Napkin; no network, no credits)
   tests\run_diag.py    diagnosis: every layout considered with its reason, every Napkin variation with its preview
