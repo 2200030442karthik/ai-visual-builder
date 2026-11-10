@@ -78,7 +78,7 @@ Answer with the SVG only: start with <svg and end with </svg>, no explanation an
 # code that measures it. The lists below must match the panel's (tests/test_claude.py checks them).
 PLAN_LAYOUTS = ['platform', 'stack3d', 'scene', 'capmap', 'swimlanes', 'planes', 'ecosystem', 'modules', 'pyramid', 'cycle', 'funnel', 'versus',
                 'architecture', 'layers', 'capability', 'tree', 'pipeline', 'timeline', 'stair', 'hub', 'grid', 'columns', 'rows',
-                'roadmap', 'pillars', 'quadrant']
+                'roadmap', 'pillars', 'quadrant', 'spotlight', 'storyboard', 'callout', 'journey']
 PICTORIALS = ['collect', 'evaluate', 'clean', 'features', 'train', 'mlcore', 'predict', 'deploy', 'problem', 'database', 'dataset', 'folder', 'document',
               'server', 'cloud', 'gateway', 'app', 'window', 'code', 'gear', 'monitor', 'chartUp', 'shield', 'lock', 'checklist', 'magnifier', 'filter',
               'warning', 'calendar', 'team', 'person', 'org', 'chat', 'sheet', 'pages', 'image', 'text', 'video', 'music', 'cyber', 'fraud', 'bank', 'cart',
@@ -99,6 +99,11 @@ Content - the most important rules:
   when the text gives nothing beyond the label.
 - Never add facts, figures, examples, relationships or claims the text does not state. Never turn a statement into a question.
 - title: the content's topic in the text's words (its heading when it has one).
+- headline: the slide's message for learners in 3 to 8 words, in the text's own terms, inviting but plain (no
+  question, no exclamation mark, no new claim). May equal the title.
+- takeaway: the content's key message in one sentence of at most 90 characters, built only from what the text says;
+  "" when the text states no message beyond its points.
+- hero: the object from the pictorial list below that depicts the whole topic most accurately, or "" when none does.
 
 Structure and semantics:
 - relation: "sequence" for a process or steps in order; "pipeline_with_support" when some items form a main flow and
@@ -122,7 +127,11 @@ Design:
   (technical illustration: one pictorial object per stage on one line, annotated), capmap (capability map: domain boxes,
   functions as a strip across them), swimlanes, planes (control and data planes), ecosystem (parts around a core),
   modules (modular blocks), pyramid, cycle, funnel, versus (two things compared), architecture, layers, capability, tree,
-  pipeline, timeline, stair, hub, grid, columns, rows. Never a composition that implies something the text does not say
+  pipeline, timeline, stair, hub, grid, columns, rows, roadmap (milestones on a road, steps in order), pillars (the
+  points as columns under the topic), quadrant (four points around the topic), spotlight (a hero panel with the topic's
+  object, headline and takeaway beside the points), storyboard (visual summary cards with big objects), callout (the
+  topic's object large in the middle, the points called out around it), journey (a learning journey of 4-8 steps on a
+  winding path). Prefer the richer, more visual compositions when they fit the content. Never a composition that implies something the text does not say
   (an order for independent ideas, a hierarchy for a list).
 - custom: a composition of your own when the content suggests one the list lacks, else zones []. The area is a grid of
   12 columns x 6 rows; each zone: id, label (a group's name or ""), items (item ids), col, row, w, h (whole cells, inside
@@ -133,9 +142,10 @@ _S = {'type': 'string'}
 _I = {'type': 'integer'}
 PLAN_SCHEMA = {
     'type': 'object', 'additionalProperties': False,
-    'required': ['title', 'relation', 'groups', 'items', 'flow', 'layouts', 'custom'],
+    'required': ['title', 'headline', 'takeaway', 'hero', 'relation', 'groups', 'items', 'flow', 'layouts', 'custom'],
     'properties': {
-        'title': _S,
+        'title': _S, 'headline': _S, 'takeaway': _S,
+        'hero': {'type': 'string', 'enum': [''] + PICTORIALS},
         'relation': {'type': 'string', 'enum': ['sequence', 'pipeline_with_support', 'layers', 'hierarchy', 'categories', 'comparison', 'cycle', 'funnel', 'hub', 'independent']},
         'groups': {'type': 'array', 'items': {'type': 'object', 'additionalProperties': False, 'required': ['id', 'name', 'role'],
                    'properties': {'id': _S, 'name': _S, 'role': {'type': 'string', 'enum': ['flow', 'support', 'layer', 'category', 'output']}}}},

@@ -1,4 +1,4 @@
-"""V10.13 acceptance run: starts a test panel host (plain HTTP, port 44398, test files enabled), opens tests/harness.html
+"""V10.14 acceptance run: starts a test panel host (plain HTTP, port 44398, test files enabled), opens tests/harness.html
 in ONE headless Edge, waits for the harness to finish and prints a summary; then the V10.12 studio tests
 (tests/studio.html: more designs, edits, several slides) in the same Edge, with a screenshot of their previews
 (tests/evidence/v10.12-studio.png). Lightweight on purpose: no AI models, no
@@ -72,7 +72,7 @@ def main():
         acceptance_page(cdp, 'studio.html', 'V10.12', 'last-run-studio.json', 'v10.12-studio.png')
         acceptance_page(cdp, 'original.html', 'V10.12.1', 'last-run-original.json', 'v10.12.1-original.png')
         acceptance_page(cdp, 'faithful.html', 'V10.12.2', 'last-run-faithful.json', 'v10.12.2-faithful.png')
-        acceptance_page(cdp, 'app.html', 'V10.13', 'last-run-app.json', 'v10.13-app.png')
+        acceptance_page(cdp, 'app.html', 'V10.14', 'last-run-app.json', 'v10.14-app.png')
         ribbon_check()
     finally:
         subprocess.run([sys.executable, os.path.join(HERE, 'test_server.py')])
@@ -133,7 +133,7 @@ def acceptance_page(cdp, name, label, out_json, png):
 
 
 def ribbon_check():
-    """V10.13: the ribbon entry (manifest-v10.xml): its own tab, one group, three buttons that open the task pane, and
+    """V10.14: the ribbon entry (manifest-v10.xml): a group on the Insert tab, three buttons that open the task pane, and
     every URL and icon it names served by the panel host (checked against this test host)."""
     import urllib.request
     import xml.etree.ElementTree as ET
@@ -141,17 +141,17 @@ def ribbon_check():
           'bt': 'http://schemas.microsoft.com/office/officeappbasictypes/1.0'}
     fails = []
     root = ET.parse(os.path.join(HERE, '..', '..', 'manifest-v10.xml')).getroot()
-    tab = root.find('.//v:CustomTab', ns)
-    if tab is None:
-        fails.append('no custom tab')
+    tab = root.find('.//v:OfficeTab', ns)          # 10.14: a group on PowerPoint's Insert tab
+    if tab is None or tab.get('id') != 'TabInsert':
+        fails.append('the group is not on the Insert tab')
     else:
         btns = tab.findall('.//v:Control', ns)
         if len(btns) != 3 or any(c.find('v:Action', ns).get('{http://www.w3.org/2001/XMLSchema-instance}type') != 'ShowTaskpane' for c in btns):
             fails.append(f'{len(btns)} buttons, or one does not open the task pane')
         if len({c.find('v:Action/v:TaskpaneId', ns).text for c in btns}) != 1:
             fails.append('the buttons open different task panes')
-        if tab.find('v:Label', ns) is None or list(tab)[-1].tag != '{%s}Label' % ns['v']:
-            fails.append('the tab label must come after its groups')
+        if len(tab.findall('v:Group', ns)) != 1 or tab.find('v:Group/v:Label', ns) is None:
+            fails.append('one labelled group expected')
     urls = [u.get('DefaultValue') for u in root.iter() if u.tag.endswith('}Url') or u.tag.endswith('}Image') and u.get('DefaultValue')] +            [e.get('DefaultValue') for e in root.iter() if e.tag.split('}')[1] in ('IconUrl', 'HighResolutionIconUrl', 'SourceLocation')]
     for u in [x for x in urls if x]:
         if not u.startswith('https://localhost:44317/'):

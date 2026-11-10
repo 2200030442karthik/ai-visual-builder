@@ -3,7 +3,7 @@
      (v10.html) with the strict PowerPoint stand-in (mock.js). Napkin and Claude are stand-ins inside the page (saved
      real results; every provider call is counted) - the test panel host refuses paid requests anyway (server.py
      TEST_NO_PAID). Writes JSON into <pre id="out">; #evidence holds the gallery for the screenshot. -->
-<html><head><meta charset="utf-8"><title>V10.13 app tests</title><script src="/tests/samples.js"></script><script src="/tests/mock.js"></script>
+<html><head><meta charset="utf-8"><title>V10.14 app tests</title><script src="/tests/samples.js"></script><script src="/tests/mock.js"></script>
 <style>body{font:12px Segoe UI,Arial} iframe{width:420px;height:900px} #evidence{width:1240px}</style></head>
 <body><iframe id="f" src="/v10.html"></iframe><iframe id="g" src="about:blank"></iframe><pre id="out">running</pre><div id="evidence"></div>
 <script>
@@ -27,7 +27,7 @@ async function run() {
   const ACC = `access: { configured: true, mode: 'windows', authorized: true, user: 'test', reason: '', template: { layout_name: 'Content_Slide', fingerprint: { shapes: { 'content placeholder': [101.7, 205, 1078.5, 435.2], 'heading placeholder': [101.7, 119.1, 1078.5, 71.2], 'section tag strip': [1287.2, 0, 80.8, 720.3] }, tolerance: 3 } } }`;
   W.__cfg = { napkin: 'off', claude: 'off', policy: 'when-needed' };
   W.__svc = () => { const C = W.__cfg; return eval(`({ server: '10.13.0', ${ACC}, napkin: { configured: true, enabled: ${'C.napkin !== "off"'}, used_today: 0, max_per_day: 20, style_id: '${STYLE}', variations: [1, 4], last: true },
-    claude: { configured: true, enabled: ${'C.claude !== "off"'}, sdk: true, model: 'claude-opus-5-5', effort: 'high', prices: [4, 20], variations: [1, 4], last: true }, orchestrate: { paid: C.policy, order: ['napkin', 'claude'] } })`); };
+    claude: { configured: true, enabled: ${'C.claude !== "off"'}, sdk: true, model: 'claude-opus-5-5', effort: 'high', prices: [4, 20], variations: [1, 4], last: true }, orchestrate: { paid: C.policy, order: 'auto' } })`); };
   W.__calls = [];
   ev(`api = async (path, body) => { const C = window.__cfg;
     if (/^\\/api\\/(napkin|claude)\\//.test(path)) window.__calls.push(path);
@@ -39,7 +39,7 @@ async function run() {
     if (path.startsWith('/api/claude/status')) return C.claude === 'fail' ? { status: 'failed', files: 0, error: 'test failure' } : { status: 'completed', files: 1, usage: { input_tokens: 1, output_tokens: 1 }, seconds: 1, model: 'claude-opus-5-5', effort: 'high', cost_usd: 0.01 };
     return window.__svc(); }; 1`);
   W.fetch = async url => { url = String(url); W.__calls.push(url); const C = W.__cfg, i = +(/[?&]i=(\d+)/.exec(url) || [0, 0])[1];
-    if (/\/api\/claude\/file/.test(url)) return new Response(C.claudePlan, { status: 200 });
+    if (/\/api\/claude\/file/.test(url)) return new Response(C.claudePlanFor || C.claudePlan, { status: 200 });
     return new Response(C.napkinFiles[i % C.napkinFiles.length], { status: 200 }); };
   const gate = async () => { M.layoutName = 'Content_Slide'; await ev('refreshStatus()'); await ev('checkSlide()'); ev('showGate(); updateButtons(); 1'); };
   await gate();
@@ -65,6 +65,20 @@ async function run() {
     await wait(400); res.gen.ml.thumbs = d.querySelectorAll('#appGrid .gcard .gthumb svg').length;
     d.querySelectorAll('#appGrid .gcard')[3].click();
     res.gen.pick = { sel: A.APP.sel, pressed: d.querySelectorAll('#appGrid .gcard[aria-pressed="true"]').length, title: d.getElementById('appPvT').textContent, sameAsCard: d.getElementById('appPvT').textContent === A.APP.list[3].title, bigPreview: !!d.querySelector('#appPv svg') };
+    // 10.14: resting the pointer on a card shows it large, without a click; it never covers the card; leaving closes it
+    const card = d.querySelectorAll('#appGrid .gcard')[5], cr = card.getBoundingClientRect();
+    card.dispatchEvent(new W.PointerEvent('pointerenter', { pointerType: 'mouse' })); await wait(300);
+    const hv = d.getElementById('appHover'), hr = hv && hv.getBoundingClientRect();
+    res.gen.hover = { shown: !!hv && hv.classList.contains('on'), svg: !!(hv && hv.querySelector('svg')), title: hv && hv.querySelector('.ht').textContent, sameAsCard: hv && hv.querySelector('.ht').textContent === A.APP.list[+card.dataset.i].title,
+      wider: !!hr && hr.width > cr.width * 1.6, coversCard: !!hr && !(hr.bottom <= cr.top + 1 || hr.top >= cr.bottom - 1), selectedUnchanged: A.APP.sel === 3 };
+    card.dispatchEvent(new W.PointerEvent('pointerleave', { pointerType: 'mouse' })); await wait(50);
+    res.gen.hover.closed = !hv.classList.contains('on');
+    const tc = d.querySelectorAll('#appGrid .gcard')[1]; tc.dispatchEvent(new W.PointerEvent('pointerenter', { pointerType: 'touch' })); await wait(300);
+    res.gen.hover.touchIgnored = !hv.classList.contains('on');
+    // the richer compositions first, and no two of the same composition
+    const L0 = A.APP.list, fps = L0.map(c => ev('p => orchFootprint(p)')(c.prims));
+    res.gen.rich = { top6: L0.slice(0, 6).map(c => `${c.family}:${c.richness}`), showcaseInTop10: L0.slice(0, 10).filter(c => /spotlight|callout|storyboard|journey/.test(c.family)).length,
+      nearDuplicates: fps.reduce((n, f, i) => n + fps.slice(i + 1).filter(g => ev('(a, b) => orchSame(a, b)')(f, g)).length, 0) };
     // filters by kind
     const chip = [...d.querySelectorAll('#appChips button')].find(b => b.dataset.k !== 'All');
     if (chip) { chip.click(); res.gen.filter = { k: chip.dataset.k, cards: d.querySelectorAll('#appGrid .gcard').length, all: [...d.querySelectorAll('#appGrid .gcard')].every(b => A.APP.list[+b.dataset.i].category === chip.dataset.k) }; d.querySelector('#appChips button[data-k="All"]').click(); }
@@ -110,9 +124,20 @@ async function run() {
     // never: no paid request even for prose
     fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'ok', claude: 'ok', policy: 'never', napkinLast: {}, claudeLast: {} }); await gate();
     let L = await gen(prose); res.paid.never = { paid: paidCalls(), n: L.length, engines: [...new Set(L.map(c => c.engine))] };
-    // when-needed, enough strong free visuals: no request
+    // when-needed: records of exact values stay built in (no request); a list of concepts gets one request, Napkin first
     fresh(); W.__cfg.policy = 'when-needed'; await gate();
-    L = await gen(samples['ML workflow (5 stages, intro)']); res.paid.notNeeded = { paid: paidCalls(), n: L.length, log: A.ORCH.log.slice(-1)[0].what };
+    L = await gen(samples['Project scores']); res.paid.notNeeded = { paid: paidCalls(), n: L.length, log: A.ORCH.log.slice(-1)[0].what };
+    fresh(); await gate();
+    L = await gen(eduT); res.paid.whenNeeded = { paid: paidCalls(), napkinFirst: W.__calls.findIndex(u => /napkin\/visual/.test(u)) === W.__calls.findIndex(u => /\/visual/.test(u)) && W.__calls.some(u => /napkin\/visual/.test(u)),
+      route: (A.ORCH.log.find(x => /paid policy/.test(x.what)) || {}).what, napkin: L.filter(c => c.engine === 'napkin').length };
+    // technical structure (a flow with functions across it): Claude first, and its plan drawn in the showcase compositions
+    fresh(); W.__cfg.policy = 'always'; await gate();
+    L = await gen(samples['Data engineering platform (8 concepts)']);
+    const cl = L.filter(c => c.engine === 'claude');
+    res.paid.hybrid = { claudeFirst: W.__calls.filter(u => /\/visual/.test(u))[0] || '', napkinAsked: W.__calls.filter(u => /napkin\/visual/.test(u)).length, claude: cl.length, families: cl.map(c => c.family),
+      editable: cl.every(c => c.edit === 'full' && c.prims.some(p => p.text)), route: (A.ORCH.log.find(x => /paid policy/.test(x.what) && /technical/.test(x.what)) || {}).what };
+    const ci = L.findIndex(c => c.engine === 'claude');
+    if (ci >= 0) { M.reset(); await gate(); A.appSelect(ci); await A.appInsert(); res.paid.hybrid.inserted = own(M.slides[0]).length > 0 && !/Claude/.test(status()); await ev('removeLast()'); }
     // always, Napkin answers (the Educational content designs): one request, its designs as editable objects among the rest
     fresh(); W.__cfg.policy = 'always'; await gate();
     L = await gen(eduT);
@@ -133,10 +158,14 @@ async function run() {
     if (k2 >= 0) { M.reset(); await gate(); A.appSelect(k2); await A.appInsert(); const s = M.slides.find(x => own(x).length) || M.slides[0];
       res.paid.insert = { title: L[k2].title, slides: M.slides.length, texts: leaves(s).filter(x => x.type === 'TextBox').length, pictures: leaves(s).filter(x => x.kind === 'picture').length, status: status().slice(0, 220), providerNamed: /Napkin|Claude|request/.test(status()) };
       await ev('removeLast()'); res.paid.insert.undone = M.slides.reduce((a, x) => a + own(x).length, 0) === 0 && M.slides.length === 1; }
-    // fallback: Napkin fails -> Claude is asked; both fail -> the free visuals, with a plain note
+    // fallback: Napkin (first for concepts) fails -> Claude is asked (a plan of this text); both fail -> the free visuals
+    const pe = await W.__napkin.prepared(eduT);
+    W.__cfg.claudePlanFor = JSON.stringify({ title: pe.title || 'Educational content', headline: 'What makes content educational', takeaway: '', hero: 'book', relation: 'independent', groups: [],
+      items: pe.points.map((q, i) => ({ id: 'e' + i, label: q.label, detail: '', role: 'concept', pictorial: 'book', icon_hint: '', group: '' })), flow: [], layouts: ['spotlight', 'storyboard', 'pillars', 'hub'], custom: { name: '', zones: [], connectors: [] } });
     fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'fail', claude: 'ok', policy: 'always' }); await gate();
-    L = await gen(samples['Data engineering platform (8 concepts)']);
-    res.paid.fallback = { engines: [...new Set(L.map(c => c.engine))], napkinAsked: W.__calls.filter(u => /napkin\/visual/.test(u)).length, claudeAsked: W.__calls.filter(u => /claude\/visual/.test(u)).length, n: L.length, log: A.ORCH.log.slice(-4).map(x => x.what) };
+    L = await gen(eduT);
+    W.__cfg.claudePlanFor = '';
+    res.paid.fallback = { engines: [...new Set(L.map(c => c.engine))], claudeFamilies: L.filter(c => c.engine === 'claude').map(c => c.family), napkinAsked: W.__calls.filter(u => /napkin\/visual/.test(u)).length, claudeAsked: W.__calls.filter(u => /claude\/visual/.test(u)).length, n: L.length, log: A.ORCH.log.slice(-4).map(x => x.what) };
     fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'fail', claude: 'fail', policy: 'always' }); await gate();
     L = await gen(samples['Data engineering platform (8 concepts)']);
     res.paid.allFail = { n: L.length, engines: [...new Set(L.map(c => c.engine))], status: status().slice(0, 200), paid: paidCalls() };
@@ -189,17 +218,22 @@ async function run() {
       JSON.stringify(U)],
     ['A2 One button: Generate runs the analysis itself and gives 10-20 varied, editable visuals (no duplicates), no provider words, no timings', Gn.ml.n >= 10 && Gn.ml.n <= 20 && Gn.ml.cats.length >= 5 && Gn.ml.uniqueLayouts && Gn.ml.analysed && Gn.ml.cards === Gn.ml.n && Gn.ml.thumbs >= Math.min(8, Gn.ml.n) && Gn.ml.editable === Gn.ml.n && Gn.ml.selected === 1 && !Gn.ml.timingsVisible && !Gn.ml.providerWords && Gn.ml.paid === 0,
       JSON.stringify(Gn.ml)],
+    ['A13 Hover preview: the design large after a short rest, beside (not over) its card, closed on leaving; touch ignored; selection unchanged', Gn.hover.shown && Gn.hover.svg && Gn.hover.sameAsCard && Gn.hover.wider && !Gn.hover.coversCard && Gn.hover.closed && Gn.hover.touchIgnored && Gn.hover.selectedUnchanged,
+      JSON.stringify(Gn.hover)],
+    ['A14 Richer and varied: hero-style showcase designs among the first 10; no two designs with the same composition', Gn.rich.showcaseInTop10 >= 2 && Gn.rich.nearDuplicates === 0, JSON.stringify(Gn.rich)],
     ['A3 Gallery: selection state, large preview of the selected one, kind filters, More visuals (new first, nothing repeated), out-of-date content blocks insert', Gn.pick.sel === 3 && Gn.pick.pressed === 1 && Gn.pick.sameAsCard && Gn.pick.bigPreview && (!Gn.filter || Gn.filter.all) && Gn.more.unique && Gn.more.fresh >= 1 && Gn.stale.note && Gn.stale.insertDisabled,
       JSON.stringify({ pick: Gn.pick, filter: Gn.filter, more: Gn.more, stale: Gn.stale })],
     ['A4 Other content: 10-20 visuals for lists, prose-like items, records; meaningless text refused plainly; empty content cannot generate', ['edu', 'de', 'facts', 'genai'].every(k => Gn[k].n >= 10 && Gn[k].n <= 20 && Gn[k].cats >= 4) && Gn.records.n >= 1 && Gn.meaningless.n === 0 && Gn.meaningless.errShown && Gn.empty.genDisabled,
       JSON.stringify({ edu: Gn.edu, de: Gn.de, facts: Gn.facts, genai: Gn.genai, records: Gn.records, meaningless: Gn.meaningless })],
     ['A5 Insert selected: built-in and design visuals go in as native, tagged objects, insert = preview; a repeat asks first; undo takes it out', ['builtin', 'designs'].every(k => I[k] && I[k].objects > 0 && I[k].insertEqualsPreview && I[k].tagged && I[k].undone && (I[k].edit === 'partial' || I[k].pictures === 0)) && I.dup && I.dup.warned && I.dup.objects,
       JSON.stringify(I)],
-    ['A6 Paid providers by policy only: never -> none; when-needed with enough strong free visuals -> none; always -> one request, its designs editable, never named', Pd.never.paid === 0 && Pd.notNeeded.paid === 0 && Pd.always.paid === 1 && Pd.always.napkin >= 1 && Pd.always.editable && !Pd.always.providerNamed,
-      JSON.stringify({ never: Pd.never, notNeeded: Pd.notNeeded, always: Pd.always })],
+    ['A6 AI services by policy and content: never -> none; when-needed -> none for records, one (Napkin first) for concepts; always -> one request, its designs editable, never named', Pd.never.paid === 0 && Pd.notNeeded.paid === 0 && Pd.whenNeeded.paid === 1 && Pd.whenNeeded.napkinFirst && Pd.whenNeeded.napkin >= 1 && Pd.always.paid === 1 && Pd.always.napkin >= 1 && Pd.always.editable && !Pd.always.providerNamed,
+      JSON.stringify({ never: Pd.never, notNeeded: Pd.notNeeded, whenNeeded: Pd.whenNeeded, always: Pd.always })],
+    ['A12 Hybrid: technical structure goes to Claude first; its plan is drawn as 6+ different editable compositions and inserts; Napkin not asked', /claude\/visual/.test(Pd.hybrid.claudeFirst) && Pd.hybrid.napkinAsked === 0 && Pd.hybrid.claude >= 6 && new Set(Pd.hybrid.families).size >= 5 && Pd.hybrid.editable && Pd.hybrid.inserted,
+      JSON.stringify(Pd.hybrid)],
     ['A7 Cost control: the same text again -> no request; a kept result for the text -> reused (no request); otherwise not resent within 24 hours', Pd.again.paid === 0 && Pd.kept.paid === 0 && Pd.kept.napkin >= 1 && Pd.guard.paid === 0 && Pd.guard.log.some(x => /24 hours/.test(x)),
       JSON.stringify({ again: Pd.again, kept: Pd.kept, guard: Pd.guard })],
-    ['A8 Fallback: Napkin fails -> Claude asked and its designs shown; both fail -> the free visuals with a plain note; a provider not set up is not tried', Pd.fallback.napkinAsked === 1 && Pd.fallback.claudeAsked === 1 && Pd.fallback.engines.includes('claude') && Pd.allFail.n >= 10 && Pd.allFail.engines.every(e => e === 'builtin' || e === 'designs') && Pd.unavailable.paid === 0,
+    ['A8 Fallback: Napkin fails -> Claude asked and its plan shown in hero-style designs too; both fail -> the free visuals with a plain note; a provider not set up is not tried', Pd.fallback.napkinAsked === 1 && Pd.fallback.claudeAsked === 1 && Pd.fallback.engines.includes('claude') && Pd.fallback.claudeFamilies.some(f => /spotlight|storyboard|callout|pillars/.test(f)) && Pd.allFail.n >= 10 && Pd.allFail.engines.every(e => e === 'builtin' || e === 'designs') && Pd.unavailable.paid === 0,
       JSON.stringify({ fallback: Pd.fallback, allFail: Pd.allFail, unavailable: Pd.unavailable })],
     ['A9 An AI-designed visual inserts as editable text and shapes; the status never names the provider; undo removes it', !!Pd.insert && Pd.insert.texts > 0 && !Pd.insert.providerNamed && Pd.insert.undone, JSON.stringify(Pd.insert)],
     ['A10 Several slides and Edit a visual open from the app and still work (insert, remove, load an inserted visual)', Fl.slides.open && Fl.slides.tab && Fl.slides.inserted >= 2 && Fl.slides.removed && Fl.edit.open && Fl.edit.tab && Fl.edit.loaded && Fl.closed, JSON.stringify(Fl)],

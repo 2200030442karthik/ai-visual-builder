@@ -28,7 +28,7 @@
      from its own items, at no extra cost, and they are marked as such. Before a request, a free check shows which
      layouts the content fits at 22 pt. Loaded after v10.html's scripts, gallery.js, understand.js, brand.js, svg2ppt.js,
      rebuild.js and plan.js. */
-const PANEL_VERSION = '10.13.0';      // must match server.py VERSION; a different host version is reported in the panel
+const PANEL_VERSION = '10.14.0';      // must match server.py VERSION; a different host version is reported in the panel
 const shortId = id => id ? `${id.slice(0, 4)}…${id.slice(-4)}` : '';
 /* Claude's time, tokens and estimated cost (from the prices in claude.json; the bill is in platform.claude.com). */
 const costText = c => `${c.model}${c.effort ? ' (effort ' + c.effort + ')' : ''}: ${c.seconds} s, ${c.usage.input_tokens} input + ${c.usage.output_tokens} output tokens` +
@@ -446,7 +446,8 @@ function makePanel(P) {
     const { plan } = planFromClaude(raw), base = { rid: job.id, source: prep.source, ordered: !!prep.ordered, order: prep.concepts, drop: prep.headings, title: prep.title, planFrom: 'Claude\'s design', max: asked || 4 };
     const done = planComplete(plan, prep), V = planItems(prep, plan, base, 1);
     // figures the plan invented: nothing of it is offered (the same rule as for drawn results)
-    const all = accuracy(prep, plan.items.flatMap(i => [i.label, i.detail]).concat(plan.groups.map(g => g.name), [plan.title]).filter(Boolean), { heading: plan.title });
+    // the headline and takeaway too: a figure Claude invented anywhere blocks the plan
+    const all = accuracy(prep, plan.items.flatMap(i => [i.label, i.detail]).concat(plan.groups.map(g => g.name), [plan.title, plan.headline, plan.takeaway]).filter(Boolean), { heading: plan.title });
     V.items.forEach(it => { if (done.length) it.conv.added = done; if (all.status === 'unusable' && /figure/.test(all.notes.join(' '))) { it.check = all; } });
     const items = V.items;
     items.skipped = V.skipped; items.plan = plan; items.warnings = (s.warnings || []).slice();

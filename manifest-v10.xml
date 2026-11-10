@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- AI Visual Builder V10.13. A separate add-in from V9 (different Id), so both can be installed side by side.
+<!-- AI Visual Builder V10.14. A separate add-in from V9 (different Id), so both can be installed side by side.
      The panel is served on this PC by local-ai\server.py (https://localhost:44317); it must be running, otherwise
      PowerPoint shows "Sorry, we can't load the add-in". -->
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
   <Id>08d15d9d-8629-4583-b67d-5f80143dde6d</Id>
-  <Version>10.13.0.0</Version>
+  <Version>10.14.0.0</Version>
   <ProviderName>AI Visual Builder</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="AI Visual Builder"/>
@@ -28,10 +28,11 @@
             <LearnMoreUrl resid="GetStarted.LearnMoreUrl"/>
           </GetStarted>
           <FunctionFile resid="Taskpane.Url"/>
-          <!-- 10.13: its own ribbon tab "Simplilearn" with one group; each button opens the same task pane on a section.
-               Office decides where a custom tab goes (after the built-in tabs); an add-in cannot place it between them. -->
+          <!-- 10.14: a group on PowerPoint's own Insert tab (beside Icons, SmartArt and Charts: where visuals are added), with
+               three buttons that open the same task pane on a section. Office puts an add-in's group at the end of the
+               tab; an add-in cannot add buttons to built-in groups or to another add-in's tab. -->
           <ExtensionPoint xsi:type="PrimaryCommandSurface">
-            <CustomTab id="AIVB.Tab">
+            <OfficeTab id="TabInsert">
               <Group id="AIVB10.Group">
                 <Label resid="Group.Label"/>
                 <Icon>
@@ -88,8 +89,7 @@
                   </Action>
                 </Control>
               </Group>
-              <Label resid="Tab.Label"/>
-            </CustomTab>
+            </OfficeTab>
           </ExtensionPoint>
         </DesktopFormFactor>
       </Host>
@@ -108,14 +108,13 @@
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GetStarted.Title" DefaultValue="AI Visual Builder is ready"/>
-        <bt:String id="Tab.Label" DefaultValue="Simplilearn"/>
         <bt:String id="Group.Label" DefaultValue="AI Visual Builder"/>
         <bt:String id="Button.Label" DefaultValue="Generate visuals"/>
         <bt:String id="Slides.Label" DefaultValue="Several slides"/>
         <bt:String id="Edit.Label" DefaultValue="Edit a visual"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="GetStarted.Description" DefaultValue="Open the Simplilearn tab and click Generate visuals. If it does not load, run local-ai\Start AI Visual Builder.bat."/>
+        <bt:String id="GetStarted.Description" DefaultValue="Insert tab > AI Visual Builder > Generate visuals. If it does not load, run local-ai\Start AI Visual Builder.bat."/>
         <bt:String id="Button.Tooltip" DefaultValue="Turn your content into editable infographics: paste it, generate, pick one and insert."/>
         <bt:String id="Slides.Tooltip" DefaultValue="Spread long content over several slides, each with its own editable visual."/>
         <bt:String id="Edit.Tooltip" DefaultValue="Change the texts, icons, colours or layout of a visual you inserted."/>

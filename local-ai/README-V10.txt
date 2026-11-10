@@ -1,34 +1,40 @@
-AI VISUAL BUILDER V10.13
+AI VISUAL BUILDER V10.14
 ========================
 Your content -> Generate visuals -> up to 20 editable designs -> insert the one you like, in the Simplilearn template.
 Lightweight: JavaScript in the panel, a small Python host on this PC, no AI models, no GPU.
 
-HOW TO USE (V10.13)
+HOW TO USE (V10.14)
 1. Once: double-click local-ai\Set up AI Visual Builder.bat (localhost certificate + start at sign-in), then
    "Install V10 add-in.bat". If PowerPoint says "Sorry, we can't load the add-in": double-click
    local-ai\Start AI Visual Builder.bat and reopen the panel.
-2. PowerPoint: open the "Simplilearn" tab > Generate visuals (also: Several slides, Edit a visual). Select a slide that
-   uses the template's "Content_Slide" layout.
+2. PowerPoint: Insert tab > group "AI Visual Builder" > Generate visuals (also: Several slides, Edit a visual).
+   Select a slide that uses the template's "Content_Slide" layout.
 3. Paste your content (or "Use text from the selected slide") and press Generate visuals. The content is read
    automatically; you get 10-20 designs, best first, each built from your content as editable PowerPoint shapes and
-   text. Filter by kind (Process, Roadmap, Pillars, Framework, Hub and spoke, ...), click one to see it large.
+   text. Filter by kind (Process, Roadmap, Pillars, Framework, Hub and spoke, ...). Rest the pointer on a design to see
+   it large (no click needed); click it to select it.
 4. Press "Insert selected visual" (tick "On a new slide" to keep the selected slide as it is). "Undo last insert"
    takes out exactly what was inserted.
 5. Optional: "More visuals" (new layouts first, then colour and spacing variants), "Several slides" (long content on
    several slides), "Edit a visual" (change the texts, icons, colours or layout of a visual you inserted).
 
 WHAT HAPPENS BEHIND "GENERATE VISUALS" (orchestrator.js)
-- The built-in layouts and the design packs always run (free, on this PC). The AI design services (Napkin AI, Claude
-  AI) are used only as the administrator's policy allows, and their designs go in as editable shapes and text like
-  every other visual; the user never chooses or sees a provider.
-- Policy (local-ai\config.json, "paid_policy"): "never" | "when-needed" (default: one request when the built-in
-  designs are few, or for explanatory prose; never for records of exact values) | "always". "paid_order" sets which
-  service is asked first; the other is the fallback when the first fails or gives nothing usable.
+- The built-in layouts and the design packs always run (free, on this PC), including the hero-style "showcase"
+  compositions (V10.14: spotlight, visual summary cards, callout diagram, learning journey).
+- Then one AI design service, as the administrator's policy allows (the user never chooses or sees a provider):
+  Claude AI for technical structure (a flow with functions across it, systems, named groups, 7+ points) - its design
+  plan (roles, objects, headline, takeaway, the topic's object) is drawn here in every composition that suits it;
+  Napkin AI for concepts, categories, prose and short lists - its illustrated designs go in as native shapes and text.
+  The other service is the fallback. Everything AI-designed is inserted as editable shapes and text.
+- Policy (local-ai\config.json, "paid_policy"): "never" | "when-needed" (default: one request for every new text a
+  design can show - never for records of exact values, data tables or a single statement) | "always".
+  "paid_order": "auto" (default, by the content as above) or a fixed list such as ["napkin", "claude"].
 - Cost control: a result the panel host kept for the same text is reused (free); a text already sent from this PC in
   the last 24 hours is not sent again; at most one request per Generate (plus one fallback); daily caps and duplicate
   guards of the panel host stay in force. Test panel hosts (--test) never send a paid request.
-- Ranking: accuracy to the content, editability, design richness and readability; duplicates removed; kinds
-  alternated so the list is varied.
+- Ranking: accuracy to the content, editability, measured design richness (objects, a focal element, headline
+  hierarchy, colour) and readability; duplicates removed - also the same composition in another colour or as a
+  near-identical list; kinds alternated so the list is varied.
 
 DEVELOPER MODE (administrators and testing)
 - Add ?dev=1 to the panel address, or press Ctrl+Alt+Shift+D in the panel (remembered on this PC; ?dev=0 or the
@@ -52,6 +58,7 @@ FILES (local-ai)
   orchestrator.js  "Generate visuals": the engines, the paid-provider policy, cost control, ranking (V10.13)
   app.js          what end users see: content, Generate, gallery, insert; the developer mode (V10.13)
   packs\modern-10.13.js  roadmap, pillars and quadrant framework layouts (V10.13)
+  packs\showcase-10.14.js  hero-style layouts: spotlight, visual summary cards, callout diagram, learning journey (V10.14)
   assets\icon-*.png  the ribbon icons, served by the panel host
   studio.js       step 5 (free): more designs, several slides, editing inserted visuals
   server.py       panel host (https://localhost:44317), Napkin proxy; key never reaches the panel

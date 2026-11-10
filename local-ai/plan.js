@@ -595,6 +595,10 @@ function planFromClaude(raw) {
     else problems.push("Claude's own composition was not usable (zones outside the grid or without items)");
   }
   const plan = planSemantics({ title: planClean(raw && raw.title), relation: String(raw && raw.relation || 'independent'), items, groups, flow, layouts, custom, from: 'claude' });
+  // 10.14: the slide's message for learners (the showcase pack's headline and takeaway) and the topic's own object
+  plan.headline = planClean(raw && raw.headline) || plan.title;
+  plan.takeaway = planClean(raw && raw.takeaway).replace(/\.$/, '');
+  plan.hero = raw && raw.hero && CMP[raw.hero] ? String(raw.hero) : '';
   return { plan, problems };
 }
 /* A provider's drawing (napkinStructure) -> a plan of its items, in the user's order for a sequence. */

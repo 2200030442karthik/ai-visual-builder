@@ -43,7 +43,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import access as A
 import claude_visual as C
 
-VERSION = '10.13.0'
+VERSION = '10.14.0'
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'AIVisualBuilder')
 STATIC = {'/': ('v10.html', 'text/html; charset=utf-8'), '/v10.html': ('v10.html', 'text/html; charset=utf-8'),
@@ -56,9 +56,10 @@ MAX_BODY = 256 * 1024
 MAX_TEXT = 10000
 
 # paid_policy (10.13, orchestrator.js): whether "Generate visuals" may use the paid providers: never | when-needed | always;
-# paid_order: which one first (the next is the fallback). Set by the administrator; the app shows neither.
+# paid_order: "auto" (10.14: by the content - Claude for technical structure, Napkin for concepts) or a fixed list such as
+# ["napkin", "claude"] (the next is the fallback). Set by the administrator; the app shows neither.
 CONFIG = {'port': 44317, 'napkin_base': 'https://api.napkin.ai', 'napkin_max_per_day': 0, 'napkin_timeout_s': 60, 'claude_max_per_day': 0, 'claude_timeout_s': 300,
-          'paid_policy': 'when-needed', 'paid_order': ['napkin', 'claude']}
+          'paid_policy': 'when-needed', 'paid_order': 'auto'}
 try:
     with open(os.path.join(HERE, 'config.json'), encoding='utf-8') as f:
         CONFIG.update({k: v for k, v in json.load(f).items() if k in CONFIG})
@@ -66,7 +67,7 @@ except (OSError, ValueError):
     pass
 if CONFIG['paid_policy'] not in ('never', 'when-needed', 'always'):
     CONFIG['paid_policy'] = 'when-needed'
-CONFIG['paid_order'] = [k for k in CONFIG['paid_order'] if k in ('napkin', 'claude')] if isinstance(CONFIG['paid_order'], list) else ['napkin', 'claude']
+CONFIG['paid_order'] = ([k for k in CONFIG['paid_order'] if k in ('napkin', 'claude')] or 'auto') if isinstance(CONFIG['paid_order'], list) else 'auto'
 PORT = int(sys.argv[sys.argv.index('--port') + 1]) if '--port' in sys.argv else int(CONFIG['port'])   # --port: tests only
 ALLOWED_HOSTS = {f'localhost:{PORT}', f'127.0.0.1:{PORT}'}
 if '--test' in sys.argv:    # tests only: also serve the test harness and its inputs

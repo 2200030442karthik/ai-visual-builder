@@ -7,7 +7,7 @@
    - The engines, their choice, ranking and cost control are in orchestrator.js; analysis runs inside Generate.
    - The ribbon opens the panel on a section: ?open=slides | edit (manifest-v10.xml).
    Loaded last (after studio.js). */
-const APP_VERSION = '10.13.0';
+const APP_VERSION = '10.14.0';
 const APP = { list: [], sel: -1, text: '', busy: false, stale: false, lastIns: null, dupOk: '', filter: 'All', shown: 0 };
 const QS = new URLSearchParams(location.search);
 // ?dev=1: this load only; Ctrl+Alt+Shift+D: remembered on this PC until pressed again (or ?dev=0)
@@ -67,6 +67,11 @@ const appSay = (msg, err) => setStatus0(msg, err);
     #appFoot .btn-row { margin-top:6px; }
     #appInsert { width:100%; background:var(--accent); border:0; color:#fff; border-radius:9px; padding:11px; font-weight:600; font-size:13.5px; }
     #appInsert:disabled { background:#a9b0d8; cursor:default; }
+    #appHover { position:fixed; z-index:50; left:8px; right:8px; background:#fff; border-radius:12px; padding:8px; pointer-events:none;
+      box-shadow:0 10px 30px rgba(20,30,60,.22), 0 0 0 1px #dfe4ef; opacity:0; transform:translateY(4px); transition:opacity .12s, transform .12s; }
+    #appHover.on { opacity:1; transform:none; }
+    #appHover svg { width:100%; height:auto; display:block; border-radius:6px; }
+    #appHover .ht { font-weight:600; font-size:12.5px; margin:6px 2px 0; } #appHover .hd { color:var(--muted); font-size:11.5px; margin:1px 2px 0; }
     .stclose { float:right; border:0; background:none; font-size:16px; line-height:1; color:var(--muted); cursor:pointer; }
     .devbar { background:#1f2937; color:#fff; border-radius:8px; padding:6px 10px; font-size:12px; margin-bottom:8px; display:flex; gap:8px; align-items:center; }
     .devbar button, .devbar select { font-size:11.5px; }
@@ -199,7 +204,14 @@ function appRender() {
   $('appGrid').innerHTML = shown.map(([c, i]) => { const [cls, txt] = BADGE(c);
     return `<button type="button" class="gcard${i === APP.sel ? ' sel' : ''}" data-i="${i}" aria-pressed="${i === APP.sel}" aria-label="${esc(c.title)}"><div class="gthumb"></div>` +
       `<div class="gname">${esc(c.title)}</div><div class="cat">${esc(c.category)}${c.slides > 1 ? ` · ${c.slides} slides` : ''}</div><span class="badge ${cls}">${txt}</span></button>`; }).join('');
-  $('appGrid').querySelectorAll('.gcard').forEach(b => b.addEventListener('click', () => appSelect(+b.dataset.i)));
+  $('appGrid').querySelectorAll('.gcard').forEach(b => {
+    b.addEventListener('click', () => { hoverHide(); appSelect(+b.dataset.i); });
+    // 10.14: resting the pointer (or the keyboard focus) on a design shows it large, without a click
+    b.addEventListener('pointerenter', e => { if (e.pointerType !== 'touch') hoverSoon(b); });
+    b.addEventListener('pointerleave', hoverHide);
+    b.addEventListener('focus', () => hoverSoon(b)); b.addEventListener('blur', hoverHide);
+  });
+  hoverHide();
   // thumbnails a few at a time, so the panel stays responsive
   const todo = [...$('appGrid').querySelectorAll('.gcard')];
   let k = 0;
@@ -207,6 +219,26 @@ function appRender() {
   requestAnimationFrame(step);
   appSections(); appBig(); appButtons();
 }
+/* ---------- hover preview: the design large, above or below its card (never over it), gone when the pointer leaves ---------- */
+const HOVER = { t: 0, card: null };
+function hoverSoon(card) { clearTimeout(HOVER.t); HOVER.card = card; HOVER.t = setTimeout(() => hoverShow(card), 150); }
+function hoverShow(card) {
+  const c = APP.list[+card.dataset.i];
+  if (!c || HOVER.card !== card || !card.isConnected) return;
+  let el = $('appHover');
+  if (!el) { el = document.createElement('div'); el.id = 'appHover'; el.setAttribute('role', 'tooltip'); document.body.appendChild(el); }
+  const pics = c.prims.filter(p => p.t === 'image').length;
+  el.innerHTML = thumb(c.prims) + `<div class="ht">${esc(c.title)}</div><div class="hd">${esc(c.category)} · ${c.edit === 'full' ? 'Fully editable' : `Editable shapes and text; ${pics} icon${pics === 1 ? ' is a picture' : 's are pictures'}`}${c.slides > 1 ? ` · ${c.slides} slides` : ''}</div>`;
+  const r = card.getBoundingClientRect(), vh = window.innerHeight, w = document.documentElement.clientWidth - 16, h = w * (TEMPLATE.contentArea.h + 24) / (TEMPLATE.contentArea.w + 24) + 52;
+  // above the card when it fits there, else below it, else wherever it covers least of it
+  const top = r.top - h - 8 >= 4 ? r.top - h - 8 : r.bottom + 8 + h <= vh - 4 ? r.bottom + 8 : Math.max(4, Math.min(vh - h - 4, r.top - h / 2));
+  el.style.top = top + 'px';
+  el.classList.add('on');
+  HOVER.on = true;
+}
+function hoverHide() { clearTimeout(HOVER.t); HOVER.card = null; const el = $('appHover'); if (el) el.classList.remove('on'); HOVER.on = false; }
+window.addEventListener('scroll', hoverHide, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hoverHide(); });
 function appSelect(i) {
   APP.sel = i; APP.dupOk = '';
   $('appGrid').querySelectorAll('.gcard').forEach(b => { const on = +b.dataset.i === i; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on); });
@@ -287,4 +319,4 @@ $('stAppClose').addEventListener('click', () => $('stPanel').classList.remove('o
 $('content').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !APP_DEV) { e.preventDefault(); e.stopImmediatePropagation(); appGenerate(); } }, true);
 if (QS.get('open') === 'edit' || QS.get('open') === 'slides') setTimeout(() => appStudio(QS.get('open')), 0);
 appButtons();
-window.__app = { APP, appGenerate, appMore, appInsert, appSelect, appStudio, friendly, ORCH };
+window.__app = { APP, appGenerate, appMore, appInsert, appSelect, appStudio, friendly, ORCH, HOVER, hoverShow, hoverHide };
