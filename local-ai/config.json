@@ -3,6 +3,6 @@
   "napkin_base": "https://api.napkin.ai",
   "napkin_max_per_day": 0,
   "napkin_timeout_s": 60,
-  "paid_policy": "never",
+  "paid_policy": "when-needed",
   "paid_order": "auto"
 }

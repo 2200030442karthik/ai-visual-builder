@@ -1,26 +1,33 @@
-AI VISUAL BUILDER V10.14
+AI VISUAL BUILDER V10.15
 ========================
 Your content -> Generate visuals -> up to 20 editable designs -> insert the one you like, in the Simplilearn template.
 Lightweight: JavaScript in the panel, a small Python host on this PC, no AI models, no GPU.
 
-HOW TO USE (V10.14)
+HOW TO USE (V10.15)
 1. Once: double-click local-ai\Set up AI Visual Builder.bat (localhost certificate + start at sign-in), then
    "Install V10 add-in.bat". If PowerPoint says "Sorry, we can't load the add-in": double-click
    local-ai\Start AI Visual Builder.bat and reopen the panel.
-2. PowerPoint: Insert tab > group "AI Visual Builder" > Generate visuals (also: Several slides, Edit a visual).
+2. PowerPoint: SL Smart Design tab > "AI Visuals" (beside Alternative Design; its arrow: Several slides, Edit a
+   visual) - once SL Smart Design has the button, see local-ai\sl-smart-design\README.txt. On every PC also:
+   Home tab > group "AI Visual Builder" (at the end of the tab) > Generate visuals.
    Select a slide that uses the template's "Content_Slide" layout.
 3. Paste your content (or "Use text from the selected slide") and press Generate visuals. The content is read
    automatically; you get 10-20 designs, best first, each built from your content as editable PowerPoint shapes and
-   text. Filter by kind (Process, Roadmap, Pillars, Framework, Hub and spoke, ...). Rest the pointer on a design to see
-   it large (no click needed); click it to select it.
-4. Press "Insert selected visual" (tick "On a new slide" to keep the selected slide as it is). "Undo last insert"
-   takes out exactly what was inserted.
+   text. Filter by kind (Learning map, Hero, Icon summary, Process, Pillars, ...). Rest the pointer on a design to
+   see it large (no click needed); click it to choose it. There is no separate preview area: the popup is the preview.
+   Course and topic summaries written as a title with labelled lists ("What you learn: ...", "Best for: ...") are
+   read as named sections: every section and every entry is kept, each entry becomes a short item with its own
+   object (sections.js).
+4. Press Insert (the button names the design you chose; tick "On a new slide" to keep the selected slide as it is).
+   "Undo last insert" takes out exactly what was inserted.
 5. Optional: "More visuals" (new layouts first, then colour and spacing variants), "Several slides" (long content on
    several slides), "Edit a visual" (change the texts, icons, colours or layout of a visual you inserted).
 
 WHAT HAPPENS BEHIND "GENERATE VISUALS" (orchestrator.js)
 - The built-in layouts and the design packs always run (free, on this PC), including the hero-style "showcase"
-  compositions (V10.14: spotlight, visual summary cards, callout diagram, learning journey).
+  compositions (V10.14: spotlight, visual summary cards, callout diagram, learning journey) and the learner-style
+  "learning" compositions (V10.15: learning map, topic banner, skills to outcomes, icon rows, badge cards, section
+  panels, learning poster, topic ribbon, colour tiles), which rank first for course and topic summaries.
 - Then one AI design service, as the administrator's policy allows (the user never chooses or sees a provider):
   Claude AI for technical structure (a flow with functions across it, systems, named groups, 7+ points) - its design
   plan (roles, objects, headline, takeaway, the topic's object) is drawn here in every composition that suits it;
@@ -59,6 +66,12 @@ FILES (local-ai)
   app.js          what end users see: content, Generate, gallery, insert; the developer mode (V10.13)
   packs\modern-10.13.js  roadmap, pillars and quadrant framework layouts (V10.13)
   packs\showcase-10.14.js  hero-style layouts: spotlight, visual summary cards, callout diagram, learning journey (V10.14)
+  packs\learning-10.15.js  learner-style layouts for labelled sections and short lists, and new objects (brain,
+                           megaphone, e-mail, briefcase, rocket, growth, social, analysis, trophy) (V10.15)
+  sections.js              reads "What you learn: ... / Best for: ..." content as named sections (V10.15)
+  open-panel.ps1           opens the panel from the SL Smart Design button (UI Automation; V10.15)
+  sl-smart-design\         the "AI Visuals" button for the SL Smart Design add-in: VBA module, ribbon lines, a
+                           script that adds them to a copy of its file, and README.txt (V10.15)
   assets\icon-*.png  the ribbon icons, served by the panel host
   studio.js       step 5 (free): more designs, several slides, editing inserted visuals
   server.py       panel host (https://localhost:44317), Napkin proxy; key never reaches the panel

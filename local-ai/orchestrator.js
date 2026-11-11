@@ -43,8 +43,8 @@ function orchOrder(ctx) {
 const orchNote = (what, o) => { ORCH.log.push(Object.assign({ at: new Date().toISOString().slice(11, 19), what }, o || {})); if (ORCH.log.length > 200) ORCH.log.shift(); };
 
 /* What a visual is, for the gallery's variety and its label. */
-const ORCH_CATS = [['Roadmap', /roadmap/], ['Timeline', /timeline|milestone/], ['Cycle', /cycle/], ['Funnel', /funnel/],
-  ['Comparison', /versus|split|compare|table|matrix2/], ['Hub and spoke', /hub|radial|ecosystem|spoke|wheel|orbit/], ['Pillars', /pillar|columns|p-col/],
+const ORCH_CATS = [['Learning map', /learnmap|bridge/], ['Hero', /herobanner|spotlight|callout|poster|ribbon/], ['Icon summary', /iconrows|badges|storyboard|colortiles/], ['Roadmap', /roadmap/], ['Timeline', /timeline|milestone/], ['Cycle', /cycle/], ['Funnel', /funnel/],
+  ['Comparison', /versus|splitpanels|split|compare|table|matrix2/], ['Hub and spoke', /hub|radial|ecosystem|spoke|wheel|orbit/], ['Pillars', /pillar|columns|p-col/],
   ['Framework', /quadrant|framework|capmap|capability|swot|matrix/], ['Hierarchy', /tree|pyramid|layers|stack|hierarch|org/],
   ['Architecture', /architecture|platform|modules|planes|swimlane/],
   ['Process', /chevron|stair|step|pipeline|flow|arrow|snake|process|circleflow|p-row|p-path|scene|staircase/],
@@ -181,6 +181,8 @@ registerEngine({ id: 'builtin', kind: 'native', order: 10,
 function orchBuiltin(page) {
   const s = state.sec;
   if (!s || !s.model || s.status !== 'ready' || s.model.type === 'none') return [];
+  // 10.15: labelled sections are drawn from their plan (designs engine); the single-list views would drop a section
+  if (typeof sectionsRead === 'function' && sectionsRead(state.runText || '')) return [];
   if (!s.gallery) s.gallery = suggest(s);
   const L = s.gallery.list.slice(page * 12, page * 12 + 12);
   return L.map(c => ({ id: 'b:' + s.index + ':' + c.key, engine: 'builtin', title: c.name, family: c.family || c.key, category: orchCategory((c.family || '') + ' ' + c.key + ' ' + c.name),
@@ -201,14 +203,16 @@ async function orchDesigns(ctx, max) {
     const plan = planFromPrep(prep), d = planAtDensity(plan, ctx.R, 'auto');
     Object.assign(m, { plan, d, seen: new Set() });
   }
-  const list = planMoreDesigns(m.d.plan, ctx.R, m.seen, max);
+  // 10.15: labelled sections have no built-in single-list views, so more of their compositions are drawn here; the
+  // learner-style ones (learning pack) rank above the general grouped layouts
+  const sec = !!m.d.plan.sections, list = planMoreDesigns(m.d.plan, ctx.R, m.seen, sec ? max + 6 : max);
   return list.map(r => ({ id: 'd:' + planDesignKey(r), engine: 'designs', title: r.name + (planStyleName(r.style) ? ' · ' + planStyleName(r.style) : ''), family: r.family, category: orchCategory(r.family + ' ' + r.key),
-    prims: r.prims, edit: 'full', complete: m.d.density === 'full', slides: 1, rich: /modern|pro|showcase/.test(PLAN_LAYOUTS[r.key] && PLAN_LAYOUTS[r.key].pack || ''),
-    base: 62 + orchPackBonus(r.key) - (m.d.density === 'names' ? 6 : 0), why: r.kind,
+    prims: r.prims, edit: 'full', complete: m.d.density === 'full', slides: 1, rich: /modern|pro|showcase|learning/.test(PLAN_LAYOUTS[r.key] && PLAN_LAYOUTS[r.key].pack || ''),
+    base: 62 + orchPackBonus(r.key) - (m.d.density === 'names' ? 6 : 0) - (sec && !/learning/.test(PLAN_LAYOUTS[r.key] && PLAN_LAYOUTS[r.key].pack || '') ? 8 : 0), why: r.kind,
     insert: async () => { ST.designs = [{ r, plan: m.d.plan, full: m.plan, density: m.d.density, from: 'your text' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } }));
 }
 // the newer packs' compositions are the richer ones (hero-style showcase first)
-const orchPackBonus = k => { const p = (PLAN_LAYOUTS[k] && PLAN_LAYOUTS[k].pack) || ''; return /showcase/.test(p) ? 8 : /modern/.test(p) ? 4 : /pro/.test(p) ? 2 : 0; };
+const orchPackBonus = k => { const p = (PLAN_LAYOUTS[k] && PLAN_LAYOUTS[k].pack) || ''; return /learning/.test(p) ? 10 : /showcase/.test(p) ? 8 : /modern/.test(p) ? 4 : /pro/.test(p) ? 2 : 0; };
 /* A provider's result as candidates: its designs as native, editable objects first (never the picture by default). */
 function orchProvider(key) {
   return { id: key, kind: 'paid', order: key === 'napkin' ? 60 : 70,

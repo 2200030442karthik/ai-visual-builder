@@ -1,4 +1,4 @@
-"""V10.14 acceptance run: starts a test panel host (plain HTTP, port 44398, test files enabled), opens tests/harness.html
+"""V10.15 acceptance run: starts a test panel host (plain HTTP, port 44398, test files enabled), opens tests/harness.html
 in ONE headless Edge, waits for the harness to finish and prints a summary; then the V10.12 studio tests
 (tests/studio.html: more designs, edits, several slides) in the same Edge, with a screenshot of their previews
 (tests/evidence/v10.12-studio.png). Lightweight on purpose: no AI models, no
@@ -72,7 +72,7 @@ def main():
         acceptance_page(cdp, 'studio.html', 'V10.12', 'last-run-studio.json', 'v10.12-studio.png')
         acceptance_page(cdp, 'original.html', 'V10.12.1', 'last-run-original.json', 'v10.12.1-original.png')
         acceptance_page(cdp, 'faithful.html', 'V10.12.2', 'last-run-faithful.json', 'v10.12.2-faithful.png')
-        acceptance_page(cdp, 'app.html', 'V10.14', 'last-run-app.json', 'v10.14-app.png')
+        acceptance_page(cdp, 'app.html', 'V10.15', 'last-run-app.json', 'v10.15-app.png')
         ribbon_check()
     finally:
         subprocess.run([sys.executable, os.path.join(HERE, 'test_server.py')])
@@ -133,17 +133,19 @@ def acceptance_page(cdp, name, label, out_json, png):
 
 
 def ribbon_check():
-    """V10.14: the ribbon entry (manifest-v10.xml): a group on the Insert tab, three buttons that open the task pane, and
-    every URL and icon it names served by the panel host (checked against this test host)."""
+    """V10.15: the ribbon entry (manifest-v10.xml): a group on the Home tab, three buttons that open the task pane, and
+    every URL and icon it names served by the panel host (checked against this test host); the SL Smart Design kit
+    (sl-smart-design): its ribbon lines are well-formed, every callback they name is in the VBA module, and the helper
+    (open-panel.ps1) presses buttons with the manifest's own labels."""
     import urllib.request
     import xml.etree.ElementTree as ET
     ns = {'o': 'http://schemas.microsoft.com/office/appforoffice/1.1', 'v': 'http://schemas.microsoft.com/office/taskpaneappversionoverrides',
           'bt': 'http://schemas.microsoft.com/office/officeappbasictypes/1.0'}
     fails = []
     root = ET.parse(os.path.join(HERE, '..', '..', 'manifest-v10.xml')).getroot()
-    tab = root.find('.//v:OfficeTab', ns)          # 10.14: a group on PowerPoint's Insert tab
-    if tab is None or tab.get('id') != 'TabInsert':
-        fails.append('the group is not on the Insert tab')
+    tab = root.find('.//v:OfficeTab', ns)          # 10.15: a group at the end of PowerPoint's Home tab
+    if tab is None or tab.get('id') != 'TabHome':
+        fails.append('the group is not on the Home tab')
     else:
         btns = tab.findall('.//v:Control', ns)
         if len(btns) != 3 or any(c.find('v:Action', ns).get('{http://www.w3.org/2001/XMLSchema-instance}type') != 'ShowTaskpane' for c in btns):
@@ -163,7 +165,25 @@ def ribbon_check():
                     fails.append(f'{u}: {r.status}')
         except Exception as e:
             fails.append(f'{u}: {e}')
-    print(f"ribbon and task pane: {'ALL PASSED' if not fails else 'FAILED ' + '; '.join(fails)} ({len(urls)} URLs checked)")
+    import re
+    kit = os.path.join(HERE, '..', 'sl-smart-design')
+    add = open(os.path.join(kit, 'customUI-addition.xml'), encoding='utf-8').read()
+    try:
+        ET.fromstring('<g>' + re.sub(r'(?s)<!--.*?-->', '', add) + '</g>')
+    except ET.ParseError as e:
+        fails.append(f'SL Smart Design ribbon lines are not well-formed: {e}')
+    bas = open(os.path.join(kit, 'AIVisualBuilder.bas'), encoding='cp1252').read()
+    missing = [a for a in set(re.findall(r'onAction="([^"]+)"', add)) if not re.search(r'Public Sub ' + re.escape(a) + r'\(control As IRibbonControl\)', bas)]
+    if missing:
+        fails.append(f'SL Smart Design callbacks missing in AIVisualBuilder.bas: {missing}')
+    helper = open(os.path.join(HERE, '..', 'open-panel.ps1'), encoding='utf-8').read()
+    labels = {s.get('id'): s.get('DefaultValue') for s in root.iter() if s.tag.endswith('}String')}
+    for rid in ('Button.Label', 'Slides.Label', 'Edit.Label', 'Group.Label'):
+        if f"'{labels.get(rid)}'" not in helper:
+            fails.append(f'open-panel.ps1 does not look for "{labels.get(rid)}" ({rid})')
+    if "HostTab = 'Home'" not in helper:
+        fails.append('open-panel.ps1 does not look on the Home tab')
+    print(f"ribbon and task pane: {'ALL PASSED' if not fails else 'FAILED ' + '; '.join(fails)} ({len(urls)} URLs checked; SL Smart Design kit checked)")
 
 
 def report(res, secs):

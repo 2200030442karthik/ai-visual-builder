@@ -3,7 +3,7 @@
      (v10.html) with the strict PowerPoint stand-in (mock.js). Napkin and Claude are stand-ins inside the page (saved
      real results; every provider call is counted) - the test panel host refuses paid requests anyway (server.py
      TEST_NO_PAID). Writes JSON into <pre id="out">; #evidence holds the gallery for the screenshot. -->
-<html><head><meta charset="utf-8"><title>V10.14 app tests</title><script src="/tests/samples.js"></script><script src="/tests/mock.js"></script>
+<html><head><meta charset="utf-8"><title>V10.15 app tests</title><script src="/tests/samples.js"></script><script src="/tests/mock.js"></script>
 <style>body{font:12px Segoe UI,Arial} iframe{width:420px;height:900px} #evidence{width:1240px}</style></head>
 <body><iframe id="f" src="/v10.html"></iframe><iframe id="g" src="about:blank"></iframe><pre id="out">running</pre><div id="evidence"></div>
 <script>
@@ -64,12 +64,15 @@ async function run() {
       selected: d.querySelectorAll('#appGrid .gcard.sel').length, status: status().slice(0, 160), timingsVisible: vis('perfBox'), providerWords: /Napkin|Claude|request|token|credit/i.test(d.getElementById('appMain').textContent), paid: paidCalls() };
     await wait(400); res.gen.ml.thumbs = d.querySelectorAll('#appGrid .gcard .gthumb svg').length;
     d.querySelectorAll('#appGrid .gcard')[3].click();
-    res.gen.pick = { sel: A.APP.sel, pressed: d.querySelectorAll('#appGrid .gcard[aria-pressed="true"]').length, title: d.getElementById('appPvT').textContent, sameAsCard: d.getElementById('appPvT').textContent === A.APP.list[3].title, bigPreview: !!d.querySelector('#appPv svg') };
+    // 10.15: no separate preview area (the hover popup is the preview); the insert button names the chosen design
+    const pickName = d.querySelectorAll('#appGrid .gcard')[3].querySelector('.gname').textContent;
+    res.gen.pick = { sel: A.APP.sel, pressed: d.querySelectorAll('#appGrid .gcard[aria-pressed="true"]').length, name: pickName, insertNames: d.getElementById('appInsert').textContent.includes(pickName) || /Content Slide|PowerPoint/.test(d.getElementById('appInsert').textContent),
+      noPreviewArea: !vis('appPv'), noVariantSuffix: ![...d.querySelectorAll('#appGrid .gname')].some(e => / · /.test(e.textContent)) };
     // 10.14: resting the pointer on a card shows it large, without a click; it never covers the card; leaving closes it
     const card = d.querySelectorAll('#appGrid .gcard')[5], cr = card.getBoundingClientRect();
     card.dispatchEvent(new W.PointerEvent('pointerenter', { pointerType: 'mouse' })); await wait(300);
     const hv = d.getElementById('appHover'), hr = hv && hv.getBoundingClientRect();
-    res.gen.hover = { shown: !!hv && hv.classList.contains('on'), svg: !!(hv && hv.querySelector('svg')), title: hv && hv.querySelector('.ht').textContent, sameAsCard: hv && hv.querySelector('.ht').textContent === A.APP.list[+card.dataset.i].title,
+    res.gen.hover = { shown: !!hv && hv.classList.contains('on'), svg: !!(hv && hv.querySelector('svg')), title: hv && hv.querySelector('.ht').textContent, sameAsCard: hv && hv.querySelector('.ht').textContent === card.querySelector('.gname').textContent,
       wider: !!hr && hr.width > cr.width * 1.6, coversCard: !!hr && !(hr.bottom <= cr.top + 1 || hr.top >= cr.bottom - 1), selectedUnchanged: A.APP.sel === 3 };
     card.dispatchEvent(new W.PointerEvent('pointerleave', { pointerType: 'mouse' })); await wait(50);
     res.gen.hover.closed = !hv.classList.contains('on');
@@ -97,6 +100,33 @@ async function run() {
     const L3 = await gen(samples['Meaningless text']);
     res.gen.meaningless = { n: L3.length, err: d.getElementById('appErr').textContent.slice(0, 160), errShown: vis('appErr') };
     res.gen.empty = (() => { d.getElementById('content').value = ''; d.getElementById('content').dispatchEvent(new W.Event('input')); return { genDisabled: d.getElementById('appGen').disabled }; })();
+  }
+
+  /* ===== S (10.15): content written as labelled sections - "What you learn" / "Best for" ===== */
+  {
+    const texts = c => c.prims.filter(p => p.text).map(p => String(p.text));
+    const dmT = 'Digital Marketing and Social Media GrowthWhat you learn: Search Engine Optimization (SEO), paid advertising, email campaigns, and audience building on platforms like TikTok and LinkedIn. Best for: Launching side hustles, promoting brands, or growing digital content.';
+    const dmNeed = ['What you learn', 'Best for', 'SEO', 'Paid advertising', 'Email campaigns', 'Audience building', 'Launching side hustles', 'Promoting brands', 'Growing digital content'];
+    fresh(); W.__cfg.policy = 'never'; await gate();
+    let L = await gen(dmT);
+    res.sec = { lines: d.getElementById('content').value.split(/\n/).slice(0, 3), n: L.length, families: L.map(c => c.family),
+      richFirst: L.slice(0, 3).every(c => /learnmap|herobanner|bridge|iconrows|splitpanels|poster|badges|ribbon|colortiles/.test(c.family)),
+      missing: L.filter(c => !dmNeed.every(t => texts(c).includes(t))).map(c => c.family + ': ' + dmNeed.filter(t => !texts(c).includes(t)).join(' / ')),
+      merged: L.filter(c => texts(c).some(t => /GrowthWhat|What you learn:/.test(t))).map(c => c.family), builtin: L.filter(c => c.engine === 'builtin').length, editable: L.every(c => c.edit === 'full'), paid: paidCalls() };
+    const aiT = ['Artificial Intelligence and Machine Learning (AI & ML)', '', 'What you learn: Neural networks, data mining, predictive modeling, and working with tools like ChatGPT or Python.', '',
+      'Best for: Building smart apps, data analysis, and high-demand tech careers.'].join(String.fromCharCode(10));
+    const aiNeed = ['AI & ML', 'What you learn', 'Best for', 'Neural networks', 'Data mining', 'Predictive modeling', 'ChatGPT or Python', 'Building smart apps', 'Data analysis', 'High-demand tech careers'];
+    L = await gen(aiT);
+    const lm = L.find(c => c.family === 'learnmap');
+    res.sec.ai = { n: L.length, cats: [...new Set(L.map(c => c.category))].length, learnmap: !!lm, learnmapComplete: !!lm && aiNeed.every(t => texts(lm).includes(t)), hero: !!lm && lm.prims.some(p => p.cmp === 'brain'),
+      objects: !!lm && new Set(lm.prims.filter(p => p.cmp && p.cmp !== 'none').map(p => p.cmp)).size };
+    const pr = await W.__napkin.prepared(aiT);
+    res.sec.ai.sent = { points: pr.points.map(p => p.label), groups: [...new Set(pr.points.map(p => p.group))], content: pr.content.slice(0, 200) };
+    const li = L.indexOf(lm);
+    if (li >= 0) { M.reset(); await gate(); A.appSelect(li); await A.appInsert(); const S0 = M.slides[0], lv = leaves({ items: own(S0) });
+      res.sec.ai.inserted = { objects: own(S0).length, texts: lv.filter(x => x.textFrame && x.textFrame.textRange && x.textFrame.textRange.text).length }; await ev('removeLast()'); }
+    // a plain list and prose are not read as sections
+    res.sec.notSections = ['ML workflow (5 stages, intro)', 'Educational content'].map(k => !ev('t => !!sectionsRead(t)')(samples[k]));
   }
 
   /* ===== I: insertion of each kind, editable; duplicate guard; undo ===== */
@@ -221,7 +251,11 @@ async function run() {
     ['A13 Hover preview: the design large after a short rest, beside (not over) its card, closed on leaving; touch ignored; selection unchanged', Gn.hover.shown && Gn.hover.svg && Gn.hover.sameAsCard && Gn.hover.wider && !Gn.hover.coversCard && Gn.hover.closed && Gn.hover.touchIgnored && Gn.hover.selectedUnchanged,
       JSON.stringify(Gn.hover)],
     ['A14 Richer and varied: hero-style showcase designs among the first 10; no two designs with the same composition', Gn.rich.showcaseInTop10 >= 2 && Gn.rich.nearDuplicates === 0, JSON.stringify(Gn.rich)],
-    ['A3 Gallery: selection state, large preview of the selected one, kind filters, More visuals (new first, nothing repeated), out-of-date content blocks insert', Gn.pick.sel === 3 && Gn.pick.pressed === 1 && Gn.pick.sameAsCard && Gn.pick.bigPreview && (!Gn.filter || Gn.filter.all) && Gn.more.unique && Gn.more.fresh >= 1 && Gn.stale.note && Gn.stale.insertDisabled,
+    ['A15 Labelled sections ("What you learn" / "Best for"): a glued label is separated; both sections and every item on every design (none drops a section, no merged heading); the learner-style compositions first; all editable; no request with policy never', res.sec.lines.length >= 3 && /Growth$/.test(res.sec.lines[0]) && /^What you learn:/.test(res.sec.lines[1]) && res.sec.n >= 9 && !res.sec.missing.length && !res.sec.merged.length && res.sec.richFirst && res.sec.builtin === 0 && res.sec.editable && res.sec.paid === 0,
+      JSON.stringify(Object.assign({}, res.sec, { ai: undefined }))],
+    ['A16 AI & ML summary: 10+ designs; the learning map (hero with the brain, both sections, every item, an object for each) inserts as native objects; the AI services are sent both sections and every item; plain lists and prose are not read as sections', res.sec.ai.n >= 10 && res.sec.ai.learnmapComplete && res.sec.ai.hero && res.sec.ai.objects >= 7 && res.sec.ai.inserted && res.sec.ai.inserted.objects > 0 && res.sec.ai.sent.points.length === 7 && res.sec.ai.sent.groups.length === 2 && res.sec.notSections.every(Boolean),
+      JSON.stringify(Object.assign({}, res.sec.ai, { notSections: res.sec.notSections }))],
+    ['A3 Gallery: selection state, no separate preview area (hover is the preview), plain design names, the insert button names the choice, kind filters, More visuals (new first, nothing repeated), out-of-date content blocks insert', Gn.pick.sel === 3 && Gn.pick.pressed === 1 && Gn.pick.noPreviewArea && Gn.pick.noVariantSuffix && Gn.pick.insertNames && (!Gn.filter || Gn.filter.all) && Gn.more.unique && Gn.more.fresh >= 1 && Gn.stale.note && Gn.stale.insertDisabled,
       JSON.stringify({ pick: Gn.pick, filter: Gn.filter, more: Gn.more, stale: Gn.stale })],
     ['A4 Other content: 10-20 visuals for lists, prose-like items, records; meaningless text refused plainly; empty content cannot generate', ['edu', 'de', 'facts', 'genai'].every(k => Gn[k].n >= 10 && Gn[k].n <= 20 && Gn[k].cats >= 4) && Gn.records.n >= 1 && Gn.meaningless.n === 0 && Gn.meaningless.errShown && Gn.empty.genDisabled,
       JSON.stringify({ edu: Gn.edu, de: Gn.de, facts: Gn.facts, genai: Gn.genai, records: Gn.records, meaningless: Gn.meaningless })],

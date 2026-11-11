@@ -1,6 +1,6 @@
 # AI Visual Builder — project status
 
-## Current version: V10.14 (10 Nov 2026)
+## Current version: V10.15 (11 Nov 2026)
 Authorized employee + Content Slide of the approved template → paste content → analyze → accurate infographic and
 pictorial suggestions → preview → insert editable PowerPoint shapes. JavaScript panel + small Python host; no AI
 models, no GPU. Three ways to generate: native infographics (built in, free), and optionally Napkin AI (single approved
@@ -18,6 +18,9 @@ Simplilearn brand style) or Claude AI (Anthropic API), both paid, confirmed per 
 | Designs, slides, edits | `local-ai/studio.js` | step 5, free (no AI request): more designs of a saved content plan, content density, several slides (logical split, overview, batch insertion with recovery), editing of inserted visuals (PowerPoint tags `AIVB_V`/`AIVB_F` + a record on the slide, one undo) |
 | App (end users) | `local-ai/app.js` | 10.13: content → Generate visuals → gallery (10-20, filters, selection, large preview) → insert; More visuals, Several slides, Edit a visual; loading/empty/error/stale states; plain status words; developer mode (`?dev=1`, Ctrl+Alt+Shift+D) restores every technical section |
 | Engine choice | `local-ai/orchestrator.js` | 10.13: engines builtin, designs (free), napkin, claude (paid, `registerEngine`); paid policy `never` / `when-needed` / `always` (config.json `paid_policy`, `paid_order`); kept results reused, 24-hour resend guard, one request + one fallback; ranking (accuracy, editability, richness, readability), dedupe, variety |
+| Design pack "learning" | `local-ai/packs/learning-10.15.js` | 10.15: learner-style compositions in the spirit of the VisualX reference - learning map (hero panel, bracket, section panels of object columns), topic banner, skills to outcomes, icon rows, badge cards, section panels, learning poster, topic ribbon, colour tiles; 9 new native objects |
+| Labelled sections | `local-ai/sections.js` | 10.15: "What you learn: ... / Best for: ..." read as a title, a short topic name and named sections; glued labels separated; list entries split into short items |
+| SL Smart Design button | `local-ai/sl-smart-design/`, `local-ai/open-panel.ps1` | 10.15: "AI Visuals" beside Alternative Design (VBA callbacks + ribbon lines); the helper presses the add-in's Home-tab button through UI Automation |
 | Design pack "showcase" | `local-ai/packs/showcase-10.14.js` | 10.14: hero-style educational compositions - spotlight (hero panel: topic object, headline, takeaway), storyboard (visual summary cards), callout (topic object with called-out points), journey (winding learning path) |
 | Design pack "modern" | `local-ai/packs/modern-10.13.js` | 10.13: roadmap, pillars, quadrant framework; families say which content they `suits` (plan.js `planCandidates`) |
 | Original editable | `local-ai/faithful.js` + `svg2ppt.js` (`svgToPrims(..., { faithful })`) | 10.12.2: the original design as native objects: curved outlines sampled and matched to box / rounded box / pill / circle / ellipse, open curved strokes as straight-segment connectors, text boxes at the design's place and size (`tight`: no margins, no wrap), brand colours and contrast, icons and illustrations as separate pictures; `faithfulSplit` (continuation slides at clean gaps, one scale), `faithfulJoin` (words broken by Napkin), checks and editability report |
@@ -27,9 +30,25 @@ Simplilearn brand style) or Claude AI (Anthropic API), both paid, confirmed per 
 | Claude AI backend | `local-ai/claude_visual.py`, `configure-claude.ps1`, `Configure Claude.bat` | one design-specification request for 1 or 4 visuals (drawings kept for cached results and tests), `max_retries=0`, no fallback model; model / effort / max_tokens / prices in `%LOCALAPPDATA%\AIVisualBuilder\claude.json` |
 | Install / restart | `local-ai/start-ai-visual-builder.ps1` (+ `Restart AI Visual Builder.bat`), `install-v10-addin.ps1` (+ `Install V10 add-in.bat`, `Remove V10 add-in.bat`) | restart replaces every outdated copy; V10 registration by its own manifest Id, V9 never touched |
 | Access | `local-ai/access.py`, `access.example.json` | administrator policy in `%ProgramData%\AIVisualBuilder\access.json` |
-| Panel host | `local-ai/server.py` | 10.14.0; `paid_order` "auto"; `orchestrate` in /api/status; ribbon icons; `--test` hosts refuse paid requests; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
-| Manifest | `manifest-v10.xml` | 10.14.0.0: group "AI Visual Builder" on PowerPoint's Insert tab, buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
+| Panel host | `local-ai/server.py` | 10.15.0; `paid_order` "auto"; `orchestrate` in /api/status; ribbon icons; `--test` hosts refuse paid requests; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
+| Manifest | `manifest-v10.xml` | 10.15.0.0: group "AI Visual Builder" at the end of PowerPoint's Home tab (the button the SL Smart Design "AI Visuals" button presses), buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
 | Diagnosis | `local-ai/tests/run_diag.py`, `diag.html`, `diag_cases.py` | every layout considered with its reason; every Napkin variation with arrangement, status and preview |
+
+## V10.15 — learner-style visuals, labelled sections, hover-only preview, SL Smart Design button (11 Nov)
+Why V10.14's visuals still looked basic for course summaries: (1) on this PC `config.json` had `"paid_policy": "never"`,
+so Napkin and Claude were never asked; (2) "What you learn: ... Best for: ..." was read as one plain list - the first
+section was dropped (Digital Marketing kept only the three "Best for" points) or each section became one card holding a
+whole sentence (AI & ML), and a label glued to the title ("Social Media GrowthWhat you learn:") became the heading;
+(3) there was no composition for named sections with an object per entry - the VisualX reference's structure (hero for
+the topic, pill headings, object-and-label columns).
+Now: sections.js reads labelled sections (title, short name, sections, short items in the text's words; glued labels
+separated); the plan has one named group per section, and only layouts that show each section under its name are used;
+the "learning" pack adds nine compositions and nine objects, ranked first for such content; Napkin and Claude are sent
+the sections and their items (Claude's brief and schema: sections as groups, short labels, a short topic name, the new
+layouts and objects); the app has no separate preview area (the hover popup is the preview), plain design names and an
+Insert button that names the choice; the add-in's group moved from the Insert tab to the Home tab, and an "AI Visuals"
+button for the SL Smart Design tab (VBA add-in) opens it through open-panel.ps1. Tests `tests/app.html` 17 of 17 (new
+A15, A16). **Not yet verified in real PowerPoint.**
 
 ## V10.14 — richer, AI-designed visuals; hover preview; ribbon on the Insert tab (10 Nov)
 Why V10.13's visuals looked basic: the AI services were practically never asked (only when the free engines gave fewer
@@ -155,7 +174,7 @@ and the new layouts in real PowerPoint.
 ## Limitations
 - PowerPoint's JS API cannot draw curves or set line spacing; curved Napkin icons stay separate pictures.
 - A rebuilt Napkin result keeps its arrangement, item look, wording, icons and colours, not its exact drawing (curved connectors, figures and globes are not redrawn; a half-disc hub becomes an ellipse).
-- Ribbon: an add-in's group goes at the end of a built-in tab (Insert, here); it cannot join a built-in group or another add-in's tab (a separate "Simplilearn" add-in tab cannot be shared); the three buttons share one task pane - when it is already open, PowerPoint may keep its current page instead of opening the section asked for (the panel's own buttons do the same). The ribbon icons are served by the panel host: if it is not running when PowerPoint starts, generic icons are shown. A changed manifest needs "Install V10 add-in.bat" again and a PowerPoint restart.
+- Ribbon: an add-in's group goes at the end of a built-in tab (Home, here); it cannot join a built-in group or another add-in's tab. The SL Smart Design button works around this through UI Automation (open-panel.ps1): it needs the add-in's Home-tab group to exist, English tab and button names, and the VBA module imported into SL Smart Design's source file; the three buttons share one task pane - when it is already open, PowerPoint may keep its current page instead of opening the section asked for (the panel's own buttons do the same). The ribbon icons are served by the panel host: if it is not running when PowerPoint starts, generic icons are shown. A changed manifest needs "Install V10 add-in.bat" again and a PowerPoint restart.
 - Richer visuals are composed of solid-colour native shapes: PowerPoint's API sets no gradients, shadows or free-form shapes, so the "VisualX" look is approached through composition (focal objects, hero panels, big icons, headline hierarchy), not effects. The topic's large object is drawn only when the icon catalogue has an accurate one.
 - With "when-needed", every new suitable text uses one AI request (credits); set "paid_policy": "never" to keep Generate free.
 - Original editable: icons and illustrations stay pictures (PowerPoint's JavaScript API has no free-form shapes); rounded boxes use PowerPoint's default corner radius (slightly rounder than Napkin's); text uses PowerPoint's single line spacing (the API cannot set it), so multi-line text can sit a little taller; Napkin's bold renders as Open Sans Bold (Napkin embeds only the regular face, so its own picture shows a synthesised bold); small text on the mid-tone palette colours cannot reach WCAG 4.5:1 with an approved text colour (flagged); its text is Napkin's size (10-15 pt, below the 22 pt of the editable version; flagged); continuation slides only where the design has a clean horizontal gap.
@@ -167,6 +186,7 @@ and the new layouts in real PowerPoint.
 - In Windows mode the PC's user, who holds the Napkin key, cannot be restricted; Entra mode with one shared host can.
 
 ## Change log
+- **V10.15** (11 Nov) — sections.js (labelled sections), learning pack (9 compositions, 9 objects), Claude brief for sections, hover-only preview, Home-tab group, SL Smart Design "AI Visuals" kit (VBA module, ribbon lines, copy script, open-panel.ps1); tests A15-A16, ribbon check covers the kit.
 - **V10.14** (10 Nov) — showcase design pack, Claude headline/takeaway/hero, AI services routed by content and used for every suitable new text, Claude plan drawn in all suitable compositions, richness ranking and composition-level dedupe, hover preview, ribbon group on the Insert tab; tests A12-A14.
 - **V10.13** (10 Nov) — simple app (app.js), hidden engine choice with policy and cost control (orchestrator.js), modern design pack, ribbon tab, developer mode; tests A1-A11 and the ribbon check.
 - **V10.12.2** (3 Nov) — "Original editable": Napkin's design as native objects (curved shapes recognised, tight text boxes, contrast, continuation slides, word joins), editability report; pills drawn as PowerPoint's stadium shape; tests G1-G9.

@@ -151,6 +151,12 @@ def visual_tests(fails, tmp):
     js = open(os.path.join(HERE, '..', 'plan.js'), encoding='utf-8').read() + ''.join(open(os.path.join(HERE, '..', 'packs', f), encoding='utf-8').read() for f in os.listdir(os.path.join(HERE, '..', 'packs')) if f.endswith('.js'))
     gal = open(os.path.join(HERE, '..', 'gallery.js'), encoding='utf-8').read()
     objs = set(re.findall(r'^\s{2}([a-zA-Z0-9]+): \(x, y, s, c\)', gal[gal.index('const CMP = {'):gal.index('const CATALOG')], re.M))
+    # objects a design pack adds (Object.assign(CMP, { key: (x, y, s, c) => ... }), 10.15)
+    for f in os.listdir(os.path.join(HERE, '..', 'packs')):
+        src = open(os.path.join(HERE, '..', 'packs', f), encoding='utf-8').read() if f.endswith('.js') else ''
+        if 'Object.assign(CMP, {' in src:
+            blk = src[src.index('Object.assign(CMP, {'):]
+            objs |= set(re.findall(r'^\s{4}([a-zA-Z0-9]+): \(x, y, s, c\)', blk[:blk.index('  });')], re.M))
     if sorted(re.findall(r"regPlan\('([a-z0-9]+)'", js)) != sorted(C.PLAN_LAYOUTS) or [k for k in C.PICTORIALS if k not in objs]:
         fails.append(f'design lists out of step with the panel: families {sorted(set(re.findall(chr(114) + "egPlan", js)))[:3]}, objects missing {[k for k in C.PICTORIALS if k not in objs]}')
     for bad_answer, why in (('not json at all', 'no valid JSON'), (json.dumps({'items': [{'id': 'a'}]}), 'fewer than 2 items')):

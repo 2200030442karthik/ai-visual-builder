@@ -1,5 +1,5 @@
-/* AI Visual Builder 10.13 - the app: what an end user sees. Content -> "Generate visuals" -> 10-20 editable designs ->
-   preview -> insert; then, if wanted, more visuals, several slides or editing an inserted visual. Everything technical
+/* AI Visual Builder 10.15 - the app: what an end user sees. Content -> "Generate visuals" -> 10-20 editable designs ->
+   hover to see one large -> click to choose -> insert (10.15: no separate preview area; the hover popup is the preview); then, if wanted, more visuals, several slides or editing an inserted visual. Everything technical
    (panel host, setup and checks, the analysis step, timings, the provider sections and their requests, credits and
    tokens, saved results, raw messages) stays in the page for the developer mode and is hidden from everyone else.
    - Developer mode: ?dev=1 in the panel's address (that load), or Ctrl+Alt+Shift+D (remembered on this PC). It shows every section
@@ -7,7 +7,7 @@
    - The engines, their choice, ranking and cost control are in orchestrator.js; analysis runs inside Generate.
    - The ribbon opens the panel on a section: ?open=slides | edit (manifest-v10.xml).
    Loaded last (after studio.js). */
-const APP_VERSION = '10.14.0';
+const APP_VERSION = '10.15.0';
 const APP = { list: [], sel: -1, text: '', busy: false, stale: false, lastIns: null, dupOk: '', filter: 'All', shown: 0 };
 const QS = new URLSearchParams(location.search);
 // ?dev=1: this load only; Ctrl+Alt+Shift+D: remembered on this PC until pressed again (or ?dev=0)
@@ -67,8 +67,10 @@ const appSay = (msg, err) => setStatus0(msg, err);
     #appFoot .btn-row { margin-top:6px; }
     #appInsert { width:100%; background:var(--accent); border:0; color:#fff; border-radius:9px; padding:11px; font-weight:600; font-size:13.5px; }
     #appInsert:disabled { background:#a9b0d8; cursor:default; }
-    #appHover { position:fixed; z-index:50; left:8px; right:8px; background:#fff; border-radius:12px; padding:8px; pointer-events:none;
-      box-shadow:0 10px 30px rgba(20,30,60,.22), 0 0 0 1px #dfe4ef; opacity:0; transform:translateY(4px); transition:opacity .12s, transform .12s; }
+    #appHover { position:fixed; z-index:50; left:6px; right:6px; background:#fff; border-radius:12px; padding:6px 6px 8px; pointer-events:none;
+      box-shadow:0 12px 34px rgba(20,30,60,.26), 0 0 0 1px #dfe4ef; opacity:0; transform:translateY(4px) scale(.98); transition:opacity .12s, transform .12s, top .08s; }
+    body.simple #appPv, body.simple #appPvT, body.simple #appPvD { display:none !important; }
+    #appHover .hk { color:#3645A9; font-size:11px; margin:2px 2px 0; }
     #appHover.on { opacity:1; transform:none; }
     #appHover svg { width:100%; height:auto; display:block; border-radius:6px; }
     #appHover .ht { font-weight:600; font-size:12.5px; margin:6px 2px 0; } #appHover .hd { color:var(--muted); font-size:11.5px; margin:1px 2px 0; }
@@ -140,7 +142,7 @@ function appButtons() {
   const review = c && c.engine === 'builtin' && typeof needsReview === 'function' && needsReview(state.sec);
   $('appInsert').disabled = !c || APP.busy || APP.stale || !state.inOffice || !gateOK() || (review && !$('appReviewed').checked);
   $('appInsert').textContent = !c ? 'Select a visual to insert' : !state.inOffice ? 'Open in PowerPoint to insert' : !gateOK() ? 'Select a Content Slide to insert' : review && !$('appReviewed').checked ? 'Confirm the checked points first'
-    : `Insert selected visual${c.slides > 1 ? ` (${c.slides} slides)` : ''}`;
+    : APP_DEV ? `Insert selected visual${c.slides > 1 ? ` (${c.slides} slides)` : ''}` : `Insert “${appName(c)}”${c.slides > 1 ? ` (${c.slides} slides)` : ''}`;
   $('appMore').disabled = APP.busy || !APP.list.length || APP.stale;
   $('appActs').hidden = !APP.list.length && !$('content').value.trim();
   $('appEmpty').hidden = !!APP.list.length || APP.busy || !$('appErr').hidden;
@@ -151,6 +153,8 @@ $('content').addEventListener('input', () => { const t = $('content').value.trim
 
 /* ---------- generate ---------- */
 async function appGenerate() {
+  // 10.15: a section label glued to the previous line ("Social Media GrowthWhat you learn:") starts its own line
+  if (typeof sectionsFix === 'function') { const f = sectionsFix($('content').value); if (f !== $('content').value) { $('content').value = f; APP.stale = false; } }
   const text = $('content').value.trim();
   if (APP.busy) return;
   if (!text) { appError('Paste or type your content first.'); appButtons(); return; }
@@ -203,7 +207,7 @@ function appRender() {
   const run = APP.shown = (APP.shown || 0) + 1;
   $('appGrid').innerHTML = shown.map(([c, i]) => { const [cls, txt] = BADGE(c);
     return `<button type="button" class="gcard${i === APP.sel ? ' sel' : ''}" data-i="${i}" aria-pressed="${i === APP.sel}" aria-label="${esc(c.title)}"><div class="gthumb"></div>` +
-      `<div class="gname">${esc(c.title)}</div><div class="cat">${esc(c.category)}${c.slides > 1 ? ` · ${c.slides} slides` : ''}</div><span class="badge ${cls}">${txt}</span></button>`; }).join('');
+      `<div class="gname">${esc(appName(c))}</div><div class="cat">${esc(c.category)}${c.slides > 1 ? ` · ${c.slides} slides` : ''}</div><span class="badge ${cls}">${txt}</span></button>`; }).join('');
   $('appGrid').querySelectorAll('.gcard').forEach(b => {
     b.addEventListener('click', () => { hoverHide(); appSelect(+b.dataset.i); });
     // 10.14: resting the pointer (or the keyboard focus) on a design shows it large, without a click
@@ -219,16 +223,19 @@ function appRender() {
   requestAnimationFrame(step);
   appSections(); appBig(); appButtons();
 }
-/* ---------- hover preview: the design large, above or below its card (never over it), gone when the pointer leaves ---------- */
+// a design's name as the app shows it ("Learning map", not "Learning map · colours from violet, more white space")
+const appName = c => APP_DEV ? c.title : String(c.title || '').split(' · ')[0];
+/* ---------- hover preview: the design large, above or below its card (never over it), gone when the pointer leaves;
+   moving on to the next card while it is open switches at once (10.15) ---------- */
 const HOVER = { t: 0, card: null };
-function hoverSoon(card) { clearTimeout(HOVER.t); HOVER.card = card; HOVER.t = setTimeout(() => hoverShow(card), 150); }
+function hoverSoon(card) { clearTimeout(HOVER.t); HOVER.card = card; HOVER.t = setTimeout(() => hoverShow(card), HOVER.on ? 0 : 150); }
 function hoverShow(card) {
   const c = APP.list[+card.dataset.i];
   if (!c || HOVER.card !== card || !card.isConnected) return;
   let el = $('appHover');
   if (!el) { el = document.createElement('div'); el.id = 'appHover'; el.setAttribute('role', 'tooltip'); document.body.appendChild(el); }
   const pics = c.prims.filter(p => p.t === 'image').length;
-  el.innerHTML = thumb(c.prims) + `<div class="ht">${esc(c.title)}</div><div class="hd">${esc(c.category)} · ${c.edit === 'full' ? 'Fully editable' : `Editable shapes and text; ${pics} icon${pics === 1 ? ' is a picture' : 's are pictures'}`}${c.slides > 1 ? ` · ${c.slides} slides` : ''}</div>`;
+  el.innerHTML = thumb(c.prims) + `<div class="ht">${esc(appName(c))}</div><div class="hd">${esc(c.category)} · ${c.edit === 'full' ? 'Fully editable' : `Editable shapes and text; ${pics} icon${pics === 1 ? ' is a picture' : 's are pictures'}`}${c.slides > 1 ? ` · ${c.slides} slides` : ''}</div>`;
   const r = card.getBoundingClientRect(), vh = window.innerHeight, w = document.documentElement.clientWidth - 16, h = w * (TEMPLATE.contentArea.h + 24) / (TEMPLATE.contentArea.w + 24) + 52;
   // above the card when it fits there, else below it, else wherever it covers least of it
   const top = r.top - h - 8 >= 4 ? r.top - h - 8 : r.bottom + 8 + h <= vh - 4 ? r.bottom + 8 : Math.max(4, Math.min(vh - h - 4, r.top - h / 2));
@@ -236,7 +243,9 @@ function hoverShow(card) {
   el.classList.add('on');
   HOVER.on = true;
 }
-function hoverHide() { clearTimeout(HOVER.t); HOVER.card = null; const el = $('appHover'); if (el) el.classList.remove('on'); HOVER.on = false; }
+function hoverHide() { clearTimeout(HOVER.t); HOVER.card = null; const el = $('appHover'); if (el) el.classList.remove('on');
+  // leaving one card for the next keeps the popup "open" for a moment, so it switches without the delay
+  clearTimeout(HOVER.off); HOVER.off = setTimeout(() => { HOVER.on = false; }, 120); }
 window.addEventListener('scroll', hoverHide, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') hoverHide(); });
 function appSelect(i) {
@@ -245,8 +254,8 @@ function appSelect(i) {
   appBig(); appButtons();
 }
 function appBig() {
-  const c = APP.list[APP.sel];
-  $('appBig').hidden = !c;
+  const c = APP.list[APP.sel], review0 = c && c.engine === 'builtin' && typeof needsReview === 'function' && needsReview(state.sec);
+  $('appBig').hidden = !c || (!APP_DEV && !review0);
   if (!c) return;
   $('appPv').innerHTML = toSVG(previewFrame(Object.assign({}, TEMPLATE.contentArea)).concat(c.prims), SLIDE.w, SLIDE.h);
   $('appPvT').textContent = c.title;
@@ -292,7 +301,7 @@ async function appInsert() {
     if (ok) {
       APP.lastIns = { ref: state.lastInsert, id: c.id }; APP.dupOk = '';
       const extra = state.lastInsert && (state.lastInsert.extraSlides || []).length;
-      appSay(`Inserted “${c.title}”${state.lastInsert && state.lastInsert.newSlide ? ' on a new slide' : ''}${extra ? ` and ${extra} more slide${extra > 1 ? 's' : ''}` : ''}. Every text and shape is editable in PowerPoint; use Edit a visual to change it here. Undo last insert takes it out.`);
+      appSay(`Inserted “${appName(c)}”${state.lastInsert && state.lastInsert.newSlide ? ' on a new slide' : ''}${extra ? ` and ${extra} more slide${extra > 1 ? 's' : ''}` : ''}. Every text and shape is editable in PowerPoint. Undo last insert takes it out.`);
     } else appSay('Nothing was inserted. ' + friendly($('status').textContent), true);
   } catch (e) { appSay('Nothing was inserted: ' + friendly(errText(e)), true); }
   finally { APP.busy = false; appButtons(); updateButtons(); }

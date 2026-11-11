@@ -28,7 +28,7 @@
      from its own items, at no extra cost, and they are marked as such. Before a request, a free check shows which
      layouts the content fits at 22 pt. Loaded after v10.html's scripts, gallery.js, understand.js, brand.js, svg2ppt.js,
      rebuild.js and plan.js. */
-const PANEL_VERSION = '10.14.0';      // must match server.py VERSION; a different host version is reported in the panel
+const PANEL_VERSION = '10.15.0';      // must match server.py VERSION; a different host version is reported in the panel
 const shortId = id => id ? `${id.slice(0, 4)}…${id.slice(-4)}` : '';
 /* Claude's time, tokens and estimated cost (from the prices in claude.json; the bill is in platform.claude.com). */
 const costText = c => `${c.model}${c.effort ? ' (effort ' + c.effort + ')' : ''}: ${c.seconds} s, ${c.usage.input_tokens} input + ${c.usage.output_tokens} output tokens` +
@@ -69,6 +69,8 @@ const PROVIDERS = {
 const PANELS = {};
 /* The panel's own analysis as a plan (the free layout check before a request). */
 function planFromPrep(prep) {
+  // 10.15: content written as labelled sections ("What you learn" / "Best for"): one named group per section
+  if (prep.sections && prep.sections.length && typeof sectionsPlan === 'function') return sectionsPlan({ title: prep.title, full: prep.full || prep.title, short: prep.short, sections: prep.sections });
   const items = (prep.points || []).map((p, i) => ({ id: 'p' + i, label: planClean(p.label), detail: planClean(p.exact || p.detail || ''), group: '' })).filter(i => i.label);
   planIcons(items);
   return planSemantics({ title: prep.title || '', relation: prep.ordered ? 'sequence' : 'independent', items, groups: [], flow: prep.ordered ? items.map(i => i.id) : [], layouts: [], from: 'text' });
@@ -198,6 +200,9 @@ function makePanel(P) {
     const q = contentQuality(text);
     if (!q.ok) return { error: QUALITY_MSG };
     if (state.runText !== text || !state.sections.length) await analyseContent();
+    // 10.15: a title with labelled sections is sent (and checked) as its sections and their items (sections.js)
+    const SX = typeof sectionsRead === 'function' ? sectionsRead(text) : null;
+    if (SX) return Object.assign(sectionsPrep(SX, text), { full: SX.full });
     const S = state.sections.filter(s => s.status === 'ready' && s.model && s.model.type !== 'none');
     if (!S.length) return { error: QUALITY_MSG };
     const concepts = [], parts = [], points = [], headings = [], topics = [];

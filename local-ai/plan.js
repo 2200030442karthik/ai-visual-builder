@@ -498,7 +498,10 @@ function planCandidates(P) {
     ['hub', 'grid', 'columns', 'rows']);
   // Claude's own composition first, then its ranking (a core layout by its V10.11 successor), then what the structure suits
   const up = k => (PLAN_UPGRADE[k] && base.includes(PLAN_UPGRADE[k]) ? PLAN_UPGRADE[k] : k);
-  return [...new Set((P.custom ? ['custom'] : []).concat((P.layouts || []).map(up).filter(k => PLAN_LAYOUTS[k] && base.includes(k)), base))].filter(k => k === 'custom' || PLAN_LAYOUTS[k]);
+  const all = [...new Set((P.custom ? ['custom'] : []).concat((P.layouts || []).map(up).filter(k => PLAN_LAYOUTS[k] && base.includes(k)), base))].filter(k => k === 'custom' || PLAN_LAYOUTS[k]);
+  // 10.15: named sections ("What you learn" / "Best for") only in layouts that show each section under its name; never
+  // as levels, lanes or a flow they do not have
+  return grouped && P.sections ? all.filter(k => k === 'custom' || PLAN_LAYOUTS[k].groups || ['capmap', 'tree', 'capability'].includes(k)) : all;
 }
 /* V10.12: a plan's style applies while it is drawn: P.style.accent = the approved colour the palette starts at (a colour
    variant), P.style.spacing 'open' = more white space around the layout; P.start = the first step number. */
@@ -599,6 +602,11 @@ function planFromClaude(raw) {
   plan.headline = planClean(raw && raw.headline) || plan.title;
   plan.takeaway = planClean(raw && raw.takeaway).replace(/\.$/, '');
   plan.hero = raw && raw.hero && CMP[raw.hero] ? String(raw.hero) : '';
+  // 10.15: labelled sections ("What you learn" / "Best for") as Claude grouped them: drawn under their names
+  plan.short = planClean(raw && raw.short);
+  if (typeof sectionKind === 'function' && groups.length >= 2 && groups.some(g => sectionKind(g.name) !== 'other')) {
+    plan.sections = true; groups.forEach(g => { g.kind = sectionKind(g.name); });
+  }
   return { plan, problems };
 }
 /* A provider's drawing (napkinStructure) -> a plan of its items, in the user's order for a sequence. */

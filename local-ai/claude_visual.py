@@ -78,12 +78,13 @@ Answer with the SVG only: start with <svg and end with </svg>, no explanation an
 # code that measures it. The lists below must match the panel's (tests/test_claude.py checks them).
 PLAN_LAYOUTS = ['platform', 'stack3d', 'scene', 'capmap', 'swimlanes', 'planes', 'ecosystem', 'modules', 'pyramid', 'cycle', 'funnel', 'versus',
                 'architecture', 'layers', 'capability', 'tree', 'pipeline', 'timeline', 'stair', 'hub', 'grid', 'columns', 'rows',
-                'roadmap', 'pillars', 'quadrant', 'spotlight', 'storyboard', 'callout', 'journey']
+                'roadmap', 'pillars', 'quadrant', 'spotlight', 'storyboard', 'callout', 'journey',
+                'learnmap', 'herobanner', 'bridge', 'iconrows', 'badges', 'splitpanels', 'poster', 'ribbon', 'colortiles']
 PICTORIALS = ['collect', 'evaluate', 'clean', 'features', 'train', 'mlcore', 'predict', 'deploy', 'problem', 'database', 'dataset', 'folder', 'document',
               'server', 'cloud', 'gateway', 'app', 'window', 'code', 'gear', 'monitor', 'chartUp', 'shield', 'lock', 'checklist', 'magnifier', 'filter',
               'warning', 'calendar', 'team', 'person', 'org', 'chat', 'sheet', 'pages', 'image', 'text', 'video', 'music', 'cyber', 'fraud', 'bank', 'cart',
               'car', 'factory', 'medical', 'xray', 'book', 'cap', 'bulb', 'coin', 'flag', 'target', 'milestone', 'info', 'access', 'spark', 'profile',
-              'shapes', 'globe', 'bowl', 'fingerprint']
+              'shapes', 'globe', 'bowl', 'fingerprint', 'brain', 'megaphone', 'mail', 'briefcase', 'rocket', 'growth', 'social', 'analysis', 'trophy']
 ROLES = ['source', 'stage', 'output', 'support_control', 'support_quality', 'support_foundation', 'component', 'concept']
 PLAN_SYSTEM = """You design one slide of a corporate training deck (Simplilearn): you analyse its content and return the content's
 structure and its visual design as JSON. The panel draws the infographic itself, as editable PowerPoint shapes, in up to
@@ -93,6 +94,11 @@ compositions show that best and which object depicts each item.
 Content - the most important rules:
 - Every point of the content becomes exactly one item, in the text's order. Never merge two points, never drop one,
   never add one. A heading or an introduction sentence is not an item.
+- Content written as labelled sections ("What you learn: a, b, and c. Best for: x, y, or z."): every section is a
+  group (role category, name exactly the section's label, e.g. "What you learn") and every entry of its list is one
+  item of that group, in order, with a short label (1-4 words, the text's own words): a lead-in such as "working with
+  tools like" is dropped ("ChatGPT or Python"); examples after "like" or "such as" go to detail; an acronym in
+  brackets may be the label with the full name as detail. Every section is kept - never only the last one.
 - label: the point's name as the text writes it (without numbering or a trailing colon).
 - detail: the point's key words from the text, 2 to 6 words (at most 45 characters), in the text's own wording, so the
   meaning stays the same. Values (numbers, formulas, codes, e-mail addresses, conditions) exactly as written. Empty
@@ -104,6 +110,7 @@ Content - the most important rules:
 - takeaway: the content's key message in one sentence of at most 90 characters, built only from what the text says;
   "" when the text states no message beyond its points.
 - hero: the object from the pictorial list below that depicts the whole topic most accurately, or "" when none does.
+- short: the topic's short name for a hero badge: an acronym the text gives ("AI & ML"), else 1-3 of the title's words.
 
 Structure and semantics:
 - relation: "sequence" for a process or steps in order; "pipeline_with_support" when some items form a main flow and
@@ -131,7 +138,13 @@ Design:
   points as columns under the topic), quadrant (four points around the topic), spotlight (a hero panel with the topic's
   object, headline and takeaway beside the points), storyboard (visual summary cards with big objects), callout (the
   topic's object large in the middle, the points called out around it), journey (a learning journey of 4-8 steps on a
-  winding path). Prefer the richer, more visual compositions when they fit the content. Never a composition that implies something the text does not say
+  winding path), learnmap (a hero panel for the topic joined by a bracket to its sections, each section a panel of
+  object-and-label columns under a pill heading - for labelled sections), herobanner (a hero band with the topic,
+  the sections as cards below), bridge (two sections: what is learned on the left, the topic as a hub, what it is for
+  on the right), iconrows (each section a band with its name on a chip and its items as object columns), badges
+  (badge cards with an object disc over each), splitpanels (tall section panels led by an object for the section),
+  poster (the headline large, the items as tagged object tiles), ribbon (two sections: the topic on a band across
+  the middle, one section above it and one below), colortiles (colour tiles under each section's name). Prefer the richer, more visual compositions when they fit the content. Never a composition that implies something the text does not say
   (an order for independent ideas, a hierarchy for a list).
 - custom: a composition of your own when the content suggests one the list lacks, else zones []. The area is a grid of
   12 columns x 6 rows; each zone: id, label (a group's name or ""), items (item ids), col, row, w, h (whole cells, inside
@@ -142,10 +155,10 @@ _S = {'type': 'string'}
 _I = {'type': 'integer'}
 PLAN_SCHEMA = {
     'type': 'object', 'additionalProperties': False,
-    'required': ['title', 'headline', 'takeaway', 'hero', 'relation', 'groups', 'items', 'flow', 'layouts', 'custom'],
+    'required': ['title', 'headline', 'takeaway', 'hero', 'short', 'relation', 'groups', 'items', 'flow', 'layouts', 'custom'],
     'properties': {
         'title': _S, 'headline': _S, 'takeaway': _S,
-        'hero': {'type': 'string', 'enum': [''] + PICTORIALS},
+        'hero': {'type': 'string', 'enum': [''] + PICTORIALS}, 'short': _S,
         'relation': {'type': 'string', 'enum': ['sequence', 'pipeline_with_support', 'layers', 'hierarchy', 'categories', 'comparison', 'cycle', 'funnel', 'hub', 'independent']},
         'groups': {'type': 'array', 'items': {'type': 'object', 'additionalProperties': False, 'required': ['id', 'name', 'role'],
                    'properties': {'id': _S, 'name': _S, 'role': {'type': 'string', 'enum': ['flow', 'support', 'layer', 'category', 'output']}}}},
