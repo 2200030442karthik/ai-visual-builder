@@ -9,6 +9,8 @@
    same coloured areas AND texts in similar places). Self-contained, so the same file measures an older version. */
 const R = W.eval('Object.assign({}, TEMPLATE.contentArea)'), A = W.__app, d = W.document;
 const EX = {
+  genai: { text: 'Generative AI (GenAI) is a branch of artificial intelligence that creates original content—such as text, images, video, audio, and code—in response to natural language prompts',
+    facts: ['Generative AI', 'Text', 'Images', 'Video', 'Audio', 'Code', 'natural language prompts'] },
   ai: { text: 'Artificial Intelligence\nAI\nThe best content about artificial intelligence covers foundational concepts, everyday writing and research assistants, and structured learning courses',
     facts: ['AI', 'covers', 'foundational concepts', 'everyday writing and research assistants', 'structured learning courses'] },
   claude: { text: 'Claude ai helps you create, organize, and edit diverse types of content—from written copy and code-based animations to presentations and AI-marked text',

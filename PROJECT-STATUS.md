@@ -1,6 +1,6 @@
 # AI Visual Builder — project status
 
-## Current version: V10.17 (12 Nov 2026)
+## Current version: V10.18 (12 Nov 2026)
 Authorized employee + Content Slide of the approved template → paste content → analyze → accurate infographic and
 pictorial suggestions → preview → insert editable PowerPoint shapes. JavaScript panel + small Python host; no AI
 models, no GPU. Three ways to generate: native infographics (built in, free), and optionally Napkin AI (single approved
@@ -30,9 +30,23 @@ Simplilearn brand style) or Claude AI (Anthropic API), both paid, confirmed per 
 | Claude AI backend | `local-ai/claude_visual.py`, `configure-claude.ps1`, `Configure Claude.bat` | one design-specification request for 1 or 4 visuals (drawings kept for cached results and tests), `max_retries=0`, no fallback model; model / effort / max_tokens / prices in `%LOCALAPPDATA%\AIVisualBuilder\claude.json` |
 | Install / restart | `local-ai/start-ai-visual-builder.ps1` (+ `Restart AI Visual Builder.bat`), `install-v10-addin.ps1` (+ `Install V10 add-in.bat`, `Remove V10 add-in.bat`) | restart replaces every outdated copy; V10 registration by its own manifest Id, V9 never touched |
 | Access | `local-ai/access.py`, `access.example.json` | administrator policy in `%ProgramData%\AIVisualBuilder\access.json` |
-| Panel host | `local-ai/server.py` | 10.17.0 (large gallery: /api/gallery); `paid_order` "auto"; `orchestrate` in /api/status; ribbon icons; `--test` hosts refuse paid requests; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
-| Manifest | `manifest-v10.xml` | 10.17.0.0: group "AI Visual Builder" at the end of PowerPoint's Home tab (the button the SL Smart Design "AI Visuals" button presses), buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
+| Panel host | `local-ai/server.py` | 10.18.0 (large gallery: /api/gallery); `paid_order` "auto"; `orchestrate` in /api/status; ribbon icons; `--test` hosts refuse paid requests; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
+| Manifest | `manifest-v10.xml` | 10.18.0.0: group "AI Visual Builder" at the end of PowerPoint's Home tab (the button the SL Smart Design "AI Visuals" button presses), buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
 | Diagnosis | `local-ai/tests/run_diag.py`, `diag.html`, `diag_cases.py` | every layout considered with its reason; every Napkin variation with arrangement, status and preview |
+
+## V10.18 — demo-ready, hosted pilot code, caption bands, both AI services (12 Nov)
+From the user's PowerPoint test of V10.17: the Generative AI definition ("...creates original content—such as text,
+images, video, audio, and code—in response to natural language prompts") gave items "Such as text" and "Code—in
+response" (the list did not end at the second dash). Fixed in `sections.js`; the closing phrase stays in the heading.
+Definitions with a long heading lost most compositions (they do not show it, so they were incomplete): new caption
+band (`plan.js` planCaptionFamily, key `cap:<family>`) used by the orchestrator for such designs - Generative AI
+6 -> 15 complete designs, the others 16-24. Both AI services per new text when `paid_engines` is 2 (config.json;
+default 1). Hosted mode in `server.py` (AIVB_HOSTED=1; public host check, Entra required, data dir and keys from the
+environment), `deploy/` (pilot README, Dockerfile, app settings and access examples, manifest generator),
+`docs/DEMO-GUIDE.md`. SL Smart Design export reviewed: older than the installed .ppam (licence date 5 Dec 2025 vs
+31 Dec 2026); the ribbon XML is not in the export. Tests: A25-A26, `tests/test_hosted.py`. Evidence
+`local-ai/tests/evidence/v10.18-bench` (before = V10.16; real Napkin designs kept from 12 Nov). **Not deployed; no
+Mac test; no new paid request.**
 
 ## V10.17 — 20+ distinct designs from one Generate, scene compositions, learner-appeal ranking (12 Nov)
 Root causes (from the user's PowerPoint test of V10.16): (1) a slide with title, subtitle and one sentence ("Artificial
@@ -220,6 +234,7 @@ and the new layouts in real PowerPoint.
 - In Windows mode the PC's user, who holds the Napkin key, cannot be restricted; Entra mode with one shared host can.
 
 ## Change log
+- **V10.18** (12 Nov) — dash-list reading, caption bands, paid_engines 2, hosted mode + deploy/ pilot package, demo guide, SL export review; tests A25-A26, test_hosted.
 - **V10.17** (12 Nov) — scenes pack (16 compositions), 20+ designs per Generate (cap 24), learner-appeal ranking without score cap, colour-aware look-alike check, title/subtitle/sentence reading, soft tints option, Claude 4-6 concepts; tests A21-A24.
 - **V10.16** (12 Nov) — statementRead, concepts pack (6 compositions, 2 objects), look-alike and completeness ranking, Claude concepts (schema, brief, renderer), large gallery dialog, visual benchmark, SL Smart Design source review; tests A17-A20, concept schema check.
 - **V10.15** (11 Nov) — sections.js (labelled sections), learning pack (9 compositions, 9 objects), Claude brief for sections, hover-only preview, Home-tab group, SL Smart Design "AI Visuals" kit (VBA module, ribbon lines, copy script, open-panel.ps1); tests A15-A16, ribbon check covers the kit.

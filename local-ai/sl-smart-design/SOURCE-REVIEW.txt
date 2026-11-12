@@ -40,6 +40,26 @@ Findings that matter
         the counterpart of the Alternative Design popup.
    A deeper integration (one gallery for both) would need SL Smart Design itself rebuilt as a web add-in.
 
+V10.18 - the exported source (D:\Karthik\SL_Smart_Design_Source, outside this repository, not copied into it)
+-------------------------------------------------------------------------------------------------------------
+- Received: Module1.bas, DynamicTemplateSelectorForm.frm/.frx, LicenseForm.frm/.frx, exported from
+  SL_Smart_Design_v2_Key_Sandeep_Dec_05.pptm. Reviewed read-only; nothing was changed or copied.
+- Same structure as the installed add-in: Module1 holds the ribbon macros (ShowTemplateSelectorForm = Alternative
+  Design, the Import...Section templates, animation/empty-box cleanup, RenameText/RenameHeading); the form inserts the
+  chosen template with InsertFromFile from %LocalAppData%.
+- IMPORTANT - this export is OLDER than the add-in in use: its licence check stops Alternative Design after
+  5 Dec 2025 (DateSerial(2025, 12, 5)), while the installed SL_Smart_Design_v2_Key_Dec_25.ppam allows it until
+  31 Dec 2026. A .ppam rebuilt from this export would say "License expired" today. Rebuild only from the source the
+  current .ppam was saved from (or update the date - a decision for the SL Smart Design owner).
+- Not in the export (and not exportable as .bas/.frm): the ribbon XML (customUI), which lives inside the .pptm/.ppam
+  package. The kit's add-to-sl-smart-design.ps1 adds the "AI Visuals" button to that XML in a COPY of the .pptm,
+  right after the Alternative Design button (Template_Button1); AIVisualBuilder.bas is then imported (VBA editor >
+  File > Import). The existing modules, forms and licensing are not touched.
+- Missing to finish: the current .pptm saved to this PC (the file is open from SharePoint: File > Save a Copy to
+  D:\Karthik\SL_Smart_Design_Source), and the SL Smart Design owner's approval to distribute a new .ppam.
+- Mac: the VBA tab works on Mac, but the bridge from it to the web add-in (open-panel.ps1, Windows UI Automation)
+  does not; on Mac the AI Visual Builder's own ribbon group (add-in commands) is the entry.
+
 What is needed to finish the SL Smart Design button
 ---------------------------------------------------
 - The editable source: SL_Smart_Design_v2_Key_Sandeep_Dec_05.pptm (or whichever .pptm the current .ppam is saved

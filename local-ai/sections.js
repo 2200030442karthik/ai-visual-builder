@@ -186,7 +186,12 @@ function statementRead(text) {
   // where the examples start
   let at = null;
   for (const re of ST_LIST_AT) { const m = re.exec(s); if (m && m.index > 12) { at = { i: m.index, j: m.index + m[0].length }; break; } }
-  let first = (at ? s.slice(0, at.i) : s).replace(/[,.]\s*$/, '').trim(), list = at ? stSplitList(s.slice(at.j)) : [];
+  // 10.18: a list between two dashes ("content—such as text, images, and code—in response to prompts") ends at the
+  // second dash; what follows is part of the statement (kept in the heading); a lead-in ("such as") is not an item
+  let listPart = at ? s.slice(at.j) : '', tail = '';
+  if (at) { const k = /\s*[—–]\s*|\s+-{1,2}\s+/.exec(listPart); if (k && k.index > 2) { tail = listPart.slice(k.index + k[0].length).replace(/[.;!]+\s*$/, '').trim(); listPart = listPart.slice(0, k.index); } }
+  listPart = listPart.replace(/^(?:such as|including|like|e\.g\.,?|for example,?|for instance,?)\s+/i, '');
+  let first = (at ? s.slice(0, at.i) : s).replace(/[,.]\s*$/, '').trim(), list = at ? stSplitList(listPart) : [];
   // no lead-in: a list at the end of the sentence ("... used for web development, data science, and automation")
   if (!at) { const m = /^(.*\s(?:for|in|of|with|to|on|across|into|like)\s)((?:[^,]{2,40},\s+)+(?:and\s+|or\s+)?[^,]{2,40})$/i.exec(first.replace(/[.!]\s*$/, ''));
     if (m) { first = m[1].trim(); list = stSplitList(m[2]); } }
@@ -225,9 +230,11 @@ function statementRead(text) {
   // "automates deployment, scaling, and management of containerized applications": the verb, then what the items belong to
   const ofPart = !helper && nouns.length >= 2 && verbs.length === 1 ? (/^\s*(of|for|in|on|across)\s/i.exec(first.slice(first.indexOf(nouns[nouns.length - 1]) + nouns[nouns.length - 1].length)) || [])[1] : '';
   const lead = multi ? first.slice(0, v.index + v[0].length - 1).trim() : '';
-  const named0 = phrase && phrase.length <= 56 ? phrase : ofPart && object ? `${main} … ${ofPart.toLowerCase()} ${object}` : multi ? (lead.length <= 56 ? lead : `${subject} ${main}`) : object;
+  const named1 = phrase && phrase.length <= 56 ? phrase : ofPart && object ? `${main} … ${ofPart.toLowerCase()} ${object}` : multi ? (lead.length <= 56 ? lead : `${subject} ${main}`) : object;
+  // 10.18: the rest of the sentence after a dash-enclosed list belongs to the heading (when it stays readable)
+  const named0 = tail && named1 && (named1 + ' ' + tail).length <= 110 ? named1.replace(/[,.]\s*$/, '') + ' ' + tail : named1;
   const sec = { name: secCap(named0), kind: 'other', items: items.map(x => ({ label: secCap(stAcro(x)), detail: '' })) };
-  if (!sec.name || sec.name.length > 56) sec.name = '';
+  if (!sec.name || sec.name.length > 110) sec.name = '';   // 10.18: 110 (was 56) - a heading may take two lines
   // the hero names the topic: the slide's subtitle when it is the title's abbreviation ("AI"), else the title's short
   // form, else the sentence's subject
   const short = abbr && abbr.length <= 12 ? abbr : head ? secShort(head) : subject;

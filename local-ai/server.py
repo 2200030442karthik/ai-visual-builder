@@ -43,9 +43,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import access as A
 import claude_visual as C
 
-VERSION = '10.17.0'
+VERSION = '10.18.0'
 HERE = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'AIVisualBuilder')
+# 10.18: hosted mode (a central HTTPS service for the team, e.g. Azure App Service; deploy/README-PILOT.md). Off unless
+# AIVB_HOSTED=1. Then: plain HTTP on $PORT behind the platform's HTTPS front end, bound to all interfaces; only the
+# public host names in AIVB_PUBLIC_HOST are served; data (usage, kept results, log) in AIVB_DATA_DIR; API keys only from
+# the environment (App Service settings, filled from Key Vault); access must be "entra" (Office single sign-on).
+HOSTED = os.environ.get('AIVB_HOSTED') == '1'
+DATA_DIR = os.environ.get('AIVB_DATA_DIR') or os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'AIVisualBuilder')
 STATIC = {'/': ('v10.html', 'text/html; charset=utf-8'), '/v10.html': ('v10.html', 'text/html; charset=utf-8'),
           '/gallery-dialog.html': ('gallery-dialog.html', 'text/html; charset=utf-8'),
           **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'sections', 'original', 'faithful', 'napkin', 'studio', 'orchestrator', 'app')},
@@ -61,7 +66,9 @@ MAX_TEXT = 10000
 # paid_order: "auto" (10.14: by the content - Claude for technical structure, Napkin for concepts) or a fixed list such as
 # ["napkin", "claude"] (the next is the fallback). Set by the administrator; the app shows neither.
 CONFIG = {'port': 44317, 'napkin_base': 'https://api.napkin.ai', 'napkin_max_per_day': 0, 'napkin_timeout_s': 60, 'claude_max_per_day': 0, 'claude_timeout_s': 300,
-          'paid_policy': 'when-needed', 'paid_order': 'auto', 'soft_tints': False}
+          'paid_policy': 'when-needed', 'paid_order': 'auto', 'soft_tints': False, 'paid_engines': 1}
+# paid_engines (10.18): 1 = one AI service per new text (the other only as fallback); 2 = both Napkin (its original
+# infographics) and Claude (its own compositions) for a new text, so the gallery has both kinds of AI design (2x cost)
 # soft_tints (10.17): allow one light tint of each palette colour for card fills (brand.js softTints); off by default
 try:
     with open(os.path.join(HERE, 'config.json'), encoding='utf-8') as f:
@@ -71,8 +78,9 @@ except (OSError, ValueError):
 if CONFIG['paid_policy'] not in ('never', 'when-needed', 'always'):
     CONFIG['paid_policy'] = 'when-needed'
 CONFIG['paid_order'] = ([k for k in CONFIG['paid_order'] if k in ('napkin', 'claude')] or 'auto') if isinstance(CONFIG['paid_order'], list) else 'auto'
-PORT = int(sys.argv[sys.argv.index('--port') + 1]) if '--port' in sys.argv else int(CONFIG['port'])   # --port: tests only
-ALLOWED_HOSTS = {f'localhost:{PORT}', f'127.0.0.1:{PORT}'}
+CONFIG['paid_engines'] = 2 if CONFIG.get('paid_engines') == 2 else 1
+PORT = int(sys.argv[sys.argv.index('--port') + 1]) if '--port' in sys.argv else int(os.environ.get('PORT') or os.environ.get('WEBSITES_PORT') or 8000) if HOSTED else int(CONFIG['port'])   # --port: tests only
+ALLOWED_HOSTS = {h.strip().lower() for h in os.environ.get('AIVB_PUBLIC_HOST', '').split(',') if h.strip()} if HOSTED else {f'localhost:{PORT}', f'127.0.0.1:{PORT}'}
 if '--test' in sys.argv:    # tests only: also serve the test harness and its inputs
     STATIC.update({'/tests/harness.html': ('tests/harness.html', 'text/html; charset=utf-8'),
                    '/tests/diag.html': ('tests/diag.html', 'text/html; charset=utf-8'),
@@ -558,7 +566,7 @@ class Handler(BaseHTTPRequestHandler):
             log(self.address_string(), fmt % args)
 
     def guard(self, api):
-        if self.headers.get('Host', '') not in ALLOWED_HOSTS:
+        if self.headers.get('Host', '').lower() not in ALLOWED_HOSTS:
             self.fail(403, 'Wrong host.')
             return False
         if api:
@@ -633,7 +641,7 @@ class Handler(BaseHTTPRequestHandler):
                                    'max_per_user_per_day': clim['per_user_per_day'], 'mine_today': cused.get('users', {}).get(who['user'], 0)})
                 if TEST_NO_PAID:     # a test panel host: both paid providers shown as switched off
                     napkin['enabled'] = claude['enabled'] = False
-                orchestrate = {'paid': CONFIG['paid_policy'], 'order': CONFIG['paid_order']}
+                orchestrate = {'paid': CONFIG['paid_policy'], 'order': CONFIG['paid_order'], 'engines': CONFIG['paid_engines']}
                 return self.send(200, {'server': VERSION, 'access': access, 'napkin': napkin, 'claude': claude, 'orchestrate': orchestrate,
                                        'brand': {'soft_tints': CONFIG['soft_tints'] is True}})
             if path == '/api/gallery':
@@ -719,10 +727,17 @@ class Server(ThreadingHTTPServer):
 
 def main():
     global SCHEME
-    plain = '--http' in sys.argv
-    SCHEME = 'http' if plain else 'https'
+    plain = '--http' in sys.argv or HOSTED
+    SCHEME = 'https' if HOSTED else 'http' if plain else 'https'     # hosted: the public scheme (TLS ends at the platform)
+    if HOSTED:
+        import access as _acc
+        pol = _acc.policy()
+        if not ALLOWED_HOSTS:
+            sys.exit('Hosted mode needs AIVB_PUBLIC_HOST (the public host name, e.g. aivb.example.com).')
+        if not pol or pol.get('mode') != 'entra':
+            sys.exit('Hosted mode needs an access policy in "entra" mode (AIVB_ACCESS); Windows mode works only on one PC.')
     try:
-        srv = Server(('127.0.0.1', PORT), Handler)
+        srv = Server(('0.0.0.0' if HOSTED else '127.0.0.1', PORT), Handler)
     except OSError as e:
         sys.exit(f'Port {PORT} is already in use ({e}). Another panel host is running: use "Stop AI Visual Builder.bat" '
                  'or "Restart AI Visual Builder.bat".')
@@ -735,7 +750,7 @@ def main():
         ctx.load_cert_chain(cert, key)
         # the handshake happens in each request's own thread (Handler.setup), not in the accept loop
         srv.socket = ctx.wrap_socket(srv.socket, server_side=True, do_handshake_on_connect=False)
-    log(f'AI Visual Builder {VERSION} on {SCHEME}://localhost:{PORT}/  (Ctrl+C to stop)')
+    log(f'AI Visual Builder {VERSION} on ' + (f'port {PORT} (hosted for {", ".join(sorted(ALLOWED_HOSTS))})' if HOSTED else f'{SCHEME}://localhost:{PORT}/') + '  (Ctrl+C to stop)')
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

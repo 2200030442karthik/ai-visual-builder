@@ -1,9 +1,9 @@
-AI VISUAL BUILDER V10.17
+AI VISUAL BUILDER V10.18
 ========================
 Your content -> Generate visuals -> up to 20 editable designs -> insert the one you like, in the Simplilearn template.
 Lightweight: JavaScript in the panel, a small Python host on this PC, no AI models, no GPU.
 
-HOW TO USE (V10.17)
+HOW TO USE (V10.18)
 1. Once: double-click local-ai\Set up AI Visual Builder.bat (localhost certificate + start at sign-in), then
    "Install V10 add-in.bat". If PowerPoint says "Sorry, we can't load the add-in": double-click
    local-ai\Start AI Visual Builder.bat and reopen the panel.
@@ -40,6 +40,8 @@ WHAT HAPPENS BEHIND "GENERATE VISUALS" (orchestrator.js)
 - Policy (local-ai\config.json, "paid_policy"): "never" | "when-needed" (default: one request for every new text a
   design can show - never for records of exact values, data tables or a single statement) | "always".
   "paid_order": "auto" (default, by the content as above) or a fixed list such as ["napkin", "claude"].
+  "paid_engines": 1 (default: one AI service per new text, the other only as fallback) or 2 (V10.18: Napkin and
+  Claude both design for a new text - twice the cost per new text).
   "soft_tints": false (default) or true (V10.17): allow one light tint of each palette colour as a card fill (the
   pastel cards of AI infographics). Off keeps the V10.5 standard (approved colours only; tints become the light grey).
 - Cost control: a result the panel host kept for the same text is reused (free); a text already sent from this PC in
@@ -145,6 +147,17 @@ DESIGNS, SLIDES AND EDITS (V10.12, step 5, free: no AI request)
   was interrupted is offered for removal.
 - Edit a visual: click a visual inserted by 10.12 or later > Edit the selected visual > change texts, icons, colours,
   spacing or layout > Preview change > Apply to the slide; Undo last edit. Only that visual's shapes change.
+
+V10.18: DEMO AND TEAM PILOT
+- Manager demo: docs\DEMO-GUIDE.md (walkthrough, sample texts, honest status, what to do if something fails).
+- Team pilot without Python on each PC: deploy\README-PILOT.md - server.py hosted mode (AIVB_HOSTED=1: Azure App
+  Service behind HTTPS, Entra sign-in required, keys from Key Vault, per-user limits), deploy\make-pilot-manifest.py
+  (the pilot add-in for Windows, Mac and the web), deploy\Dockerfile. Needs IT (Azure, Entra app registration, admin
+  deployment); not deployed.
+- Reading: a list between two dashes ("content—such as text, images, video, audio, and code—in response to ...") is
+  read as exactly its items; the rest of the sentence stays in the heading.
+- Captions: a composition that does not show the topic or heading gets them as a caption band above it (plan.js
+  planCaptionFamily, layout key "cap:<family>"), instead of being left out; insert draws the same.
 
 V10.17: 20+ DISTINCT DESIGNS FROM ONE GENERATE
 - One Generate now shows every distinct design that fits (up to 24): a statement, a list or a course summary gives

@@ -163,7 +163,10 @@ async function orchGenerate(text, o, onStage) {
   orchNote(`paid policy ${policy}: ${want ? 'wanted' : 'not needed'} (${strong} strong free visuals${exact ? ', exact values or one statement' : ''}; ${ctx.route || 'fixed order'}: ${order.join(' then ')})`);
   // a result a provider kept for this very text costs nothing: always taken; a new request only when wanted, at most
   // one, and a second provider only when the first gave nothing usable (fallback)
+  // 10.18: the administrator may have both AI services design for a new text (orchestrate.engines 2): Napkin's original
+  // infographics and Claude's own compositions in one gallery; otherwise the second service is only the fallback
   let requests = 0, paidOK = false;
+  const both = !!(state.svc && state.svc.orchestrate && state.svc.orchestrate.engines === 2);
   if (!memo.paidChecked) for (const id of order) {
     const e = ORCH.engines.find(x => x.id === id);
     if (!e || !e.available(ctx)) { orchNote(`${id}: not available`); continue; }
@@ -171,7 +174,7 @@ async function orchGenerate(text, o, onStage) {
     try {
       const cached = await e.cached(ctx);
       if (cached && cached.length) { got = cached; orchNote(`${id}: reused its kept result for this text (no request)`); }
-      else if (want && !memo.paidTried && !paidOK && requests < 2 && !(requests === 0 && paidSeen()[hash])) {
+      else if (want && !memo.paidTried && (!paidOK || both) && requests < 2 && !(requests === 0 && paidSeen()[hash])) {
         onStage('Adding AI-designed options…', orchRank(memo.cands.slice(), ORCH_MAX));
         requests++; paidMark(hash, id); paidUsed = true;
         got = await e.run(ctx);
@@ -250,7 +253,14 @@ async function orchDesigns(ctx, max) {
   }
   // 10.15: labelled sections have no built-in single-list views, so more of their compositions are drawn here; the
   // learner-style ones (learning pack) rank above the general grouped layouts
-  const sec = !!m.d.plan.sections, list = planMoreDesigns(m.d.plan, ctx.R, m.seen, sec ? max + 10 : max);
+  const sec = !!m.d.plan.sections, facts = orchFacts(m.plan);
+  // 10.18: a composition that leaves out the topic or the heading gets them as a caption band above it (plan.js
+  // planCaptionFamily) instead of being left out of the gallery
+  const list = planMoreDesigns(m.d.plan, ctx.R, m.seen, sec ? max + 10 : max).map(r => {
+    if (m.d.density !== 'full' || !orchMissing(r.prims, facts).length) return r;
+    const c = planRender(Object.assign({}, m.d.plan, { style: r.style }), 'cap:' + r.key, ctx.R);
+    return c.ok && !orchMissing(c.prims, facts).length ? c : r;
+  });
   return list.map(r => ({ id: 'd:' + planDesignKey(r), engine: 'designs', title: r.name + (planStyleName(r.style) ? ' · ' + planStyleName(r.style) : ''), family: r.family, category: orchCategory(r.family + ' ' + r.key),
     prims: r.prims, edit: 'full', complete: m.d.density === 'full' && !orchMissing(r.prims, orchFacts(m.plan)).length, slides: 1, rich: /modern|pro|showcase|learning|concepts|scenes/.test(PLAN_LAYOUTS[r.key] && PLAN_LAYOUTS[r.key].pack || ''),
     base: 62 + orchPackBonus(r.key) + orchAppeal(r.key) - (m.d.density === 'names' ? 6 : 0) - (sec && !/learning|concepts|scenes/.test(PLAN_LAYOUTS[r.key] && PLAN_LAYOUTS[r.key].pack || '') ? 8 : 0), why: r.kind,

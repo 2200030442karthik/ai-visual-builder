@@ -19,3 +19,6 @@ local-ai/tests/last-run-studio.json
 local-ai/tests/last-run-original.json
 local-ai/tests/last-run-faithful.json
 local-ai/tests/last-run-app.json
+
+# generated pilot manifests (deploy/make-pilot-manifest.py)
+deploy/out/

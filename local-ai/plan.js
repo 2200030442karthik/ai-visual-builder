@@ -508,6 +508,36 @@ function planConceptFamily(P, i) {
       return out;
     } };
 }
+/* 10.18: a composition with a caption band - the topic (a statement's subject) and the heading (what it is or does)
+   above it, the composition drawn in the space below. For compositions that do not show those facts themselves (a
+   definition such as "Generative AI is a branch of artificial intelligence that creates ..."), so they are complete
+   instead of left out. A real layout key ("cap:<family>"): inserting redraws exactly what the preview shows. The topic
+   line is left out when the composition already shows the topic (no duplicated heading). */
+function planCaptionFamily(base) {
+  const B = PLAN_LAYOUTS[base];
+  if (!B || /^cap:/.test(base)) return null;
+  const lines = (P, withShort) => [withShort && P.statement && (P.short || P.statement.subject) ? { t: P.short || P.statement.subject, s: 26, b: true } : null,
+    P.sectionName ? { t: P.sectionName, s: 24 } : null].filter(Boolean);
+  return { key: 'cap:' + base, name: B.name, family: B.family || base, kind: B.kind || 'list', pack: B.pack || '', groups: B.groups, appeal: B.appeal,
+    needs: P => B.needs(P) || (P.sectionName || P.statement ? '' : 'nothing to caption'),
+    opts: B.opts,
+    build: (P, R, o) => {
+      for (const withShort of [true, false]) {
+        const L = lines(P, withShort);
+        if (!L.length || L.some(l => !planWords(l.t, R.w, l.s) || linesAt(l.t, R.w * 0.95, l.s) > 2)) return planNo('the caption does not fit');
+        const hs = L.map(l => planLH(l.t, R.w, l.s)), h = hs.reduce((a, b) => a + b, 0);
+        const R2 = { x: R.x, y: R.y + h + 20, w: R.w, h: R.h - h - 20 };
+        if (R2.h < 240) return planNo('no room under the caption');
+        const inner = B.build(P, R2, o);
+        if (!inner) return null;
+        const short = withShort && P.statement ? String(P.short || P.statement.subject) : '';
+        if (short && inner.some(p => p.text && String(p.text) === short)) continue;       // the composition shows the topic itself
+        let y = R.y; const cap = L.map((l, i) => { const p = label(R.x, y, R.w, hs[i], l.t, { size: l.s, bold: !!l.b, color: INK, align: 'left', valign: 'top', grp: 'caption' }); y += hs[i] - (i ? 0 : 4); return p; });
+        return cap.concat([rule(R.x + 4, y + 6, 120, 5, accent(1))], inner);
+      }
+      return null;
+    } };
+}
 function planCandidates(P) {
   const G = planGroups(P), grouped = G.length >= 2 && planAllGrouped(P), seq = planSeq(P), f = planFlow(P), r = planRoles(P);
   const support = r.supports.length > 0 && r.stages.length >= 2, arch = f.length >= 2 && P.items.some(i => !(P.flow || []).includes(i.id));
@@ -549,7 +579,7 @@ function planRender(P, key, R) {
 /* One layout in R: the first size that passes every check; { ok, prims, ... } or { ok: false, why }. */
 function planRender0(P, key, R) {
   const L = key === 'custom' ? (P.custom && planZoneFamily(Object.assign({ key: 'custom', name: P.custom.name || "Claude's composition", kind: 'custom', items: true }, P.custom)))
-    : /^ai:\d$/.test(key) ? planConceptFamily(P, +key.slice(3)) : PLAN_LAYOUTS[key];
+    : /^ai:\d$/.test(key) ? planConceptFamily(P, +key.slice(3)) : /^cap:/.test(key) ? planCaptionFamily(key.slice(4)) : PLAN_LAYOUTS[key];
   if (!L) return { ok: false, key, why: 'unknown layout' };
   const need = L.needs(P);
   if (need) return { ok: false, key, name: L.name, why: need };
