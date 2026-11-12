@@ -43,16 +43,18 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import access as A
 import claude_visual as C
 
-VERSION = '10.15.0'
+VERSION = '10.16.0'
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'AIVisualBuilder')
 STATIC = {'/': ('v10.html', 'text/html; charset=utf-8'), '/v10.html': ('v10.html', 'text/html; charset=utf-8'),
+          '/gallery-dialog.html': ('gallery-dialog.html', 'text/html; charset=utf-8'),
           **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'sections', 'original', 'faithful', 'napkin', 'studio', 'orchestrator', 'app')},
           # the ribbon's icons (manifest-v10.xml), served by this host like the panel itself
           **{f'/assets/icon-{n}.png': (f'assets/icon-{n}.png', 'image/png') for n in (16, 32, 64, 80)},
           # design packs (packs/*.js): layout families added without changing the application
           **{f'/packs/{n}': (f'packs/{n}', 'text/javascript; charset=utf-8') for n in os.listdir(os.path.join(HERE, 'packs')) if n.endswith('.js')}}
 MAX_BODY = 256 * 1024
+GALLERY_MAX_BODY = 8 * 1024 * 1024     # the large gallery's thumbnails (V10.16)
 MAX_TEXT = 10000
 
 # paid_policy (10.13, orchestrator.js): whether "Generate visuals" may use the paid providers: never | when-needed | always;
@@ -490,6 +492,36 @@ def claude_create(b, who=None):
     return {'id': rid, 'status': 'pending', 'format': fmt, 'model': s['model']}
 
 
+# ---------------------------------------------------------------- large gallery (V10.16)
+# The panel's designs for its large gallery (an Office dialog, gallery-dialog.html): the panel publishes the thumbnails
+# under a random key it made (32 hex characters) and only it can write (an authorized user); the dialog reads them with
+# that key, which it gets in its address. Kept in memory only (never on disk or in the log), at most 20 galleries, each
+# for up to 2 hours. The dialog sends its choices back to the panel through Office (messageParent), not through here.
+GALLERY = {}
+
+
+def gallery_put(b):
+    k = str(b.get('k') or '')
+    if not re.fullmatch(r'[0-9a-f]{32}', k):
+        raise NapkinError('Bad gallery key.', 400)
+    now = time.time()
+    for x in [x for x, v in GALLERY.items() if now - v['at'] > 7200]:
+        GALLERY.pop(x, None)
+    if len(GALLERY) >= 20 and k not in GALLERY:
+        GALLERY.pop(min(GALLERY, key=lambda x: GALLERY[x]['at']))
+    items = [{'i': int(x.get('i', 0)), 'name': str(x.get('name') or '')[:120], 'category': str(x.get('category') or '')[:60], 'edit': str(x.get('edit') or '')[:20],
+              'slides': int(x.get('slides') or 1), 'ai': bool(x.get('ai')), 'svg': str(x.get('svg') or '')} for x in (b.get('items') or [])[:60] if isinstance(x, dict)]
+    GALLERY[k] = {'at': now, 'data': {'v': int(b.get('v') or 0), 'items': items, 'sel': int(b.get('sel', -1)), 'note': str(b.get('note') or '')[:400],
+                                      'err': bool(b.get('err')), 'busy': bool(b.get('busy')), 'open': b.get('open', True) is not False}}
+    return {'ok': True}
+
+
+def gallery_get(k):
+    if not re.fullmatch(r'[0-9a-f]{32}', k or '') or k not in GALLERY:
+        raise NapkinError('This gallery is not available any more. Press Generate visuals in the panel.', 404)
+    return GALLERY[k]['data']
+
+
 def claude_status(rid):
     if not rid or not all(c.isalnum() for c in rid):
         raise NapkinError('Bad request id.', 400)
@@ -602,6 +634,8 @@ class Handler(BaseHTTPRequestHandler):
                     napkin['enabled'] = claude['enabled'] = False
                 orchestrate = {'paid': CONFIG['paid_policy'], 'order': CONFIG['paid_order']}
                 return self.send(200, {'server': VERSION, 'access': access, 'napkin': napkin, 'claude': claude, 'orchestrate': orchestrate})
+            if path == '/api/gallery':
+                return self.send(200, gallery_get(arg('k')))
             if path.startswith(('/api/napkin/', '/api/claude/')) and not self.authorized():
                 return
             if path == '/api/napkin/status':
@@ -635,7 +669,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         try:
             n = int(self.headers.get('Content-Length') or 0)
-            if n > MAX_BODY or 'application/json' not in self.headers.get('Content-Type', ''):
+            if n > (GALLERY_MAX_BODY if path == '/api/gallery' else MAX_BODY) or 'application/json' not in self.headers.get('Content-Type', ''):
                 return self.fail(400, 'JSON up to 256 KB expected.')
             b = json.loads(self.rfile.read(n) or b'{}')
             # a test panel host never makes a paid request (the tests use saved results and stand-ins)
@@ -647,6 +681,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/claude/visual':
                 who = self.authorized()
                 return who and self.send(200, claude_create(b, who))
+            if path == '/api/gallery':
+                who = self.authorized()
+                return who and self.send(200, gallery_put(b))
             if path == '/api/selftest':
                 # result of the in-PowerPoint drawing self-test (API names and pass/fail only), kept for diagnosis
                 os.makedirs(DATA_DIR, exist_ok=True)

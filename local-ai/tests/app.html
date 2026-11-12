@@ -38,6 +38,7 @@ async function run() {
     if (path.startsWith('/api/claude/last')) return C.claudeLast || {};
     if (path.startsWith('/api/claude/status')) return C.claude === 'fail' ? { status: 'failed', files: 0, error: 'test failure' } : { status: 'completed', files: 1, usage: { input_tokens: 1, output_tokens: 1 }, seconds: 1, model: 'claude-opus-5-5', effort: 'high', cost_usd: 0.01 };
     return window.__svc(); }; 1`);
+  W.fetch0 = W.fetch0 || W.fetch.bind(W);          // the real fetch (10.16: the large gallery's host calls)
   W.fetch = async url => { url = String(url); W.__calls.push(url); const C = W.__cfg, i = +(/[?&]i=(\d+)/.exec(url) || [0, 0])[1];
     if (/\/api\/claude\/file/.test(url)) return new Response(C.claudePlanFor || C.claudePlan, { status: 200 });
     return new Response(C.napkinFiles[i % C.napkinFiles.length], { status: 200 }); };
@@ -110,7 +111,7 @@ async function run() {
     fresh(); W.__cfg.policy = 'never'; await gate();
     let L = await gen(dmT);
     res.sec = { lines: d.getElementById('content').value.split(/\n/).slice(0, 3), n: L.length, families: L.map(c => c.family),
-      richFirst: L.slice(0, 3).every(c => /learnmap|herobanner|bridge|iconrows|splitpanels|poster|badges|ribbon|colortiles/.test(c.family)),
+      richFirst: L.slice(0, 3).every(c => /learnmap|herobanner|bridge|iconrows|splitpanels|poster|badges|ribbon|colortiles|concepttiles|orbit|honeycomb|isostack|bento|keystatement/.test(c.family)),
       missing: L.filter(c => !dmNeed.every(t => texts(c).includes(t))).map(c => c.family + ': ' + dmNeed.filter(t => !texts(c).includes(t)).join(' / ')),
       merged: L.filter(c => texts(c).some(t => /GrowthWhat|What you learn:/.test(t))).map(c => c.family), builtin: L.filter(c => c.engine === 'builtin').length, editable: L.every(c => c.edit === 'full'), paid: paidCalls() };
     const aiT = ['Artificial Intelligence and Machine Learning (AI & ML)', '', 'What you learn: Neural networks, data mining, predictive modeling, and working with tools like ChatGPT or Python.', '',
@@ -127,6 +128,65 @@ async function run() {
       res.sec.ai.inserted = { objects: own(S0).length, texts: lv.filter(x => x.textFrame && x.textFrame.textRange && x.textFrame.textRange.text).length }; await ev('removeLast()'); }
     // a plain list and prose are not read as sections
     res.sec.notSections = ['ML workflow (5 stages, intro)', 'Educational content'].map(k => !ev('t => !!sectionsRead(t)')(samples[k]));
+  }
+
+  /* ===== V (10.16): one statement, distinct designs, Claude's own compositions (saved answer), the large gallery ===== */
+  {
+    const flat = c => c.prims.filter(p => p.text).map(p => String(p.text)).join(' ').replace(/\s+/g, ' ').toLowerCase();
+    const objs = c => new Set(c.prims.filter(p => p.cmp && p.cmp !== 'none').map(p => p.grp)).size;
+    const stT = 'Claude ai helps you create, organize, and edit diverse types of content—from written copy and code-based animations to presentations and AI-marked text';
+    const stNeed = ['claude ai', 'create', 'organize', 'edit', 'diverse types of content', 'written copy', 'code-based animations', 'presentations', 'ai-marked text'];
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'off', claude: 'off', policy: 'never' }); await gate();
+    const SX = ev('t => statementRead(t)')(stT);
+    let L = await gen(stT);
+    const look = L.map(c => ({ fp: ev('orchFootprint')(c.prims), sp: ev('orchShapePrint')(c.prims) })), same = ev('orchLooksSame');
+    let pairs = 0; for (let i = 0; i < L.length; i++) for (let j = 0; j < i; j++) if (same(look[i], look[j])) pairs++;
+    res.v16 = { read: SX && { short: SX.short, verbs: SX.statement.verbs, items: SX.sections[0].items.map(i => i.label), heading: SX.sections[0].name },
+      n: L.length, cats: new Set(L.map(c => c.category)).size, textOnly: L.filter(c => !objs(c)).length, lookAlike: pairs,
+      incomplete: L.filter(c => !stNeed.every(t => flat(c).includes(t))).map(c => c.family + ': ' + stNeed.filter(t => !flat(c).includes(t)).join('/')),
+      builtin: L.filter(c => c.engine === 'builtin').length, wholeSentence: L.filter(c => c.prims.some(p => p.text && String(p.text).length > 120)).length, paid: paidCalls() };
+    // More visuals: never a family already shown (V10.15 repeated them in other colours), never a weaker design
+    const fams = new Set(L.map(c => c.family)), r2 = await W.eval('orchMore')(stT, () => {}), fresh2 = r2.list.slice(0, r2.fresh);
+    res.v16.more = { fresh: fresh2.length, repeats: fresh2.filter(c => fams.has(c.family)).map(c => c.family), incomplete: fresh2.filter(c => !stNeed.every(t => flat(c).includes(t))).length };
+    // a statement is no longer "exact": with the AI services on and policy when-needed, one request may be made for it
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'ok', claude: 'off', policy: 'when-needed', napkinLast: {}, claudeLast: {} }); await gate();
+    await gen(stT); res.v16.statementAI = paidCalls();
+    // Claude's own compositions: the saved (hand-written) plan answer with three concepts
+    const fx16 = await fx('claude-statement-plan.json');
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'off', claude: 'ok', policy: 'always', claudePlanFor: fx16, napkinLast: {}, claudeLast: {} }); await gate();
+    L = await gen(stT);
+    const C = L.filter(c => c.concept);
+    res.v16.concepts = { n: C.length, names: C.map(c => c.title), editable: C.every(c => c.edit === 'full'), complete: C.every(c => stNeed.every(t => flat(c).includes(t))), own: C.every(c => c.engine === 'claude'), paid: paidCalls() };
+    const bad = JSON.parse(fx16); bad.concepts[0].elements.push(Object.assign({}, bad.concepts[0].elements[10], { x: 1000, w: 400 }));   // a text past the right edge
+    res.v16.concepts.badRejected = !ev('(raw) => { const p = planFromClaude(raw).plan; return orchConceptDesigns("claude", p).some(c => c.title === "Hero and tiles"); }')(bad);
+    const ci = L.findIndex(c => c.concept);
+    if (ci >= 0) { M.reset(); await gate(); A.appSelect(ci); await A.appInsert(); const S0 = M.slides[0], lv = leaves({ items: own(S0) }), T = lv.map(x => x.textFrame && x.textFrame.textRange && x.textFrame.textRange.text).filter(Boolean);
+      res.v16.concepts.inserted = { shapes: lv.length, texts: T.length, items: ['Written copy', 'Code-based animations', 'Presentations', 'AI-marked text'].every(t => T.includes(t)), pictures: lv.filter(x => x.kind === 'picture').length };
+      await ev('removeLast()'); }
+    // the large gallery: published to the host, shown by the dialog page (a frame here), select and insert from it
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'off', claude: 'off', policy: 'never' }); await gate(); M.reset(); await gate();
+    L = await gen(stT);
+    const realApi = W.eval('api');
+    W.eval("window.__api0 = api; api = async (p, b, t) => p.startsWith('/api/gallery') ? window.__realApi(p, b, t) : window.__api0(p, b, t); 1");
+    W.__realApi = async (p, b) => { const r = await W.fetch0(p, { method: 'POST', headers: { 'X-AIVB-Client': '1', 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); return r.json(); };
+    res.v16.gallery = { button: !d.getElementById('appLarge').hidden };
+    W.eval("GAL.open = true; galPublish(''); 1");
+    await new Promise(r => setTimeout(r, 700));
+    const fr = d.createElement('iframe'); fr.style.cssText = 'width:1300px;height:900px'; fr.src = '/gallery-dialog.html?k=' + W.eval('galKey()'); d.body.appendChild(fr);
+    let dw = null; for (let i = 0; i < 60; i++) { await new Promise(r => setTimeout(r, 200)); dw = fr.contentWindow; if (dw && dw.document && dw.document.querySelectorAll('.card').length) break; }
+    const cards = dw.document.querySelectorAll('.card');
+    res.v16.gallery.cards = cards.length; res.v16.gallery.n = L.length;
+    res.v16.gallery.thumbs = [...cards].filter(c => c.querySelector('svg')).length;
+    cards[1].click(); await new Promise(r => setTimeout(r, 400)); res.v16.gallery.selected = A.APP.sel === 1;
+    const before = W.eval('state.lastInsert');
+    dw.document.getElementById('insert').click();
+    for (let i = 0; i < 40 && W.eval('state.lastInsert') === before; i++) await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => setTimeout(r, 1300));
+    res.v16.gallery.inserted = (W.eval('state.lastInsert') || {}).ids ? W.eval('state.lastInsert').ids.length : 0;
+    res.v16.gallery.note = dw.document.getElementById('note').textContent.slice(0, 120);
+    const bk = await W.fetch0('/api/gallery?k=' + '0'.repeat(32), { headers: { 'X-AIVB-Client': '1' } }); res.v16.gallery.unknownKey = bk.status;
+    await ev('removeLast()'); W.eval('galClose(); api = window.__api0; 1'); fr.remove();
+    W.__cfg.claudePlanFor = null;            // the later tests use their own saved answers
   }
 
   /* ===== I: insertion of each kind, editable; duplicate guard; undo ===== */
@@ -251,7 +311,7 @@ async function run() {
     ['A13 Hover preview: the design large after a short rest, beside (not over) its card, closed on leaving; touch ignored; selection unchanged', Gn.hover.shown && Gn.hover.svg && Gn.hover.sameAsCard && Gn.hover.wider && !Gn.hover.coversCard && Gn.hover.closed && Gn.hover.touchIgnored && Gn.hover.selectedUnchanged,
       JSON.stringify(Gn.hover)],
     ['A14 Richer and varied: hero-style showcase designs among the first 10; no two designs with the same composition', Gn.rich.showcaseInTop10 >= 2 && Gn.rich.nearDuplicates === 0, JSON.stringify(Gn.rich)],
-    ['A15 Labelled sections ("What you learn" / "Best for"): a glued label is separated; both sections and every item on every design (none drops a section, no merged heading); the learner-style compositions first; all editable; no request with policy never', res.sec.lines.length >= 3 && /Growth$/.test(res.sec.lines[0]) && /^What you learn:/.test(res.sec.lines[1]) && res.sec.n >= 9 && !res.sec.missing.length && !res.sec.merged.length && res.sec.richFirst && res.sec.builtin === 0 && res.sec.editable && res.sec.paid === 0,
+    ['A15 Labelled sections ("What you learn" / "Best for"): a glued label is separated; both sections and every item on every design (none drops a section, no merged heading); the learner-style compositions first; 6+ designs (10.16: never padded with weaker or look-alike ones); all editable; no request with policy never', res.sec.lines.length >= 3 && /Growth$/.test(res.sec.lines[0]) && /^What you learn:/.test(res.sec.lines[1]) && res.sec.n >= 6 && !res.sec.missing.length && !res.sec.merged.length && res.sec.richFirst && res.sec.builtin === 0 && res.sec.editable && res.sec.paid === 0,
       JSON.stringify(Object.assign({}, res.sec, { ai: undefined }))],
     ['A16 AI & ML summary: 10+ designs; the learning map (hero with the brain, both sections, every item, an object for each) inserts as native objects; the AI services are sent both sections and every item; plain lists and prose are not read as sections', res.sec.ai.n >= 10 && res.sec.ai.learnmapComplete && res.sec.ai.hero && res.sec.ai.objects >= 7 && res.sec.ai.inserted && res.sec.ai.inserted.objects > 0 && res.sec.ai.sent.points.length === 7 && res.sec.ai.sent.groups.length === 2 && res.sec.notSections.every(Boolean),
       JSON.stringify(Object.assign({}, res.sec.ai, { notSections: res.sec.notSections }))],
@@ -273,6 +333,14 @@ async function run() {
     ['A10 Several slides and Edit a visual open from the app and still work (insert, remove, load an inserted visual)', Fl.slides.open && Fl.slides.tab && Fl.slides.inserted >= 2 && Fl.slides.removed && Fl.edit.open && Fl.edit.tab && Fl.edit.loaded && Fl.closed, JSON.stringify(Fl)],
     ['A11 Ribbon deep links open the panel on Edit / Several slides; developer mode shows every technical section again, ?dev=0 leaves it', Dv.edit.simple && Dv.edit.stPanel && Dv.edit.editTab && Dv.slides.slidesTab && Dv.slides.stPanel && !Dv.dev.simple && Dv.dev.aiStatus && Dv.dev.napkin && Dv.dev.analyse && Dv.dev.devbar && Dv.dev.version && Dv.back.simple && !Dv.back.aiStatus,
       JSON.stringify(Dv)],
+    ['A17 One statement (Claude AI): read as subject, what it does and its 4 examples; 6+ designs in 5+ categories, every one with objects and every fact (no sentence banner, no built-in banner, no look-alikes); no request with policy never',
+      !!res.v16.read && res.v16.read.short === 'Claude AI' && res.v16.read.verbs.join() === 'Create,Organize,Edit' && res.v16.read.items.length === 4 && res.v16.n >= 6 && res.v16.cats >= 5 && !res.v16.textOnly && !res.v16.incomplete.length && !res.v16.builtin && !res.v16.wholeSentence && !res.v16.lookAlike && res.v16.paid === 0,
+      JSON.stringify(Object.assign({}, res.v16, { concepts: undefined, gallery: undefined }))],
+    ['A18 More visuals never repeats a family already shown and never adds a weaker design; a statement may now go to the AI services (when-needed)', !res.v16.more.repeats.length && !res.v16.more.incomplete && res.v16.statementAI === 1, JSON.stringify({ more: res.v16.more, statementAI: res.v16.statementAI })],
+    ["A19 Claude's own compositions (saved answer): 3 concepts drawn as native, editable designs with every fact; one that breaks the area is not offered; a concept inserts as native shapes with every item's text", res.v16.concepts.n === 3 && res.v16.concepts.editable && res.v16.concepts.complete && res.v16.concepts.own && res.v16.concepts.badRejected && res.v16.concepts.paid === 1 && !!res.v16.concepts.inserted && res.v16.concepts.inserted.items && res.v16.concepts.inserted.pictures === 0,
+      JSON.stringify(res.v16.concepts)],
+    ['A20 Large gallery: "Open large gallery" after Generate; the dialog shows every design with its thumbnail; a click selects it in the panel; Insert in the dialog inserts it; an unknown gallery key is refused', res.v16.gallery.button && res.v16.gallery.cards === res.v16.gallery.n && res.v16.gallery.thumbs === res.v16.gallery.n && res.v16.gallery.selected && res.v16.gallery.inserted > 0 && /^Inserted/.test(res.v16.gallery.note) && res.v16.gallery.unknownKey === 404,
+      JSON.stringify(res.v16.gallery)],
     ['No script errors in the panel', !errors.length, errors.join(' | ') || 'none'],
   ].map(([name, ok, evidence]) => ({ name, ok: !!ok, evidence }));
   out.textContent = JSON.stringify(res);

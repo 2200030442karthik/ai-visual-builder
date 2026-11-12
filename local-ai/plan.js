@@ -482,6 +482,32 @@ PLAN_LAYOUTS.capability.name = 'Grouped columns';
 /* ---------- choosing and checking the layouts ---------- */
 /* Layouts to try, best first: the provider's recommendation, then the ones the structure suits. */
 const PLAN_UPGRADE = { architecture: 'platform', layers: 'stack3d', capability: 'capmap' };
+/* ---------- Claude's own compositions (V10.16) ----------
+   A concept is Claude's complete design for the content area (1079 x 435 pt): shapes from PowerPoint's presets, texts,
+   catalogue objects and connector lines, in colour tokens (a1-a10 the template's accents, panel, rule, line, white,
+   ink). It is drawn here as native shapes - nothing is rasterised - and then checked like every layout (planRender0):
+   approved colours and 22 pt (brandPrims), overlaps, clipping and the content area (visualQuality), and every item's
+   label and description on the slide. A text box Claude made too small for its words is made taller (never smaller
+   text); a concept that still fails is not offered, with the reason. Scaled to a smaller free area when needed. */
+const CONCEPT_COL = { panel: '#F2F2F2', rule: '#D9D9D9', line: '#7F7F7F', white: '#FFFFFF', ink: '#404040' };
+const conceptCol = t => { const m = /^a(\d{1,2})$/.exec(t || ''); return m ? TEMPLATE.accents[(+m[1] + 9) % 10] : CONCEPT_COL[t] || null; };
+function planConceptFamily(P, i) {
+  const c = (P.concepts || [])[i];
+  if (!c) return null;
+  return { name: c.name, family: 'ai-concept', kind: 'ai', pack: 'claude', needs: () => '', opts: [{ s: PLAN_DS }],
+    build: (P0, R) => {
+      const sx = R.w / 1079, sy = R.h / 435, out = [], num = v => (isFinite(+v) ? +v : 0);
+      for (const e of c.elements) {
+        const x = R.x + num(e.x) * sx, y = R.y + num(e.y) * sy, w = Math.max(1, num(e.w) * sx), h = Math.max(1, num(e.h) * sy), col = conceptCol(e.color);
+        const size = Math.max(PLAN_DS, Math.min(48, Math.round(num(e.size) || PLAN_DS))), txt = planClean(e.text || ''), al = e.align === 'left' ? 'left' : 'center';
+        if (e.kind === 'line') { out.push(seg(x, y, R.x + num(e.x2) * sx, R.y + num(e.y2) * sy, col || '#7F7F7F', 2.5)); continue; }
+        if (e.kind === 'object') { const D = Math.min(w, h); out.push(...comp(CMP[e.object] ? e.object : 'none', x + (w - D) / 2, y + (h - D) / 2, D, col && col !== '#FFFFFF' ? col : accent(0))); continue; }
+        if (e.kind === 'text') { if (txt) out.push(label(x, y, w, Math.max(h, linesAt(txt, w * 0.95, size) * size * 1.2 + 8), txt, { size, bold: !!e.bold, color: INK, align: al, valign: 'top' })); continue; }
+        out.push(box(GEO[e.shape] ? e.shape : 'roundRect', x, y, w, h, Object.assign({ fill: col || PANEL }, txt ? { text: txt, size, bold: !!e.bold, color: INK, align: al, valign: 'middle' } : {})));
+      }
+      return out;
+    } };
+}
 function planCandidates(P) {
   const G = planGroups(P), grouped = G.length >= 2 && planAllGrouped(P), seq = planSeq(P), f = planFlow(P), r = planRoles(P);
   const support = r.supports.length > 0 && r.stages.length >= 2, arch = f.length >= 2 && P.items.some(i => !(P.flow || []).includes(i.id));
@@ -522,7 +548,8 @@ function planRender(P, key, R) {
 }
 /* One layout in R: the first size that passes every check; { ok, prims, ... } or { ok: false, why }. */
 function planRender0(P, key, R) {
-  const L = key === 'custom' ? (P.custom && planZoneFamily(Object.assign({ key: 'custom', name: P.custom.name || "Claude's composition", kind: 'custom', items: true }, P.custom))) : PLAN_LAYOUTS[key];
+  const L = key === 'custom' ? (P.custom && planZoneFamily(Object.assign({ key: 'custom', name: P.custom.name || "Claude's composition", kind: 'custom', items: true }, P.custom)))
+    : /^ai:\d$/.test(key) ? planConceptFamily(P, +key.slice(3)) : PLAN_LAYOUTS[key];
   if (!L) return { ok: false, key, why: 'unknown layout' };
   const need = L.needs(P);
   if (need) return { ok: false, key, name: L.name, why: need };
@@ -604,6 +631,9 @@ function planFromClaude(raw) {
   plan.hero = raw && raw.hero && CMP[raw.hero] ? String(raw.hero) : '';
   // 10.15: labelled sections ("What you learn" / "Best for") as Claude grouped them: drawn under their names
   plan.short = planClean(raw && raw.short);
+  // 10.16: Claude's own compositions ("concepts"): drawn as native shapes by planRender under the keys ai:0 .. ai:3
+  plan.concepts = (Array.isArray(raw && raw.concepts) ? raw.concepts : []).filter(c => c && Array.isArray(c.elements) && c.elements.length >= 3).slice(0, 4)
+    .map(c => ({ name: planClean(c.name) || 'AI concept', idea: planClean(c.idea), elements: c.elements }));
   if (typeof sectionKind === 'function' && groups.length >= 2 && groups.some(g => sectionKind(g.name) !== 'other')) {
     plan.sections = true; groups.forEach(g => { g.kind = sectionKind(g.name); });
   }

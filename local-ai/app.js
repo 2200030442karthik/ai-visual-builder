@@ -7,7 +7,7 @@
    - The engines, their choice, ranking and cost control are in orchestrator.js; analysis runs inside Generate.
    - The ribbon opens the panel on a section: ?open=slides | edit (manifest-v10.xml).
    Loaded last (after studio.js). */
-const APP_VERSION = '10.15.0';
+const APP_VERSION = '10.16.0';
 const APP = { list: [], sel: -1, text: '', busy: false, stale: false, lastIns: null, dupOk: '', filter: 'All', shown: 0 };
 const QS = new URLSearchParams(location.search);
 // ?dev=1: this load only; Ctrl+Alt+Shift+D: remembered on this PC until pressed again (or ?dev=0)
@@ -25,7 +25,7 @@ function friendly(m) {
 }
 const setStatus0 = setStatus;
 setStatus = function (msg, err) { setStatus0(APP_DEV ? msg : friendly(msg), err); };
-const appSay = (msg, err) => setStatus0(msg, err);
+const appSay = (msg, err) => { setStatus0(msg, err); if (typeof galPublish === 'function') galPublish(msg, err); };
 
 /* ---------- the page ---------- */
 (() => {
@@ -62,6 +62,7 @@ const appSay = (msg, err) => setStatus0(msg, err);
     .appbig h3 { font-size:13.5px; margin:8px 0 2px; }
     .appbig p { margin:2px 0; font-size:12px; color:var(--muted); }
     .appacts { display:flex; gap:6px; margin-top:10px; }
+    .applarge { width:100%; margin:6px 0 8px !important; padding:9px !important; border:1px solid #1f6fb2 !important; color:#1f6fb2 !important; background:#fff !important; border-radius:9px !important; font-weight:600; font-size:13px; }
     .appacts button { flex:1; margin:0; padding:8px 4px; border:1px solid #d8deea; border-radius:9px; background:#fff; font-size:12px; }
     .appacts button:disabled { opacity:.5; }
     #appFoot .btn-row { margin-top:6px; }
@@ -94,6 +95,7 @@ const appSay = (msg, err) => setStatus0(msg, err);
     <div id="appStale" class="appstale" hidden>Your content changed. Press <b>Generate visuals</b> to update the designs.</div>
     <div id="appSec" class="secnav" hidden style="margin-top:10px"><button type="button" id="appSecPrev" aria-label="Previous section">‹</button><div id="appSecName"></div><button type="button" id="appSecNext" aria-label="Next section">›</button></div>
     <div id="appHead" class="apphead" hidden><b id="appCount"></b><span id="appNote" class="small" style="margin:0"></span></div>
+    <button type="button" id="appLarge" class="applarge" hidden>Open large gallery</button>
     <div id="appChips" class="chipsbar" hidden></div>
     <div id="appGrid" class="grid appgrid" hidden></div>
     <div id="appBig" class="appbig" hidden><div class="preview" id="appPv"></div><h3 id="appPvT"></h3><p id="appPvD"></p>
@@ -146,6 +148,7 @@ function appButtons() {
   $('appMore').disabled = APP.busy || !APP.list.length || APP.stale;
   $('appActs').hidden = !APP.list.length && !$('content').value.trim();
   $('appEmpty').hidden = !!APP.list.length || APP.busy || !$('appErr').hidden;
+  if (typeof GAL !== 'undefined' && GAL && GAL.open) galPublish();
 }
 const updateButtons0 = updateButtons;
 updateButtons = function () { updateButtons0.apply(this, arguments); appButtons(); };
@@ -222,6 +225,8 @@ function appRender() {
   const step = () => { if (APP.shown !== run) return; for (const end = k + 4; k < end && k < todo.length; k++) { const c = L[+todo[k].dataset.i]; if (c) todo[k].querySelector('.gthumb').innerHTML = thumb(c.prims); } if (k < todo.length) requestAnimationFrame(step); };
   requestAnimationFrame(step);
   appSections(); appBig(); appButtons();
+  $('appLarge').hidden = !L.length;
+  galPublish();
 }
 // a design's name as the app shows it ("Learning map", not "Learning map · colours from violet, more white space")
 const appName = c => APP_DEV ? c.title : String(c.title || '').split(' · ')[0];
@@ -321,6 +326,61 @@ $('appMore').addEventListener('click', appMore);
 $('appSlides').addEventListener('click', () => appStudio('slides'));
 $('appEdit').addEventListener('click', () => appStudio('edit'));
 $('appInsert').addEventListener('click', appInsert);
+$('appLarge').addEventListener('click', appLarge);
+
+/* ---------- 10.16: the large gallery (an Office dialog, gallery-dialog.html) ----------
+   The designs large, in a popup the size of most of the screen, like SL Smart Design's Alternative Design popup. The
+   panel publishes its gallery to the panel host under a random key (server.py gallery_put) whenever it changes; the
+   dialog shows it and sends the user's choice back (Office messageParent): select, insert, more, several slides, edit,
+   close. Inserting stays here, in the panel (the dialog cannot reach PowerPoint). Outside Office (tests, preview) the
+   dialog is a browser window that posts its messages to this one. */
+var GAL = { k: '', v: 0, dlg: null, win: null, open: false, t: 0, note: '', err: false };   // var: read by appButtons before this line runs
+function galKey() {
+  if (!GAL.k) { const a = new Uint8Array(16); crypto.getRandomValues(a); GAL.k = [...a].map(b => b.toString(16).padStart(2, '0')).join(''); }
+  return GAL.k;
+}
+function galPublish(note, err) {
+  if (!GAL) return;
+  if (note !== undefined) { GAL.note = note; GAL.err = !!err; }
+  if (!GAL.open) return;
+  clearTimeout(GAL.t);
+  GAL.t = setTimeout(async () => {
+    const items = APP.list.map((c, i) => ({ i, name: appName(c), category: c.category, edit: c.edit, slides: c.slides || 1, ai: !!(c.concept || c.engine === 'claude' || c.engine === 'napkin'), svg: thumb(c.prims) }));
+    try { await api('/api/gallery', { k: galKey(), v: ++GAL.v, items, sel: APP.sel, note: GAL.note, err: GAL.err, busy: APP.busy }, 30000); }
+    catch (e) { console.warn('The large gallery could not be updated', e); }
+  }, 60);
+}
+async function appLarge() {
+  if (!APP.list.length) return;
+  const url = location.origin + '/gallery-dialog.html?k=' + galKey();
+  GAL.open = true; galPublish('');
+  await new Promise(r => setTimeout(r, 150));          // the designs are on the host before the dialog asks for them
+  const ui = typeof Office !== 'undefined' && Office.context && Office.context.ui;
+  if (ui && ui.displayDialogAsync) {
+    ui.displayDialogAsync(url, { height: 88, width: 86, displayInIframe: false, promptBeforeOpen: false }, r => {
+      if (r.status !== Office.AsyncResultStatus.Succeeded) { GAL.open = false; appSay('The large gallery could not open (' + (r.error && r.error.message) + '). The designs are here in the panel.', true); return; }
+      GAL.dlg = r.value;
+      GAL.dlg.addEventHandler(Office.EventType.DialogMessageReceived, a => galMessage(a.message));
+      GAL.dlg.addEventHandler(Office.EventType.DialogEventReceived, () => { GAL.dlg = null; GAL.open = false; });
+    });
+  } else { GAL.win = window.open(url, 'aivbGallery', 'width=1400,height=900'); if (!GAL.win) { GAL.open = false; appSay('The large gallery was blocked by the browser.', true); } }
+}
+function galClose() {
+  try { if (GAL.dlg) GAL.dlg.close(); } catch (e) { /* closed already */ }
+  try { if (GAL.win) GAL.win.close(); } catch (e) { /* closed already */ }
+  GAL.dlg = GAL.win = null; GAL.open = false;
+}
+async function galMessage(s) {
+  let m; try { m = JSON.parse(s); } catch (e) { return; }
+  if (!m || typeof m.action !== 'string') return;
+  if (m.action === 'select' && APP.list[m.i]) appSelect(m.i);
+  else if (m.action === 'insert' && APP.list[m.i]) { appSelect(m.i); await appInsert(); }
+  else if (m.action === 'more') await appMore();
+  else if (m.action === 'slides' || m.action === 'edit') { galClose(); appStudio(m.action); }
+  else if (m.action === 'close') galClose();
+  galPublish();
+}
+window.addEventListener('message', e => { if (e.origin === location.origin && e.data && typeof e.data.aivbGallery === 'string') galMessage(e.data.aivbGallery); });
 $('appReviewed').addEventListener('change', appButtons);
 $('appSecPrev').addEventListener('click', () => appSection(-1));
 $('appSecNext').addEventListener('click', () => appSection(1));

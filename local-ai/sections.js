@@ -124,8 +124,11 @@ function sectionsPrep(SX, text) {
   const context = (SX.title ? `Topic: ${SX.title}. ` : '') + `Show ${SX.sections.length > 1 ? 'these ' + SX.sections.length + ' named sections' : 'this named section'}, each with its items under its own heading: ` +
     SX.sections.map(s => `${s.name} (${s.items.map(i => i.label).join('; ')})`).join('; ') + '. Show the whole content in one visual, as a modern, engaging educational infographic' +
     ' with an object for each item. Use the wording of the text; do not add facts, figures or items.';
-  return { content: parts.join('\n\n'), concepts, ordered: false, list: true, points, headings: SX.sections.map(s => s.name), source: text, context: context.slice(0, 900),
-    record: null, title: SX.title, short: SX.short, sections: SX.sections };
+  const st = SX.statement, ctx2 = st ? `One statement about ${st.subject}: show ${st.subject} as the hero` + (st.verbs.length ? `, what it does (${st.verbs.join(', ')})` : '') +
+    ` and ${st.object ? 'the ' + st.object : 'its examples'} as ${SX.sections[0].items.length} items with an object each: ${SX.sections[0].items.map(i => i.label).join('; ')}. A modern, engaging educational infographic; ` +
+    'use the wording of the text; do not add facts, figures or items, and do not repeat the sentence as a block of text.' : '';
+  return { content: st ? st.text : parts.join('\n\n'), concepts, ordered: false, list: true, points, headings: SX.sections.map(s => s.name).filter(Boolean), source: text, context: (ctx2 || context).slice(0, 900),
+    record: null, title: SX.title, short: SX.short, sections: SX.sections, statement: st || null };
 }
 /* The plan of sectioned content: one group per section (its name drawn as the group's heading), every item in it. */
 function sectionsPlan(SX) {
@@ -133,7 +136,8 @@ function sectionsPlan(SX) {
   const items = [];
   SX.sections.forEach((s, i) => s.items.forEach(it => items.push({ id: 'p' + items.length, label: planClean(it.label), detail: planClean(it.detail || ''), group: 's' + i })));
   planIcons(items);
-  return planSemantics({ title: SX.title, headline: SX.title, takeaway: '', hero: heroFor(SX.short, SX.full || SX.title), short: SX.short,
+  const st = SX.statement || null;
+  return planSemantics({ title: SX.title, headline: SX.title, takeaway: '', hero: heroFor(SX.short, SX.full || SX.title), short: SX.short, statement: st, verbs: st ? st.verbs : [],
     relation: groups.length >= 2 ? 'categories' : 'independent', items, groups: groups.length >= 2 ? groups : [], flow: [], layouts: [], from: 'text', sections: true,
     sectionName: groups.length === 1 ? groups[0].name : '' });
 }
@@ -147,3 +151,74 @@ function heroFor(short, title, more) {
   }
   return '';
 }
+
+/* ---------- one statement (V10.16) ----------
+   "Claude ai helps you create, organize, and edit diverse types of content - from written copy and code-based animations
+   to presentations and AI-marked text" is not a banner of text: it names a subject (Claude AI), what it does (create,
+   organize, edit), on what (diverse types of content) and the examples (written copy, code-based animations, ...).
+   statementRead returns that in the shape of sectionsRead (one section, the examples as its items) plus
+   { statement: { subject, verbs, object, text } }, or null when the sentence has no list a visual can show. Every word
+   shown comes from the sentence; nothing is added. */
+const ST_ACRO = /\b(ai|ml|ui|ux|api|apis|seo|aws|gcp|iot|vr|llm|llms|nlp|crm|erp|sql)\b/gi;
+const stAcro = t => String(t).replace(ST_ACRO, m => /^(?:apis|llms)$/i.test(m) ? m.slice(0, -1).toUpperCase() + 's' : m.toUpperCase());
+const ST_VERB = /\s(?:helps?|lets?|enables?|allows?|empowers?|supports?|provides?|offers?|gives?|makes?|turns?|uses?|includes?|covers?|delivers?|automates?|transforms?|combines?|connects?|teaches?|shows?|can|will|is|are)\s/i;
+const ST_WHO = /^(?:you|users?|teams?|learners?|students?|people|businesses|organi[sz]ations|developers|creators|marketers|professionals|companies|everyone)\s+(?:to\s+)?/i;
+const ST_LIST_AT = [/\s*[—–]\s*|\s+-{1,2}\s+/, /\s+(?:such as|including|like|e\.g\.,?|for example,?|for instance,?)\s+/i, /:\s+/];
+function stSplitList(t) {
+  t = t.replace(/^from\s+/i, '').replace(/[.;!]+\s*$/, '').trim();
+  // "from A and B to C and D": "to" divides the range; then commas, "and", "or"
+  const parts = (/^(?!.*\bto\b.*\bto\b)/.test(t) ? t.split(/\s+to\s+/i) : [t]).flatMap(p => secSplitTop(p))
+    .flatMap(p => p.split(/\s+(?:and|or|as well as|plus)\s+/i)).map(p => p.replace(/^(?:and|or)\s+/i, '').trim()).filter(Boolean);
+  return parts;
+}
+function statementRead(text) {
+  const raw = String(text || '').replace(/\r\n?/g, '\n').trim();
+  if (!raw || raw.length > 420) return null;
+  let lines = raw.split('\n').map(l => l.trim()).filter(Boolean), head = '';
+  if (lines.length === 2 && lines[0].split(/\s+/).length <= 8 && !/[.!?]$/.test(lines[0])) { head = lines[0].replace(/[:.]\s*$/, ''); lines = [lines[1]]; }
+  if (lines.length !== 1 || /^\s*(?:[-•*▪●◦–]|\d{1,2}[.)])\s/.test(lines[0])) return null;
+  const s = lines[0].replace(/\s+/g, ' ');
+  if ((s.match(/[.!?](?:\s|$)/g) || []).length > 2) return null;
+  // where the examples start
+  let at = null;
+  for (const re of ST_LIST_AT) { const m = re.exec(s); if (m && m.index > 12) { at = { i: m.index, j: m.index + m[0].length }; break; } }
+  let first = (at ? s.slice(0, at.i) : s).replace(/[,.]\s*$/, '').trim(), list = at ? stSplitList(s.slice(at.j)) : [];
+  // no lead-in: a list at the end of the sentence ("... used for web development, data science, and automation")
+  if (!at) { const m = /^(.*\s(?:for|in|of|with|to|on|across|into|like)\s)((?:[^,]{2,40},\s+)+(?:and\s+|or\s+)?[^,]{2,40})$/i.exec(first.replace(/[.!]\s*$/, ''));
+    if (m) { first = m[1].trim(); list = stSplitList(m[2]); } }
+  // the subject: the words before the first verb
+  const v = ST_VERB.exec(' ' + first + ' ');
+  if (!v || v.index < 1) return null;
+  const subject = stAcro(first.slice(0, v.index).trim()).replace(/^(?:the|a|an)\s+/i, '');
+  if (!subject || subject.split(/\s+/).length > 5) return null;
+  const main = v[0].trim().toLowerCase(), helper = /^(?:helps?|lets?|enables?|allows?|empowers?|can|will)$/.test(main);
+  let rest = first.slice(v.index + v[0].length - 1).trim();
+  // "lets analysts connect, ..." - who it helps is not a verb
+  if (helper) rest = rest.replace(ST_WHO, '').replace(/^(?!(?:[a-z]+,|[a-z]+\s+(?:and|or)\s))[a-z]+\s+(?:to\s+)?(?=(?:[a-z]+,\s+)+(?:and\s+|or\s+)?[a-z]+\s)/i, '');
+  // a list of verbs ("create, organize, and edit") and what they act on - only after "helps", "lets", "can", ...
+  let verbs = [], object = rest, nouns = [];
+  const vm = /^((?:[a-z-]+,\s+)+(?:and\s+|or\s+)?[a-z-]+|[a-z-]+\s+(?:and|or)\s+[a-z-]+)\s+(.+)$/i.exec(rest);
+  if (vm) { const L = vm[1].split(/,\s*|\s+(?:and|or)\s+/).map(x => x.replace(/^(?:and|or)\s+/i, '').trim()).filter(Boolean);
+    if (helper) verbs = L; else nouns = L;
+    object = vm[2]; }
+  object = object.replace(/[.,;]\s*$/, '').replace(/^(?:of|for|in)\s+/i, '').replace(/\s+(?:from|for|in|with|on|across|into|like)(?:\s+(?:sources?|areas?|fields?|things|tools?|platforms?))?$/i, '').trim();
+  let items = list.filter(x => x.split(/\s+/).length <= 6);
+  if (items.length !== list.length) items = [];
+  let usesVerbs = false;
+  if (items.length < 2 && nouns.length >= 2) { items = nouns; verbs = [main]; }
+  else if (items.length < 2 && verbs.length >= 3) { items = verbs.slice(); usesVerbs = true; }
+  else if (!helper && !/^(?:is|are)$/.test(main)) verbs = [main];
+  if (items.length < 2 || items.length > 8) return null;
+  // the heading: the sentence's own words for what it does and on what ("create, organize, and edit diverse types of
+  // content"), so a design that shows only the heading still says everything; else the object alone
+  const phrase = helper && verbs.length && !usesVerbs ? rest.replace(/[.,;]\s*$/, '').replace(/\s+(?:from|for|in|with|on|across|into|like)(?:\s+(?:sources?|areas?|fields?|things|tools?|platforms?))?$/i, '').trim() : '';
+  // "automates deployment, scaling, and management of containerized applications": the verb, then what the items belong to
+  const ofPart = !helper && nouns.length >= 2 && verbs.length === 1 ? (/^\s*(of|for|in|on|across)\s/i.exec(first.slice(first.indexOf(nouns[nouns.length - 1]) + nouns[nouns.length - 1].length)) || [])[1] : '';
+  const named0 = phrase && phrase.length <= 56 ? phrase : ofPart && object ? `${main} … ${ofPart.toLowerCase()} ${object}` : object;
+  const sec = { name: secCap(named0), kind: 'other', items: items.map(x => ({ label: secCap(stAcro(x)), detail: '' })) };
+  if (!sec.name || sec.name.length > 56) sec.name = '';
+  return { title: head || subject, full: head || subject, short: subject, intro: '', sections: [sec],
+    statement: { subject, verbs: usesVerbs ? [] : verbs.map(secCap), object, text: s } };
+}
+/* What the text is: labelled sections, else one statement with a list, else null (V10.16). */
+const contentRead = text => sectionsRead(text) || statementRead(text);

@@ -43,7 +43,8 @@ function orchOrder(ctx) {
 const orchNote = (what, o) => { ORCH.log.push(Object.assign({ at: new Date().toISOString().slice(11, 19), what }, o || {})); if (ORCH.log.length > 200) ORCH.log.shift(); };
 
 /* What a visual is, for the gallery's variety and its label. */
-const ORCH_CATS = [['Learning map', /learnmap|bridge/], ['Hero', /herobanner|spotlight|callout|poster|ribbon/], ['Icon summary', /iconrows|badges|storyboard|colortiles/], ['Roadmap', /roadmap/], ['Timeline', /timeline|milestone/], ['Cycle', /cycle/], ['Funnel', /funnel/],
+const ORCH_CATS = [['Concept map', /concepttiles/], ['Orbit', /orbit/], ['Honeycomb', /honeycomb/], ['Layered', /isostack/], ['Bento grid', /bento/],
+  ['Learning map', /learnmap|bridge/], ['Hero', /herobanner|spotlight|callout|poster|ribbon|keystatement/], ['Icon summary', /iconrows|badges|storyboard|colortiles/], ['Roadmap', /roadmap/], ['Timeline', /timeline|milestone/], ['Cycle', /cycle/], ['Funnel', /funnel/],
   ['Comparison', /versus|splitpanels|split|compare|table|matrix2/], ['Hub and spoke', /hub|radial|ecosystem|spoke|wheel|orbit/], ['Pillars', /pillar|columns|p-col/],
   ['Framework', /quadrant|framework|capmap|capability|swot|matrix/], ['Hierarchy', /tree|pyramid|layers|stack|hierarch|org/],
   ['Architecture', /architecture|platform|modules|planes|swimlane/],
@@ -71,6 +72,20 @@ function orchFootprint(prims) {
   return G;
 }
 const orchSame = (a, b) => { if (a.size < 2 || b.size < 2) return false; let n = 0; a.forEach(k => { if (b.has(k)) n++; }); return n / (a.size + b.size - n) >= 0.8; };
+/* 10.16: what a design looks like, beyond where its texts are: the cells of a 24 x 10 grid of the content area that its
+   coloured shapes cover (white and the slide's white excluded). Two designs that cover the same cells AND put their
+   texts in similar places read as the same picture (V10.15: "Capability map", "Grouped columns" and "Hierarchy" were
+   all two text panels side by side), whatever their names. Used by the ranking and by the visual benchmark. */
+function orchShapePrint(prims) {
+  const R = TEMPLATE.contentArea, G = new Set(), CW = R.w / 24, CH = R.h / 10;
+  prims.forEach(p => { if (p.t !== 'shape' || !p.fill || /^#F{6}$/i.test(p.fill) || p.cmp) return;
+    for (let i = Math.max(0, Math.floor((p.x - R.x) / CW)); i < Math.min(24, Math.ceil((p.x + p.w - R.x) / CW)); i++)
+      for (let j = Math.max(0, Math.floor((p.y - R.y) / CH)); j < Math.min(10, Math.ceil((p.y + p.h - R.y) / CH)); j++) {
+        const cx = R.x + (i + 0.5) * CW, cy = R.y + (j + 0.5) * CH; if (cx >= p.x && cx <= p.x + p.w && cy >= p.y && cy <= p.y + p.h) G.add(i + ',' + j); } });
+  return G;
+}
+const orchJac = (a, b) => { if (!a.size && !b.size) return 1; let n = 0; a.forEach(k => { if (b.has(k)) n++; }); return n / (a.size + b.size - n); };
+const orchLooksSame = (a, b) => orchJac(a.sp, b.sp) >= 0.72 && orchJac(a.fp, b.fp) >= 0.45;
 /* Score: accuracy first, then editability, richness and readability (0-100). */
 function orchScore(c) {
   let s = c.base;
@@ -84,16 +99,24 @@ function orchScore(c) {
 }
 /* The best, varied list: duplicates (same layout signature, or the same family twice) removed; categories in turn,
    each at most 3 times before every other category had its turn. */
-function orchRank(all, max) {
+function orchRank(all, max, shown, strict) {
   const seen = new Set(), fam = new Set(), pool = [], prints = [];
   all.filter(c => c && c.prims && c.prims.length).map(c => Object.assign(c, { score: orchScore(c) })).sort((a, b) => b.score - a.score).forEach(c => {
     // an AI service's own drawings are each their own design; its plan drawn here competes by family like the rest
     const sig = orchSig(c.prims), fk = c.own ? c.id : c.category + '|' + c.family, fp = c.footprint || (c.footprint = orchFootprint(c.prims));
-    if (seen.has(sig) || fam.has(fk) || prints.some(q => orchSame(q, fp))) return;
-    seen.add(sig); fam.add(fk); prints.push(fp); pool.push(c);
+    const look = { fp, sp: c.shapeprint || (c.shapeprint = orchShapePrint(c.prims)) };
+    if (seen.has(sig) || fam.has(fk) || (shown && shown.has(fk)) || prints.some(q => orchSame(q.fp, fp) || orchLooksSame(q, look))) return;
+    seen.add(sig); fam.add(fk); prints.push(look); pool.push(c);
   });
+  // 10.16: never padded with weak designs - when six or more designs with objects and hierarchy exist, the plain
+  // ones (text in boxes, richness under 3) are left out instead of filling the gallery to its maximum
+  // and designs that leave out a fact of the text (a statement's subject, verbs or object, a section's name) or draw
+  // no object at all are left out when six or more complete designs with objects exist
+  const objs = c => c.objects != null ? c.objects : (c.objects = new Set(c.prims.filter(p => p.cmp && p.cmp !== 'none').map(p => p.grp)).size);
+  const good = c => c.own || (c.richness >= 3 && c.complete !== false && objs(c) > 0);
+  const strong = pool.filter(c => c.richness >= 4 && good(c)).length, keep = strong >= 6 || strict ? pool.filter(good) : pool;
   const out = [], per = {};
-  for (const cap of [1, 3, 99]) for (const c of pool) {
+  for (const cap of [1, 3, 99]) for (const c of keep) {
     if (out.length >= max) break;
     if (out.includes(c) || (per[c.category] || 0) >= cap) continue;
     out.push(c); per[c.category] = (per[c.category] || 0) + 1;
@@ -125,7 +148,8 @@ async function orchGenerate(text, o, onStage) {
   // the paid engines, by the administrator's policy and only when they add something
   let note = '', paidUsed = false;
   const policy = orchPolicy(), strong = orchRank(memo.cands.slice(), ORCH_MAX).filter(c => c.score >= 70).length, sc = state.sec && state.sec.scene;
-  const exact = !!(sc && (sc.record || sc.mode === 'fixed' || sc.mode === 'data' || /^(?:relation|definition|statement)$/.test(sc.mode)));
+  // 10.16: a statement with a list (sections.js statementRead) is drawn from its parts, so the AI services may design it
+  const exact = !!(sc && (sc.record || sc.mode === 'fixed' || sc.mode === 'data' || /^(?:relation|definition|statement)$/.test(sc.mode))) && !(typeof contentRead === 'function' && contentRead(text));
   const want = policy === 'always' || (policy === 'when-needed' && !exact && !!memo.free.plan);
   const order = orchOrder(ctx);
   orchNote(`paid policy ${policy}: ${want ? 'wanted' : 'not needed'} (${strong} strong free visuals${exact ? ', exact values or one statement' : ''}; ${ctx.route || 'fixed order'}: ${order.join(' then ')})`);
@@ -166,10 +190,15 @@ async function orchMore(text, onStage) {
   for (const e of ORCH.engines.filter(x => x.kind === 'native' && x.more && x.available(ctx))) {
     try { memo.cands.push(...await e.more(ctx)); } catch (err) { orchNote(`${e.id} more failed: ${errText(err)}`); }
   }
-  // new ones first, then the ones already shown
-  const fresh = orchRank(memo.cands.filter(c => !before.has(c.id)), ORCH_MAX);
+  // new ones first, then the ones already shown; 10.16: a family already in the gallery is not offered again in other
+  // colours or spacing (V10.15's "More visuals" repeated Topic banner, Section panels, ... in other colours)
+  const shownFam = new Set((memo.list || []).map(c => c.own ? c.id : c.category + '|' + c.family));
+  // the gallery's standard holds for the additions too: when Generate had enough complete designs with objects, More
+  // visuals adds only such designs (or none, with a note) - never the weaker ones it left out
+  const strict = (memo.list || []).filter(c => c.complete !== false && !c.own).length >= 6 || (memo.list || []).every(c => c.complete !== false);
+  const fresh = orchRank(memo.cands.filter(c => !before.has(c.id)), ORCH_MAX, shownFam, strict);
   memo.list = fresh.concat((memo.list || []).filter(c => !fresh.includes(c))).slice(0, ORCH_MAX * 2);
-  return { list: memo.list, fresh: fresh.length, note: fresh.length ? '' : 'Every layout that suits this content is already shown.' };
+  return { list: memo.list, fresh: fresh.length, note: fresh.length ? '' : 'Every distinct design for this content is already shown.' };
 }
 
 /* ---------- the engines ---------- */
@@ -182,7 +211,8 @@ function orchBuiltin(page) {
   const s = state.sec;
   if (!s || !s.model || s.status !== 'ready' || s.model.type === 'none') return [];
   // 10.15: labelled sections are drawn from their plan (designs engine); the single-list views would drop a section
-  if (typeof sectionsRead === 'function' && sectionsRead(state.runText || '')) return [];
+  // 10.16: so is one statement with a list (its banner would repeat the sentence as a block of text)
+  if (typeof contentRead === 'function' && contentRead(state.runText || '')) return [];
   if (!s.gallery) s.gallery = suggest(s);
   const L = s.gallery.list.slice(page * 12, page * 12 + 12);
   return L.map(c => ({ id: 'b:' + s.index + ':' + c.key, engine: 'builtin', title: c.name, family: c.family || c.key, category: orchCategory((c.family || '') + ' ' + c.key + ' ' + c.name),
@@ -195,6 +225,12 @@ registerEngine({ id: 'designs', kind: 'native', order: 20,
   available: () => true,
   run: async ctx => orchDesigns(ctx, 10),
   more: async ctx => orchDesigns(ctx, 8) });
+/* 10.16: the facts every design of a text must show (beyond its items, which planRender already requires): a statement's
+   subject, verbs and object; labelled sections' names. */
+const orchFacts = P => { const st = P && P.statement;
+  return (st ? [st.subject].concat(st.verbs || [], [st.object]) : P && P.sections ? planGroups(P).map(x => x.g.name) : []).filter(Boolean); };
+const orchMissing = (prims, facts) => { const T = prims.filter(p => p.text).map(p => String(p.text)).join(' ').replace(/\s+/g, ' ').toLowerCase();
+  return facts.filter(f => !T.includes(String(f).replace(/\s+/g, ' ').toLowerCase())); };
 async function orchDesigns(ctx, max) {
   const m = ctx.memo.free;
   if (!m.plan) {
@@ -205,14 +241,14 @@ async function orchDesigns(ctx, max) {
   }
   // 10.15: labelled sections have no built-in single-list views, so more of their compositions are drawn here; the
   // learner-style ones (learning pack) rank above the general grouped layouts
-  const sec = !!m.d.plan.sections, list = planMoreDesigns(m.d.plan, ctx.R, m.seen, sec ? max + 6 : max);
+  const sec = !!m.d.plan.sections, list = planMoreDesigns(m.d.plan, ctx.R, m.seen, sec ? max + 10 : max);
   return list.map(r => ({ id: 'd:' + planDesignKey(r), engine: 'designs', title: r.name + (planStyleName(r.style) ? ' · ' + planStyleName(r.style) : ''), family: r.family, category: orchCategory(r.family + ' ' + r.key),
-    prims: r.prims, edit: 'full', complete: m.d.density === 'full', slides: 1, rich: /modern|pro|showcase|learning/.test(PLAN_LAYOUTS[r.key] && PLAN_LAYOUTS[r.key].pack || ''),
-    base: 62 + orchPackBonus(r.key) - (m.d.density === 'names' ? 6 : 0) - (sec && !/learning/.test(PLAN_LAYOUTS[r.key] && PLAN_LAYOUTS[r.key].pack || '') ? 8 : 0), why: r.kind,
+    prims: r.prims, edit: 'full', complete: m.d.density === 'full' && !orchMissing(r.prims, orchFacts(m.plan)).length, slides: 1, rich: /modern|pro|showcase|learning|concepts/.test(PLAN_LAYOUTS[r.key] && PLAN_LAYOUTS[r.key].pack || ''),
+    base: 62 + orchPackBonus(r.key) - (m.d.density === 'names' ? 6 : 0) - (sec && !/learning|concepts/.test(PLAN_LAYOUTS[r.key] && PLAN_LAYOUTS[r.key].pack || '') ? 8 : 0), why: r.kind,
     insert: async () => { ST.designs = [{ r, plan: m.d.plan, full: m.plan, density: m.d.density, from: 'your text' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } }));
 }
 // the newer packs' compositions are the richer ones (hero-style showcase first)
-const orchPackBonus = k => { const p = (PLAN_LAYOUTS[k] && PLAN_LAYOUTS[k].pack) || ''; return /learning/.test(p) ? 10 : /showcase/.test(p) ? 8 : /modern/.test(p) ? 4 : /pro/.test(p) ? 2 : 0; };
+const orchPackBonus = k => { const p = (PLAN_LAYOUTS[k] && PLAN_LAYOUTS[k].pack) || ''; return /learning|concepts/.test(p) ? 10 : /showcase/.test(p) ? 8 : /modern/.test(p) ? 4 : /pro/.test(p) ? 2 : 0; };
 /* A provider's result as candidates: its designs as native, editable objects first (never the picture by default). */
 function orchProvider(key) {
   return { id: key, kind: 'paid', order: key === 'napkin' ? 60 : 70,
@@ -224,7 +260,7 @@ function orchFrom(key, R) {
   const A = PANELS[key].auto, out = [];
   // Claude: its plan in every composition that suits it (the hybrid flow), drawn here as native shapes
   const plan = key === 'claude' && (R.items.plan || (R.items.find(i => i.plan) || {}).plan);
-  if (plan) out.push(...orchPlanDesigns(key, plan));
+  if (plan) out.push(...orchConceptDesigns(key, plan), ...orchPlanDesigns(key, plan));
   R.items.forEach((it, i) => {
     if (plan && it.fmt === 'plan') return;               // its layouts are among the plan's designs above
     const fe = A.feOK(it), ed = A.usable(it);
@@ -239,11 +275,28 @@ function orchFrom(key, R) {
   });
   return out;
 }
+/* 10.16: Claude's own compositions (its plan's "concepts"): its design, drawn as native shapes and checked like every
+   layout (plan.js planConceptFamily). Each is its own design in the gallery, ranked above the template layouts. */
+function orchConceptDesigns(key, plan) {
+  const R = Object.assign({}, TEMPLATE.contentArea), out = [];
+  (plan.concepts || []).forEach((c, i) => {
+    const r = planRender(plan, 'ai:' + i, R);
+    if (!r.ok) { orchNote(`${key} concept "${c.name}" not offered: ${r.why}`); return; }
+    const cat = orchCategory(c.name + ' ' + c.idea);
+    out.push({ id: `${key}:c:${i}:${hashText(JSON.stringify(c.elements)).slice(0, 10)}`, engine: key, own: true, title: c.name, family: 'ai-concept-' + i,
+      category: cat === 'Infographic' ? 'AI concept' : cat, prims: r.prims, edit: 'full', complete: true, slides: 1, rich: true, base: 76, concept: true,
+      why: 'designed by AI' + (c.idea ? ': ' + c.idea : '') + ' - drawn as editable shapes',
+      insert: async () => { ST.designs = [{ r, plan, full: plan, density: 'full', from: 'AI design' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });
+  });
+  return out;
+}
 /* An AI plan's compositions (up to 12, the richest first), each insertable like a design of the packs. */
 function orchPlanDesigns(key, plan) {
   const R = Object.assign({}, TEMPLATE.contentArea), d = planAtDensity(plan, R, 'auto'), seen = new Set();
   return planMoreDesigns(d.plan, R, seen, 12).map(r => ({ id: `${key}:p:${planDesignKey(r)}`, engine: key, title: r.name, family: r.family, category: orchCategory(r.family + ' ' + r.key),
-    prims: r.prims, edit: 'full', complete: d.density === 'full', slides: 1, rich: true, base: 66 + orchPackBonus(r.key) - (d.density === 'names' ? 6 : 0), why: 'designed with AI, drawn as editable shapes',
+    // 10.16: above the built-in suggestions (base 70): where the AI's plan and the built-in analysis give the same picture,
+    // the look-alike check keeps the AI-designed one
+    prims: r.prims, edit: 'full', complete: d.density === 'full', slides: 1, rich: true, base: 72 + orchPackBonus(r.key) - (d.density === 'names' ? 6 : 0), why: 'designed with AI, drawn as editable shapes',
     insert: async () => { ST.designs = [{ r, plan: d.plan, full: plan, density: d.density, from: 'AI design' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } }));
 }
 registerEngine(orchProvider('napkin'));

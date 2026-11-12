@@ -1,9 +1,9 @@
-AI VISUAL BUILDER V10.15
+AI VISUAL BUILDER V10.16
 ========================
 Your content -> Generate visuals -> up to 20 editable designs -> insert the one you like, in the Simplilearn template.
 Lightweight: JavaScript in the panel, a small Python host on this PC, no AI models, no GPU.
 
-HOW TO USE (V10.15)
+HOW TO USE (V10.16)
 1. Once: double-click local-ai\Set up AI Visual Builder.bat (localhost certificate + start at sign-in), then
    "Install V10 add-in.bat". If PowerPoint says "Sorry, we can't load the add-in": double-click
    local-ai\Start AI Visual Builder.bat and reopen the panel.
@@ -17,7 +17,11 @@ HOW TO USE (V10.15)
    see it large (no click needed); click it to choose it. There is no separate preview area: the popup is the preview.
    Course and topic summaries written as a title with labelled lists ("What you learn: ...", "Best for: ...") are
    read as named sections: every section and every entry is kept, each entry becomes a short item with its own
-   object (sections.js).
+   object (sections.js). One statement with a list ("Claude AI helps you create, organize, and edit diverse types of
+   content - from written copy ... to AI-marked text") is read as its subject, what it does and its examples, and
+   drawn as a picture of them - never as a banner of the whole sentence (V10.16).
+   "Open large gallery" (V10.16) shows every design large in a popup (an Office dialog, like SL Smart Design's
+   Alternative Design popup): filters, a big preview on hover, Insert, More visuals, Several slides, Edit a visual.
 4. Press Insert (the button names the design you chose; tick "On a new slide" to keep the selected slide as it is).
    "Undo last insert" takes out exactly what was inserted.
 5. Optional: "More visuals" (new layouts first, then colour and spacing variants), "Several slides" (long content on
@@ -66,6 +70,11 @@ FILES (local-ai)
   app.js          what end users see: content, Generate, gallery, insert; the developer mode (V10.13)
   packs\modern-10.13.js  roadmap, pillars and quadrant framework layouts (V10.13)
   packs\showcase-10.14.js  hero-style layouts: spotlight, visual summary cards, callout diagram, learning journey (V10.14)
+  packs\concepts-10.16.js  concept compositions: concept tiles, ecosystem orbit, hexagon cluster, layered stack,
+                           bento grid, statement spotlight; objects presentation and AI-marked document (V10.16)
+  gallery-dialog.html      the large gallery (Office dialog) (V10.16)
+  tests\run_bench.py       visual-quality benchmark: python tests\run_bench.py --before <commit> writes before/after
+                           contact sheets and measurements to tests\evidence\v10.16-bench (V10.16)
   packs\learning-10.15.js  learner-style layouts for labelled sections and short lists, and new objects (brain,
                            megaphone, e-mail, briefcase, rocket, growth, social, analysis, trophy) (V10.15)
   sections.js              reads "What you learn: ... / Best for: ..." content as named sections (V10.15)
@@ -129,6 +138,16 @@ DESIGNS, SLIDES AND EDITS (V10.12, step 5, free: no AI request)
   was interrupted is offered for removal.
 - Edit a visual: click a visual inserted by 10.12 or later > Edit the selected visual > change texts, icons, colours,
   spacing or layout > Preview change > Apply to the slide; Undo last edit. Only that visual's shapes change.
+
+V10.16: CLAUDE DESIGNS ITS OWN COMPOSITIONS
+- Claude's one plan request (unchanged: one request, same cache and cost controls) now also returns 3-4 "concepts":
+  complete compositions of its own design for the content area - shapes from PowerPoint's presets, texts, catalogue
+  objects and connector lines, in the template's colour tokens. The panel draws each as native, editable shapes and
+  checks it like every layout (approved colours, 22 pt, overlaps, clipping, the content area, every item on the
+  slide); a concept that fails is not offered, with the reason in the generation log. They appear in the gallery as
+  their own designs ("AI-designed" in the large gallery), ranked above the template layouts.
+- Not yet run against the real Claude API: tested with a hand-written answer in Claude's schema
+  (tests\fixtures\claude-statement-plan.json). A real request costs credits and needs your approval.
 
 CLAUDE AI (V10.11)
 - One "Generate visuals with Claude AI" (1 visual or 4 variations, ONE request either way): Claude analyses the content

@@ -1,0 +1,48 @@
+SL SMART DESIGN - SOURCE REVIEW FOR THE AI VISUAL BUILDER BUTTON (V10.16, 12 Nov 2026)
+=====================================================================================
+
+What was reviewed
+-----------------
+- The editable source named for this work, SL_Smart_Design_v2_Key_Sandeep_Dec_05.pptm (SharePoint), could not be
+  opened: the link answers 403 (it needs a Simplilearn sign-in) and no copy of it is on this PC.
+- Reviewed instead, read-only: the add-in that is installed, SL_Smart_Design_v2_Key_Dec_25.ppam (Downloads), whose
+  vbaProject.bin still holds the VBA source (compressed). It was read with a standard-library script (no new tools);
+  nothing in the add-in was changed. The copy that add-to-sl-smart-design.ps1 writes is a separate file.
+
+What the add-in is
+------------------
+- One ribbon tab, "SL Smart Design" (customUI.xml), groups: Design (Alternative Design), SL Templates (6 buttons: Add
+  Footer Note, Blue / Black Codebox, Footer Info, Problem Solution, Problem Solution Image), Miscellaneous (Remove
+  Animations, Delete Empty Boxes), Shape Rename (Text, Heading). Every button calls a macro in Module1
+  (onAction="module1.<name>").
+- VBA project: Module1 (736 lines: the ribbon callbacks), DynamicTemplateSelectorForm (408 lines: the Alternative
+  Design popup), LicenseForm (13 lines).
+- Alternative Design (Template_Button1 -> Module1.ShowTemplateSelectorForm): checks the licence, then shows
+  DynamicTemplateSelectorForm, a VBA UserForm with a scrolling frame of template thumbnails (Image controls with an
+  option button each, built at run time from numbered template files under %LocalAppData%). OK inserts the chosen
+  template slide with Slides.InsertFromFile and fills its text from the selected slide's text.
+
+Findings that matter
+--------------------
+1. LICENCE EXPIRY: ShowTemplateSelectorForm stops with "License expired" after a date written in the code
+   (31 Dec 2026). From 1 Jan 2027 Alternative Design stops working on every PC unless the SL Smart Design maintainer
+   changes that date and redistributes the add-in. (The licence key itself is also written in the code; it is not
+   repeated here.)
+2. The anchor the AI Visual Builder kit uses is right: group "Template_id", button "Template_Button1" (Alternative
+   Design). add-to-sl-smart-design.ps1 inserts the "AI Visuals" button directly after it; the existing buttons,
+   their callbacks and the VBA project are left exactly as they are.
+3. A VBA UserForm cannot show the AI Visual Builder gallery itself: its only web control (WebBrowser) runs the retired
+   Internet Explorer engine, which cannot run the generator, and VBA has no way to open a web add-in's task pane or
+   dialog. Office also does not let a web add-in put a button on a VBA add-in's tab. So the supported routes are:
+     a) AI Visual Builder's own group (Home tab) - always available, no VBA involved;
+     b) the "AI Visuals" button on the SL Smart Design tab, which presses (a) for the user through Windows UI
+        Automation (open-panel.ps1). From the panel, "Open large gallery" shows the designs in a large Office dialog,
+        the counterpart of the Alternative Design popup.
+   A deeper integration (one gallery for both) would need SL Smart Design itself rebuilt as a web add-in.
+
+What is needed to finish the SL Smart Design button
+---------------------------------------------------
+- The editable source: SL_Smart_Design_v2_Key_Sandeep_Dec_05.pptm (or whichever .pptm the current .ppam is saved
+  from), downloaded to this PC; or the SL Smart Design maintainer, who can do the steps in README.txt in about two
+  minutes: run add-to-sl-smart-design.ps1 on a copy, import AIVisualBuilder.bas (Alt+F11 > File > Import File), save
+  as .ppam, and distribute it with the licence date updated.

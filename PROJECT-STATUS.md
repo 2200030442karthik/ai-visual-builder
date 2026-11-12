@@ -1,6 +1,6 @@
 # AI Visual Builder — project status
 
-## Current version: V10.15 (11 Nov 2026)
+## Current version: V10.16 (12 Nov 2026)
 Authorized employee + Content Slide of the approved template → paste content → analyze → accurate infographic and
 pictorial suggestions → preview → insert editable PowerPoint shapes. JavaScript panel + small Python host; no AI
 models, no GPU. Three ways to generate: native infographics (built in, free), and optionally Napkin AI (single approved
@@ -30,9 +30,27 @@ Simplilearn brand style) or Claude AI (Anthropic API), both paid, confirmed per 
 | Claude AI backend | `local-ai/claude_visual.py`, `configure-claude.ps1`, `Configure Claude.bat` | one design-specification request for 1 or 4 visuals (drawings kept for cached results and tests), `max_retries=0`, no fallback model; model / effort / max_tokens / prices in `%LOCALAPPDATA%\AIVisualBuilder\claude.json` |
 | Install / restart | `local-ai/start-ai-visual-builder.ps1` (+ `Restart AI Visual Builder.bat`), `install-v10-addin.ps1` (+ `Install V10 add-in.bat`, `Remove V10 add-in.bat`) | restart replaces every outdated copy; V10 registration by its own manifest Id, V9 never touched |
 | Access | `local-ai/access.py`, `access.example.json` | administrator policy in `%ProgramData%\AIVisualBuilder\access.json` |
-| Panel host | `local-ai/server.py` | 10.15.0; `paid_order` "auto"; `orchestrate` in /api/status; ribbon icons; `--test` hosts refuse paid requests; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
-| Manifest | `manifest-v10.xml` | 10.15.0.0: group "AI Visual Builder" at the end of PowerPoint's Home tab (the button the SL Smart Design "AI Visuals" button presses), buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
+| Panel host | `local-ai/server.py` | 10.16.0 (large gallery: /api/gallery); `paid_order` "auto"; `orchestrate` in /api/status; ribbon icons; `--test` hosts refuse paid requests; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
+| Manifest | `manifest-v10.xml` | 10.16.0.0: group "AI Visual Builder" at the end of PowerPoint's Home tab (the button the SL Smart Design "AI Visuals" button presses), buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
 | Diagnosis | `local-ai/tests/run_diag.py`, `diag.html`, `diag_cases.py` | every layout considered with its reason; every Napkin variation with arrangement, status and preview |
+
+## V10.16 — AI-first concepts, statements as pictures, distinct designs, large gallery (12 Nov)
+Root causes found: (1) one statement ("Claude ai helps you create, organize, and edit ...") was rejected by the content
+reader and marked "exact", so it got only two text banners and never reached the AI services; (2) V10.15 limited
+sectioned content to grouped layouts and "More visuals" re-offered the same families in other colours, so galleries
+were the same two-panel picture many times (benchmark: 14 and 17 look-alike pairs); (3) Claude only chose template
+names, so its design intelligence was reduced to our templates; (4) ranking padded the gallery with plain designs.
+Fixes: `sections.js` statementRead (subject, verbs, object, examples - the sentence's own words; the heading carries
+what it does); `packs/concepts-10.16.js` (six concept compositions: concept tiles, orbit, hexagon cluster, layered
+stack, bento grid, statement spotlight); orchestrator: shape-print look-alike check, completeness of facts (a
+statement's subject, verbs and object; section names), no weak designs when six complete ones exist, More visuals
+never repeats a family; Claude's plan answer adds 3-4 own compositions ("concepts") drawn as native shapes
+(`plan.js` planConceptFamily, `orchestrator.js` orchConceptDesigns); the large gallery (`gallery-dialog.html`, Office
+dialog, `server.py` /api/gallery). Benchmark (`tests/run_bench.py`, evidence in `local-ai/tests/evidence/v10.16-bench`):
+Claude AI statement 2 text banners -> 8 complete designs in 7 categories; AI & ML look-alike pairs 14 -> 1, repeated
+families 10 -> 0. SL Smart Design source reviewed from the installed .ppam (`local-ai/sl-smart-design/SOURCE-REVIEW.txt`;
+the .pptm on SharePoint answers 403). Tests `tests/app.html` 21 of 21 (new A17-A20). **Not yet verified in real
+PowerPoint; Claude's concepts not yet run against the real API.**
 
 ## V10.15 — learner-style visuals, labelled sections, hover-only preview, SL Smart Design button (11 Nov)
 Why V10.14's visuals still looked basic for course summaries: (1) on this PC `config.json` had `"paid_policy": "never"`,
@@ -186,6 +204,7 @@ and the new layouts in real PowerPoint.
 - In Windows mode the PC's user, who holds the Napkin key, cannot be restricted; Entra mode with one shared host can.
 
 ## Change log
+- **V10.16** (12 Nov) — statementRead, concepts pack (6 compositions, 2 objects), look-alike and completeness ranking, Claude concepts (schema, brief, renderer), large gallery dialog, visual benchmark, SL Smart Design source review; tests A17-A20, concept schema check.
 - **V10.15** (11 Nov) — sections.js (labelled sections), learning pack (9 compositions, 9 objects), Claude brief for sections, hover-only preview, Home-tab group, SL Smart Design "AI Visuals" kit (VBA module, ribbon lines, copy script, open-panel.ps1); tests A15-A16, ribbon check covers the kit.
 - **V10.14** (10 Nov) — showcase design pack, Claude headline/takeaway/hero, AI services routed by content and used for every suitable new text, Claude plan drawn in all suitable compositions, richness ranking and composition-level dedupe, hover preview, ribbon group on the Insert tab; tests A12-A14.
 - **V10.13** (10 Nov) — simple app (app.js), hidden engine choice with policy and cost control (orchestrator.js), modern design pack, ribbon tab, developer mode; tests A1-A11 and the ribbon check.
