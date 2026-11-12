@@ -43,7 +43,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import access as A
 import claude_visual as C
 
-VERSION = '10.16.0'
+VERSION = '10.17.0'
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'AIVisualBuilder')
 STATIC = {'/': ('v10.html', 'text/html; charset=utf-8'), '/v10.html': ('v10.html', 'text/html; charset=utf-8'),
@@ -61,7 +61,8 @@ MAX_TEXT = 10000
 # paid_order: "auto" (10.14: by the content - Claude for technical structure, Napkin for concepts) or a fixed list such as
 # ["napkin", "claude"] (the next is the fallback). Set by the administrator; the app shows neither.
 CONFIG = {'port': 44317, 'napkin_base': 'https://api.napkin.ai', 'napkin_max_per_day': 0, 'napkin_timeout_s': 60, 'claude_max_per_day': 0, 'claude_timeout_s': 300,
-          'paid_policy': 'when-needed', 'paid_order': 'auto'}
+          'paid_policy': 'when-needed', 'paid_order': 'auto', 'soft_tints': False}
+# soft_tints (10.17): allow one light tint of each palette colour for card fills (brand.js softTints); off by default
 try:
     with open(os.path.join(HERE, 'config.json'), encoding='utf-8') as f:
         CONFIG.update({k: v for k, v in json.load(f).items() if k in CONFIG})
@@ -633,7 +634,8 @@ class Handler(BaseHTTPRequestHandler):
                 if TEST_NO_PAID:     # a test panel host: both paid providers shown as switched off
                     napkin['enabled'] = claude['enabled'] = False
                 orchestrate = {'paid': CONFIG['paid_policy'], 'order': CONFIG['paid_order']}
-                return self.send(200, {'server': VERSION, 'access': access, 'napkin': napkin, 'claude': claude, 'orchestrate': orchestrate})
+                return self.send(200, {'server': VERSION, 'access': access, 'napkin': napkin, 'claude': claude, 'orchestrate': orchestrate,
+                                       'brand': {'soft_tints': CONFIG['soft_tints'] is True}})
             if path == '/api/gallery':
                 return self.send(200, gallery_get(arg('k')))
             if path.startswith(('/api/napkin/', '/api/claude/')) and not self.authorized():

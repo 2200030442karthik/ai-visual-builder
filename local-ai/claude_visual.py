@@ -164,10 +164,12 @@ Design:
 - One statement ("X helps you create, organize and edit A, B, C and D"): X is the hero (short), the listed examples
   are the items (the text's words), and what X does ("create, organize, and edit diverse types of content") is the
   single group's name or the headline - never the whole sentence as one block of text, never invented items.
-- concepts: 3 or 4 complete compositions of your own design, each a genuinely different visual idea for this content
-  (for example a hero card joined by a bracket to icon tiles, an orbit around the topic, a winding journey, layered
-  slabs, a bento grid of tiles of different sizes, a split comparison, an illustrated scene with callouts) - never the
-  same arrangement in other colours. Each: name (2-4 words), idea (one sentence: why this picture suits the content)
+- concepts: 4 to 6 complete compositions of your own design, each a genuinely different visual idea for this content,
+  modern and engaging for learners like a polished AI infographic (for example a hero object - a device, a disc, a
+  card - joined by elbow connectors with dots to cards that each hold an icon tile and a label; a header pill over a
+  panel of icon columns per section; a hero card joined by a bracket to icon tiles; an orbit around the topic; a
+  winding journey; layered slabs; a bento grid of tiles of different sizes; a split comparison; an illustrated scene
+  with callouts) - never the same arrangement in other colours, never plain text in boxes. Each: name (2-4 words), idea (one sentence: why this picture suits the content)
   and elements, drawn in order (later elements on top) in the content area: x from 0 to 1079, y from 0 to 435 (points;
   16:9 slide, the slide's title is above it). Element kinds:
   shape: a native shape (shape from the list, color a token; text "" or a short label drawn on it);

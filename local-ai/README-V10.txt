@@ -1,9 +1,9 @@
-AI VISUAL BUILDER V10.16
+AI VISUAL BUILDER V10.17
 ========================
 Your content -> Generate visuals -> up to 20 editable designs -> insert the one you like, in the Simplilearn template.
 Lightweight: JavaScript in the panel, a small Python host on this PC, no AI models, no GPU.
 
-HOW TO USE (V10.16)
+HOW TO USE (V10.17)
 1. Once: double-click local-ai\Set up AI Visual Builder.bat (localhost certificate + start at sign-in), then
    "Install V10 add-in.bat". If PowerPoint says "Sorry, we can't load the add-in": double-click
    local-ai\Start AI Visual Builder.bat and reopen the panel.
@@ -40,6 +40,8 @@ WHAT HAPPENS BEHIND "GENERATE VISUALS" (orchestrator.js)
 - Policy (local-ai\config.json, "paid_policy"): "never" | "when-needed" (default: one request for every new text a
   design can show - never for records of exact values, data tables or a single statement) | "always".
   "paid_order": "auto" (default, by the content as above) or a fixed list such as ["napkin", "claude"].
+  "soft_tints": false (default) or true (V10.17): allow one light tint of each palette colour as a card fill (the
+  pastel cards of AI infographics). Off keeps the V10.5 standard (approved colours only; tints become the light grey).
 - Cost control: a result the panel host kept for the same text is reused (free); a text already sent from this PC in
   the last 24 hours is not sent again; at most one request per Generate (plus one fallback); daily caps and duplicate
   guards of the panel host stay in force. Test panel hosts (--test) never send a paid request.
@@ -86,7 +88,12 @@ FILES (local-ai)
   server.py       panel host (https://localhost:44317), Napkin proxy; key never reaches the panel
   access.py       who may generate (the administrator's policy), checked in the panel host
   access.example.json  policy template for administrators
-  config.json     port, optional Napkin daily cap (0 = none), timeout; paid_policy and paid_order (V10.13)
+  config.json     port, optional Napkin daily cap (0 = none), timeout; paid_policy and paid_order (V10.13);
+                  soft_tints (V10.17)
+  packs\scenes-10.17.js  sixteen scene compositions (V10.17): device links (laptop with an AI chip), disc and tile
+                  grid, hub with side cards, topic tree, ring and cards, split panel, zigzag spine, focus target,
+                  quadrant circle, icon band, folder tabs, speech bubbles, circuit board, ribbon tags, section rows,
+                  mind map, circle headers; objects laptop, AI chip, research, course
   tests\run_tests.py   all tests incl. the V10.8 acceptance cases A-I (headless Edge, stand-ins for PowerPoint and
                        Napkin; no network, no credits)
   tests\run_diag.py    diagnosis: every layout considered with its reason, every Napkin variation with its preview
@@ -138,6 +145,20 @@ DESIGNS, SLIDES AND EDITS (V10.12, step 5, free: no AI request)
   was interrupted is offered for removal.
 - Edit a visual: click a visual inserted by 10.12 or later > Edit the selected visual > change texts, icons, colours,
   spacing or layout > Preview change > Apply to the slide; Undo last edit. Only that visual's shapes change.
+
+V10.17: 20+ DISTINCT DESIGNS FROM ONE GENERATE
+- One Generate now shows every distinct design that fits (up to 24): a statement, a list or a course summary gives
+  20-24, dense labelled sections with descriptions about 17 (the descriptions do not fit more layouts at 22 pt). No
+  extra clicks; "More visuals" is still there for colour and spacing variants.
+- The scenes pack (packs\scenes-10.17.js) adds sixteen compositions in the manner of AI infographics: a hero object
+  (a laptop whose screen holds an AI chip, a disc, a colour panel), elbow connectors with dots, soft cards with white
+  icon tiles, header pills. Every one is native shapes and text, checked like every layout.
+- Ranking: learner appeal per composition (the infographic-style ones first), no score cap (V10.16 capped at 100 and
+  lost the order among the best), Claude's own compositions above the built-in ones, and a look-alike check that also
+  tells solid colour areas from light panels (colour variants of one layout are still one design).
+- A slide with a title, a subtitle and one sentence ("Artificial Intelligence" / "AI" / "The best content about
+  artificial intelligence covers A, B, and C") is read as the topic (AI) and its items, never as two text cards.
+- Claude's one plan request asks for 4-6 compositions of its own (V10.16: 3-4); not yet run against the real API.
 
 V10.16: CLAUDE DESIGNS ITS OWN COMPOSITIONS
 - Claude's one plan request (unchanged: one request, same cache and cost controls) now also returns 3-4 "concepts":

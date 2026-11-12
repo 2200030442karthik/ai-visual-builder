@@ -1,6 +1,6 @@
 # AI Visual Builder — project status
 
-## Current version: V10.16 (12 Nov 2026)
+## Current version: V10.17 (12 Nov 2026)
 Authorized employee + Content Slide of the approved template → paste content → analyze → accurate infographic and
 pictorial suggestions → preview → insert editable PowerPoint shapes. JavaScript panel + small Python host; no AI
 models, no GPU. Three ways to generate: native infographics (built in, free), and optionally Napkin AI (single approved
@@ -30,9 +30,25 @@ Simplilearn brand style) or Claude AI (Anthropic API), both paid, confirmed per 
 | Claude AI backend | `local-ai/claude_visual.py`, `configure-claude.ps1`, `Configure Claude.bat` | one design-specification request for 1 or 4 visuals (drawings kept for cached results and tests), `max_retries=0`, no fallback model; model / effort / max_tokens / prices in `%LOCALAPPDATA%\AIVisualBuilder\claude.json` |
 | Install / restart | `local-ai/start-ai-visual-builder.ps1` (+ `Restart AI Visual Builder.bat`), `install-v10-addin.ps1` (+ `Install V10 add-in.bat`, `Remove V10 add-in.bat`) | restart replaces every outdated copy; V10 registration by its own manifest Id, V9 never touched |
 | Access | `local-ai/access.py`, `access.example.json` | administrator policy in `%ProgramData%\AIVisualBuilder\access.json` |
-| Panel host | `local-ai/server.py` | 10.16.0 (large gallery: /api/gallery); `paid_order` "auto"; `orchestrate` in /api/status; ribbon icons; `--test` hosts refuse paid requests; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
-| Manifest | `manifest-v10.xml` | 10.16.0.0: group "AI Visual Builder" at the end of PowerPoint's Home tab (the button the SL Smart Design "AI Visuals" button presses), buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
+| Panel host | `local-ai/server.py` | 10.17.0 (large gallery: /api/gallery); `paid_order` "auto"; `orchestrate` in /api/status; ribbon icons; `--test` hosts refuse paid requests; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
+| Manifest | `manifest-v10.xml` | 10.17.0.0: group "AI Visual Builder" at the end of PowerPoint's Home tab (the button the SL Smart Design "AI Visuals" button presses), buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
 | Diagnosis | `local-ai/tests/run_diag.py`, `diag.html`, `diag_cases.py` | every layout considered with its reason; every Napkin variation with arrangement, status and preview |
+
+## V10.17 — 20+ distinct designs from one Generate, scene compositions, learner-appeal ranking (12 Nov)
+Root causes (from the user's PowerPoint test of V10.16): (1) a slide with title, subtitle and one sentence ("Artificial
+Intelligence" / "AI" / "The best content ... covers A, B, and C") was not read (the statement reader needed one line
+and a verb list of single words), so it became two text cards ("AI" and the whole sentence); (2) the packs had too few
+structurally different compositions, so the look-alike check left 8-10 designs; (3) scores were capped at 100, so the
+order among the best designs was lost and older plain designs could lead; (4) the look-alike check saw only where
+coloured areas were, so dense section layouts all looked alike to it.
+Fixes: `sections.js` (title and subtitle lines, several-word lists after "covers/includes/..."); `packs/scenes-10.17.js`
+(16 compositions, 4 objects, a shared kit of soft cards, icon tiles, connectors, heroes); `orchestrator.js` (up to 24
+designs, every fitting composition drawn, learner appeal, no score cap, light/colour-aware look-alike check, Claude's
+concepts at base 90); `brand.js` + `server.py` soft tints (config "soft_tints", off by default); Claude asked for 4-6
+concepts. Benchmark (`tests/run_bench.py`, evidence `local-ai/tests/evidence/v10.17-bench`): AI slide: text cards ("AI" and
+the whole sentence, user's screenshot) -> 21 designs; Claude statement 8 -> 22; AI & ML 12 -> 22; Digital Marketing
+7 -> 16; Kubernetes 8 -> 24; 0 look-alikes within Generate. Designs that leave out only the topic's name (shown by the
+slide's title) are flagged in the contact sheets; every item and section name is on every design. Tests `tests/app.html` A21-A24. **Not yet verified in real PowerPoint; no paid request made.**
 
 ## V10.16 — AI-first concepts, statements as pictures, distinct designs, large gallery (12 Nov)
 Root causes found: (1) one statement ("Claude ai helps you create, organize, and edit ...") was rejected by the content
@@ -204,6 +220,7 @@ and the new layouts in real PowerPoint.
 - In Windows mode the PC's user, who holds the Napkin key, cannot be restricted; Entra mode with one shared host can.
 
 ## Change log
+- **V10.17** (12 Nov) — scenes pack (16 compositions), 20+ designs per Generate (cap 24), learner-appeal ranking without score cap, colour-aware look-alike check, title/subtitle/sentence reading, soft tints option, Claude 4-6 concepts; tests A21-A24.
 - **V10.16** (12 Nov) — statementRead, concepts pack (6 compositions, 2 objects), look-alike and completeness ranking, Claude concepts (schema, brief, renderer), large gallery dialog, visual benchmark, SL Smart Design source review; tests A17-A20, concept schema check.
 - **V10.15** (11 Nov) — sections.js (labelled sections), learning pack (9 compositions, 9 objects), Claude brief for sections, hover-only preview, Home-tab group, SL Smart Design "AI Visuals" kit (VBA module, ribbon lines, copy script, open-panel.ps1); tests A15-A16, ribbon check covers the kit.
 - **V10.14** (10 Nov) — showcase design pack, Claude headline/takeaway/hero, AI services routed by content and used for every suitable new text, Claude plan drawn in all suitable compositions, richness ranking and composition-level dedupe, hover preview, ribbon group on the Insert tab; tests A12-A14.

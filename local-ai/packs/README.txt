@@ -25,4 +25,5 @@ that the lists match).
 
 Packs: core@10.10 (plan.js: 11 families), pro@10.11.0 (pro-10.11.js: 12 families), modern@10.13.0 (modern-10.13.js:
 roadmap, pillars, quadrant framework), showcase@10.14.0, learning@10.15.0, concepts@10.16.0 (concepts-10.16.js:
-concept tiles, orbit, hexagon cluster, layered stack, bento grid, statement spotlight).
+concept tiles, orbit, hexagon cluster, layered stack, bento grid, statement spotlight), scenes@10.17.0
+(scenes-10.17.js: 16 compositions of AI-infographic style; families may set appeal, used by the ranking).

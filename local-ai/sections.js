@@ -161,7 +161,7 @@ function heroFor(short, title, more) {
    shown comes from the sentence; nothing is added. */
 const ST_ACRO = /\b(ai|ml|ui|ux|api|apis|seo|aws|gcp|iot|vr|llm|llms|nlp|crm|erp|sql)\b/gi;
 const stAcro = t => String(t).replace(ST_ACRO, m => /^(?:apis|llms)$/i.test(m) ? m.slice(0, -1).toUpperCase() + 's' : m.toUpperCase());
-const ST_VERB = /\s(?:helps?|lets?|enables?|allows?|empowers?|supports?|provides?|offers?|gives?|makes?|turns?|uses?|includes?|covers?|delivers?|automates?|transforms?|combines?|connects?|teaches?|shows?|can|will|is|are)\s/i;
+const ST_VERB = /\s(?:helps?|lets?|enables?|allows?|empowers?|supports?|provides?|offers?|gives?|makes?|turns?|uses?|includes?|covers?|delivers?|automates?|transforms?|combines?|connects?|teaches?|shows?|explores?|features?|spans?|involves?|focuses on|consists of|comprises?|can|will|is|are)\s/i;
 const ST_WHO = /^(?:you|users?|teams?|learners?|students?|people|businesses|organi[sz]ations|developers|creators|marketers|professionals|companies|everyone)\s+(?:to\s+)?/i;
 const ST_LIST_AT = [/\s*[—–]\s*|\s+-{1,2}\s+/, /\s+(?:such as|including|like|e\.g\.,?|for example,?|for instance,?)\s+/i, /:\s+/];
 function stSplitList(t) {
@@ -174,7 +174,11 @@ function stSplitList(t) {
 function statementRead(text) {
   const raw = String(text || '').replace(/\r\n?/g, '\n').trim();
   if (!raw || raw.length > 420) return null;
-  let lines = raw.split('\n').map(l => l.trim()).filter(Boolean), head = '';
+  let lines = raw.split('\n').map(l => l.trim()).filter(Boolean), head = '', abbr = '';
+  // 10.17: a slide's title and subtitle above the sentence ("Artificial Intelligence" / "AI" / "The best content ...")
+  const isHead = l => l.split(/\s+/).length <= 8 && !/[.!?]$/.test(l) && !ST_VERB.test(' ' + l + ' ');
+  if (lines.length === 3 && isHead(lines[0]) && isHead(lines[1]) && lines[1].split(/\s+/).length <= 4) {
+    head = lines[0].replace(/[:.]\s*$/, ''); abbr = lines[1].replace(/[:.()]/g, '').trim(); lines = [lines[2]]; }
   if (lines.length === 2 && lines[0].split(/\s+/).length <= 8 && !/[.!?]$/.test(lines[0])) { head = lines[0].replace(/[:.]\s*$/, ''); lines = [lines[1]]; }
   if (lines.length !== 1 || /^\s*(?:[-•*▪●◦–]|\d{1,2}[.)])\s/.test(lines[0])) return null;
   const s = lines[0].replace(/\s+/g, ' ');
@@ -204,7 +208,13 @@ function statementRead(text) {
   object = object.replace(/[.,;]\s*$/, '').replace(/^(?:of|for|in)\s+/i, '').replace(/\s+(?:from|for|in|with|on|across|into|like)(?:\s+(?:sources?|areas?|fields?|things|tools?|platforms?))?$/i, '').trim();
   let items = list.filter(x => x.split(/\s+/).length <= 6);
   if (items.length !== list.length) items = [];
-  let usesVerbs = false;
+  let usesVerbs = false, multi = false;
+  // 10.17: "covers foundational concepts, everyday writing and research assistants, and structured learning courses" -
+  // a list of several-word items straight after the verb (commas divide it; "and" inside an item stays)
+  if (items.length < 2 && nouns.length < 2 && !helper && !/^(?:is|are)$/.test(main) && /,/.test(rest)) {
+    const L = secSplitTop(rest.replace(/[.;!]+\s*$/, '')).map(x => x.trim().replace(/^(?:and|or)\s+/i, '').trim()).filter(Boolean);
+    if (L.length >= 2 && L.length <= 8 && L.every(x => x.split(/\s+/).length <= 6)) { items = L; nouns = L; multi = true; object = ''; }
+  }
   if (items.length < 2 && nouns.length >= 2) { items = nouns; verbs = [main]; }
   else if (items.length < 2 && verbs.length >= 3) { items = verbs.slice(); usesVerbs = true; }
   else if (!helper && !/^(?:is|are)$/.test(main)) verbs = [main];
@@ -214,11 +224,15 @@ function statementRead(text) {
   const phrase = helper && verbs.length && !usesVerbs ? rest.replace(/[.,;]\s*$/, '').replace(/\s+(?:from|for|in|with|on|across|into|like)(?:\s+(?:sources?|areas?|fields?|things|tools?|platforms?))?$/i, '').trim() : '';
   // "automates deployment, scaling, and management of containerized applications": the verb, then what the items belong to
   const ofPart = !helper && nouns.length >= 2 && verbs.length === 1 ? (/^\s*(of|for|in|on|across)\s/i.exec(first.slice(first.indexOf(nouns[nouns.length - 1]) + nouns[nouns.length - 1].length)) || [])[1] : '';
-  const named0 = phrase && phrase.length <= 56 ? phrase : ofPart && object ? `${main} … ${ofPart.toLowerCase()} ${object}` : object;
+  const lead = multi ? first.slice(0, v.index + v[0].length - 1).trim() : '';
+  const named0 = phrase && phrase.length <= 56 ? phrase : ofPart && object ? `${main} … ${ofPart.toLowerCase()} ${object}` : multi ? (lead.length <= 56 ? lead : `${subject} ${main}`) : object;
   const sec = { name: secCap(named0), kind: 'other', items: items.map(x => ({ label: secCap(stAcro(x)), detail: '' })) };
   if (!sec.name || sec.name.length > 56) sec.name = '';
-  return { title: head || subject, full: head || subject, short: subject, intro: '', sections: [sec],
-    statement: { subject, verbs: usesVerbs ? [] : verbs.map(secCap), object, text: s } };
+  // the hero names the topic: the slide's subtitle when it is the title's abbreviation ("AI"), else the title's short
+  // form, else the sentence's subject
+  const short = abbr && abbr.length <= 12 ? abbr : head ? secShort(head) : subject;
+  return { title: head || subject, full: head || subject, short, abbr, intro: '', sections: [sec],
+    statement: { subject, verbs: usesVerbs ? [] : verbs.map(secCap), object, text: s, head: head || '' } };
 }
 /* What the text is: labelled sections, else one statement with a list, else null (V10.16). */
 const contentRead = text => sectionsRead(text) || statementRead(text);

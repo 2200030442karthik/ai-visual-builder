@@ -1,4 +1,4 @@
-/* AI Visual Builder - visual-quality benchmark (V10.16), run in the real panel by tests/run_bench.py through
+/* AI Visual Builder - visual-quality benchmark (V10.16, V10.17: the AI slide text), run in the real panel by tests/run_bench.py through
    run_probe.py (stand-in PowerPoint, AI services off: no network, no credits). For each example text it presses
    Generate, then "More visuals", and measures every design in the gallery:
      objects   pictorial objects drawn (0 = text in boxes only)
@@ -9,6 +9,8 @@
    same coloured areas AND texts in similar places). Self-contained, so the same file measures an older version. */
 const R = W.eval('Object.assign({}, TEMPLATE.contentArea)'), A = W.__app, d = W.document;
 const EX = {
+  ai: { text: 'Artificial Intelligence\nAI\nThe best content about artificial intelligence covers foundational concepts, everyday writing and research assistants, and structured learning courses',
+    facts: ['AI', 'covers', 'foundational concepts', 'everyday writing and research assistants', 'structured learning courses'] },
   claude: { text: 'Claude ai helps you create, organize, and edit diverse types of content—from written copy and code-based animations to presentations and AI-marked text',
     facts: ['Claude', 'create', 'organize', 'edit', 'written copy', 'code-based animations', 'presentations', 'AI-marked text'] },
   aiml: { text: 'Artificial Intelligence and Machine Learning (AI & ML)\n\nWhat you learn: Neural networks, data mining, predictive modeling, and working with tools like ChatGPT or Python.\n\nBest for: Building smart apps, data analysis, and high-demand tech careers.',
@@ -28,7 +30,9 @@ await W.eval('refreshStatus()'); await W.eval('checkSlide()'); W.eval('showGate(
 const cells = (prims, test, nx, ny) => { const G = new Set(), CW = R.w / nx, CH = R.h / ny;
   prims.forEach(p => { if (!test(p)) return; for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) { const cx = R.x + (i + 0.5) * CW, cy = R.y + (j + 0.5) * CH; if (cx >= p.x && cx <= p.x + p.w && cy >= p.y && cy <= p.y + p.h) G.add(i + ',' + j); } }); return G; };
 const jac = (a, b) => { if (!a.size && !b.size) return 1; let n = 0; a.forEach(k => { if (b.has(k)) n++; }); return n / (a.size + b.size - n); };
-const look = prims => ({ sp: cells(prims, p => p.t === 'shape' && p.fill && !/^#F{6}$/i.test(p.fill) && !p.cmp, 24, 10),
+// what a design looks like: the panel's own measure when it has one (10.17: cells also say light panel or colour)
+const shapePrint = W.eval('typeof orchShapePrint === "function"') ? W.eval('orchShapePrint') : null;
+const look = prims => ({ sp: shapePrint ? shapePrint(prims) : cells(prims, p => p.t === 'shape' && p.fill && !/^#F{6}$/i.test(p.fill) && !p.cmp, 24, 10),
   fp: new Set(prims.filter(p => p.text && p.w > 0).map(p => Math.round((p.x + p.w / 2 - R.x) / R.w * 16) + ',' + Math.round((p.y + p.h / 2 - R.y) / R.h * 8))) });
 const same = (a, b) => jac(a.sp, b.sp) >= 0.72 && jac(a.fp, b.fp) >= 0.45;
 const vq = W.eval('typeof visualQuality === "function" && typeof qualityItems === "function"') ? W.eval('(p, R) => visualQuality(qualityItems(p), R)') : null;

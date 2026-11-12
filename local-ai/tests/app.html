@@ -81,7 +81,7 @@ async function run() {
     res.gen.hover.touchIgnored = !hv.classList.contains('on');
     // the richer compositions first, and no two of the same composition
     const L0 = A.APP.list, fps = L0.map(c => ev('p => orchFootprint(p)')(c.prims));
-    res.gen.rich = { top6: L0.slice(0, 6).map(c => `${c.family}:${c.richness}`), showcaseInTop10: L0.slice(0, 10).filter(c => /spotlight|callout|storyboard|journey/.test(c.family)).length,
+    res.gen.rich = { top6: L0.slice(0, 6).map(c => `${c.family}:${c.richness}`), showcaseInTop10: L0.slice(0, 10).filter(c => /spotlight|callout|storyboard|journey|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|sectionrows|mindmap|circleheads/.test(c.family)).length,   // 10.17: or the scenes pack's
       nearDuplicates: fps.reduce((n, f, i) => n + fps.slice(i + 1).filter(g => ev('(a, b) => orchSame(a, b)')(f, g)).length, 0) };
     // filters by kind
     const chip = [...d.querySelectorAll('#appChips button')].find(b => b.dataset.k !== 'All');
@@ -111,7 +111,7 @@ async function run() {
     fresh(); W.__cfg.policy = 'never'; await gate();
     let L = await gen(dmT);
     res.sec = { lines: d.getElementById('content').value.split(/\n/).slice(0, 3), n: L.length, families: L.map(c => c.family),
-      richFirst: L.slice(0, 3).every(c => /learnmap|herobanner|bridge|iconrows|splitpanels|poster|badges|ribbon|colortiles|concepttiles|orbit|honeycomb|isostack|bento|keystatement/.test(c.family)),
+      richFirst: L.slice(0, 3).every(c => /learnmap|herobanner|bridge|iconrows|splitpanels|poster|badges|ribbon|colortiles|concepttiles|orbit|honeycomb|isostack|bento|keystatement|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|sectionrows|mindmap|circleheads/.test(c.family)),
       missing: L.filter(c => !dmNeed.every(t => texts(c).includes(t))).map(c => c.family + ': ' + dmNeed.filter(t => !texts(c).includes(t)).join(' / ')),
       merged: L.filter(c => texts(c).some(t => /GrowthWhat|What you learn:/.test(t))).map(c => c.family), builtin: L.filter(c => c.engine === 'builtin').length, editable: L.every(c => c.edit === 'full'), paid: paidCalls() };
     const aiT = ['Artificial Intelligence and Machine Learning (AI & ML)', '', 'What you learn: Neural networks, data mining, predictive modeling, and working with tools like ChatGPT or Python.', '',
@@ -187,6 +187,52 @@ async function run() {
     const bk = await W.fetch0('/api/gallery?k=' + '0'.repeat(32), { headers: { 'X-AIVB-Client': '1' } }); res.v16.gallery.unknownKey = bk.status;
     await ev('removeLast()'); W.eval('galClose(); api = window.__api0; 1'); fr.remove();
     W.__cfg.claudePlanFor = null;            // the later tests use their own saved answers
+  }
+
+  /* ===== W (10.17): 20+ distinct designs from one Generate, the scenes pack, the slide's title and subtitle, soft tints ===== */
+  {
+    const flat = c => c.prims.filter(p => p.text).map(p => String(p.text)).join(' ').replace(/\s+/g, ' ').toLowerCase();
+    const objs = c => new Set(c.prims.filter(p => p.cmp && p.cmp !== 'none').map(p => p.grp)).size;
+    const aiT = 'Artificial Intelligence\nAI\nThe best content about artificial intelligence covers foundational concepts, everyday writing and research assistants, and structured learning courses';
+    const aiItems = ['foundational concepts', 'everyday writing and research assistants', 'structured learning courses'];
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'off', claude: 'off', policy: 'never' }); await gate(); M.reset(); await gate();
+    const SX = ev('t => statementRead(t)')(aiT);
+    let L = await gen(aiT);
+    const look = L.map(c => ({ fp: ev('orchFootprint')(c.prims), sp: ev('orchShapePrint')(c.prims) })), same = ev('orchLooksSame');
+    let pairs = 0; for (let i = 0; i < L.length; i++) for (let j = 0; j < i; j++) if (same(look[i], look[j])) pairs++;
+    const scenes = new Set(ev("PLAN_PACKS['scenes@10.17.0']"));
+    res.v17 = { read: SX && { title: SX.title, short: SX.short, items: SX.sections[0].items.map(i => i.label), heading: SX.sections[0].name },
+      n: L.length, cats: new Set(L.map(c => c.category)).size, lookAlike: pairs, textOnly: L.filter(c => !objs(c)).length,
+      missingItems: L.filter(c => !aiItems.every(t => flat(c).includes(t))).map(c => c.family), scenesShown: L.filter(c => scenes.has(c.family)).length,
+      scenesInTop3: L.slice(0, 3).filter(c => scenes.has(c.family)).length, families: new Set(L.map(c => c.family)).size === L.length, paid: paidCalls() };
+    // the device links scene (laptop with the AI chip) inserts as native shapes and text: no pictures, every item a text
+    const di = L.findIndex(c => c.family === 'devicelinks');
+    res.v17.device = { found: di >= 0 };
+    if (di >= 0) { A.appSelect(di); await A.appInsert(); const S0 = M.slides[0], lv = leaves({ items: own(S0) }), T = lv.map(x => x.textFrame && x.textFrame.textRange && x.textFrame.textRange.text).filter(Boolean);
+      res.v17.device = { found: true, shapes: lv.length, groups: own(S0).filter(x => x.type === 'Group').length, pictures: lv.filter(x => x.kind === 'picture').length,
+        items: ['Foundational concepts', 'Everyday writing and research assistants', 'Structured learning courses', 'AI'].every(t => T.includes(t)) };
+      await ev('removeLast()'); res.v17.device.undone = own(M.slides[0]).length === 0; }
+    // the other example texts: 20+ designs (dense labelled sections with descriptions: 16+), no look-alikes among them
+    res.v17.counts = {};
+    for (const [k, t] of [['claude', 'Claude ai helps you create, organize, and edit diverse types of content—from written copy and code-based animations to presentations and AI-marked text'],
+      ['k8s', 'Kubernetes automates deployment, scaling, and management of containerized applications.'],
+      ['aiml', 'Artificial Intelligence and Machine Learning (AI & ML)\n\nWhat you learn: Neural networks, data mining, predictive modeling, and working with tools like ChatGPT or Python.\n\nBest for: Building smart apps, data analysis, and high-demand tech careers.'],
+      ['dm', 'Digital Marketing and Social Media Growth\nWhat you learn: Search Engine Optimization (SEO), paid advertising, email campaigns, and audience building on platforms like TikTok and LinkedIn.\nBest for: Launching side hustles, promoting brands, or growing digital content.']]) {
+      fresh(); const L2 = await gen(t), lk = L2.map(c => ({ fp: ev('orchFootprint')(c.prims), sp: ev('orchShapePrint')(c.prims) }));
+      let pp = 0; for (let i = 0; i < L2.length; i++) for (let j = 0; j < i; j++) if (same(lk[i], lk[j])) pp++;
+      res.v17.counts[k] = { n: L2.length, lookAlike: pp, textOnly: L2.filter(c => !objs(c)).length };
+    }
+    // soft tints: off by default (only approved colours); allowed by the administrator, they appear only as card fills
+    const approved = new Set(ev('[...TEMPLATE.accents, ...TEMPLATE.neutrals]'));
+    const offColours = L.flatMap(c => c.prims).filter(p => (p.fill && !approved.has(p.fill)) || (p.color && !approved.has(p.color))).length;
+    W.eval('TEMPLATE.softTints = true; 1'); fresh();
+    const LT = await gen(aiT), tintSet = new Set(ev('[...SOFT_SET]'));
+    const tintFills = LT.flatMap(c => c.prims).filter(p => tintSet.has(p.fill)), tintBad = LT.flatMap(c => c.prims).filter(p => (p.fill && !approved.has(p.fill) && !tintSet.has(p.fill)) || (p.color && !approved.has(p.color)) || (p.cmp && tintSet.has(p.fill)));
+    W.eval('TEMPLATE.softTints = false; 1'); fresh();
+    res.v17.tints = { offColours, used: tintFills.length, bad: tintBad.length, n: LT.length };
+    // Claude may return up to six compositions of its own (V10.16: four)
+    const fx17 = JSON.parse(await fx('claude-statement-plan.json')); fx17.concepts = fx17.concepts.concat(fx17.concepts);
+    res.v17.concepts6 = ev('(raw) => planFromClaude(raw).plan.concepts.length')(fx17);
   }
 
   /* ===== I: insertion of each kind, editable; duplicate guard; undo ===== */
@@ -306,18 +352,18 @@ async function run() {
   res.acceptance = [
     ['A1 Normal UI: no version, host status, setup, analysis step, timings, provider sections, "how many", credit tick, re-check buttons, plan source, raw insert controls', U.before.simple && !U.before.technicalVisible.length && !U.before.version && !U.before.sub && U.before.gen === 'Generate visuals' && U.before.empty && U.before.insertBar && !U.before.stPanel && !U.after.technicalVisible.length,
       JSON.stringify(U)],
-    ['A2 One button: Generate runs the analysis itself and gives 10-20 varied, editable visuals (no duplicates), no provider words, no timings', Gn.ml.n >= 10 && Gn.ml.n <= 20 && Gn.ml.cats.length >= 5 && Gn.ml.uniqueLayouts && Gn.ml.analysed && Gn.ml.cards === Gn.ml.n && Gn.ml.thumbs >= Math.min(8, Gn.ml.n) && Gn.ml.editable === Gn.ml.n && Gn.ml.selected === 1 && !Gn.ml.timingsVisible && !Gn.ml.providerWords && Gn.ml.paid === 0,
+    ['A2 One button: Generate runs the analysis itself and gives 10-24 varied, editable visuals (10.17: up to 24) (no duplicates), no provider words, no timings', Gn.ml.n >= 10 && Gn.ml.n <= 24 && Gn.ml.cats.length >= 5 && Gn.ml.uniqueLayouts && Gn.ml.analysed && Gn.ml.cards === Gn.ml.n && Gn.ml.thumbs >= Math.min(8, Gn.ml.n) && Gn.ml.editable === Gn.ml.n && Gn.ml.selected === 1 && !Gn.ml.timingsVisible && !Gn.ml.providerWords && Gn.ml.paid === 0,
       JSON.stringify(Gn.ml)],
     ['A13 Hover preview: the design large after a short rest, beside (not over) its card, closed on leaving; touch ignored; selection unchanged', Gn.hover.shown && Gn.hover.svg && Gn.hover.sameAsCard && Gn.hover.wider && !Gn.hover.coversCard && Gn.hover.closed && Gn.hover.touchIgnored && Gn.hover.selectedUnchanged,
       JSON.stringify(Gn.hover)],
-    ['A14 Richer and varied: hero-style showcase designs among the first 10; no two designs with the same composition', Gn.rich.showcaseInTop10 >= 2 && Gn.rich.nearDuplicates === 0, JSON.stringify(Gn.rich)],
+    ['A14 Richer and varied: hero-style showcase or scene designs among the first 10; no two designs with the same composition', Gn.rich.showcaseInTop10 >= 2 && Gn.rich.nearDuplicates === 0, JSON.stringify(Gn.rich)],
     ['A15 Labelled sections ("What you learn" / "Best for"): a glued label is separated; both sections and every item on every design (none drops a section, no merged heading); the learner-style compositions first; 6+ designs (10.16: never padded with weaker or look-alike ones); all editable; no request with policy never', res.sec.lines.length >= 3 && /Growth$/.test(res.sec.lines[0]) && /^What you learn:/.test(res.sec.lines[1]) && res.sec.n >= 6 && !res.sec.missing.length && !res.sec.merged.length && res.sec.richFirst && res.sec.builtin === 0 && res.sec.editable && res.sec.paid === 0,
       JSON.stringify(Object.assign({}, res.sec, { ai: undefined }))],
     ['A16 AI & ML summary: 10+ designs; the learning map (hero with the brain, both sections, every item, an object for each) inserts as native objects; the AI services are sent both sections and every item; plain lists and prose are not read as sections', res.sec.ai.n >= 10 && res.sec.ai.learnmapComplete && res.sec.ai.hero && res.sec.ai.objects >= 7 && res.sec.ai.inserted && res.sec.ai.inserted.objects > 0 && res.sec.ai.sent.points.length === 7 && res.sec.ai.sent.groups.length === 2 && res.sec.notSections.every(Boolean),
       JSON.stringify(Object.assign({}, res.sec.ai, { notSections: res.sec.notSections }))],
     ['A3 Gallery: selection state, no separate preview area (hover is the preview), plain design names, the insert button names the choice, kind filters, More visuals (new first, nothing repeated), out-of-date content blocks insert', Gn.pick.sel === 3 && Gn.pick.pressed === 1 && Gn.pick.noPreviewArea && Gn.pick.noVariantSuffix && Gn.pick.insertNames && (!Gn.filter || Gn.filter.all) && Gn.more.unique && Gn.more.fresh >= 1 && Gn.stale.note && Gn.stale.insertDisabled,
       JSON.stringify({ pick: Gn.pick, filter: Gn.filter, more: Gn.more, stale: Gn.stale })],
-    ['A4 Other content: 10-20 visuals for lists, prose-like items, records; meaningless text refused plainly; empty content cannot generate', ['edu', 'de', 'facts', 'genai'].every(k => Gn[k].n >= 10 && Gn[k].n <= 20 && Gn[k].cats >= 4) && Gn.records.n >= 1 && Gn.meaningless.n === 0 && Gn.meaningless.errShown && Gn.empty.genDisabled,
+    ['A4 Other content: 10-24 visuals for lists, prose-like items, records; meaningless text refused plainly; empty content cannot generate', ['edu', 'de', 'facts', 'genai'].every(k => Gn[k].n >= 10 && Gn[k].n <= 24 && Gn[k].cats >= 4) && Gn.records.n >= 1 && Gn.meaningless.n === 0 && Gn.meaningless.errShown && Gn.empty.genDisabled,
       JSON.stringify({ edu: Gn.edu, de: Gn.de, facts: Gn.facts, genai: Gn.genai, records: Gn.records, meaningless: Gn.meaningless })],
     ['A5 Insert selected: built-in and design visuals go in as native, tagged objects, insert = preview; a repeat asks first; undo takes it out', ['builtin', 'designs'].every(k => I[k] && I[k].objects > 0 && I[k].insertEqualsPreview && I[k].tagged && I[k].undone && (I[k].edit === 'partial' || I[k].pictures === 0)) && I.dup && I.dup.warned && I.dup.objects,
       JSON.stringify(I)],
@@ -341,6 +387,15 @@ async function run() {
       JSON.stringify(res.v16.concepts)],
     ['A20 Large gallery: "Open large gallery" after Generate; the dialog shows every design with its thumbnail; a click selects it in the panel; Insert in the dialog inserts it; an unknown gallery key is refused', res.v16.gallery.button && res.v16.gallery.cards === res.v16.gallery.n && res.v16.gallery.thumbs === res.v16.gallery.n && res.v16.gallery.selected && res.v16.gallery.inserted > 0 && /^Inserted/.test(res.v16.gallery.note) && res.v16.gallery.unknownKey === 404,
       JSON.stringify(res.v16.gallery)],
+    ['A21 Slide with title, subtitle and one sentence ("Artificial Intelligence" / "AI" / "The best content ... covers A, B, and C"): read as topic AI and its 3 items; one Generate gives 20+ designs, all different families, no look-alikes, none text-only, every item on every design, the new scenes among the first 3; no request with policy never',
+      res.v17.read && res.v17.read.short === 'AI' && res.v17.read.items.length === 3 && res.v17.n >= 20 && res.v17.lookAlike === 0 && res.v17.textOnly === 0 && !res.v17.missingItems.length && res.v17.families && res.v17.scenesInTop3 >= 1 && res.v17.scenesShown >= 10 && res.v17.paid === 0,
+      JSON.stringify(Object.assign({}, res.v17, { counts: undefined, device: undefined, tints: undefined }))],
+    ['A22 Device links (laptop with the AI chip, connectors to icon-tile cards) inserts as native shapes and text: no pictures, every item and the topic as text, grouped; undo removes it',
+      res.v17.device.found && res.v17.device.pictures === 0 && res.v17.device.items && res.v17.device.groups > 0 && res.v17.device.undone, JSON.stringify(res.v17.device)],
+    ['A23 20+ designs for the other examples (statements and AI & ML), 16+ for dense labelled sections with descriptions (Digital Marketing); never look-alikes or text-only',
+      ['claude', 'k8s', 'aiml'].every(k => res.v17.counts[k].n >= 20) && res.v17.counts.dm.n >= 16 && Object.values(res.v17.counts).every(c => c.lookAlike === 0 && c.textOnly === 0), JSON.stringify(res.v17.counts)],
+    ['A24 Colours: only approved colours by default; soft tints (when the administrator allows them) only as card fills, never in icons or text; Claude may return up to 6 compositions',
+      res.v17.tints.offColours === 0 && res.v17.tints.used > 0 && res.v17.tints.bad === 0 && res.v17.concepts6 === 6, JSON.stringify({ tints: res.v17.tints, concepts6: res.v17.concepts6 })],
     ['No script errors in the panel', !errors.length, errors.join(' | ') || 'none'],
   ].map(([name, ok, evidence]) => ({ name, ok: !!ok, evidence }));
   out.textContent = JSON.stringify(res);

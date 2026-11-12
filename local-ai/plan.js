@@ -632,7 +632,7 @@ function planFromClaude(raw) {
   // 10.15: labelled sections ("What you learn" / "Best for") as Claude grouped them: drawn under their names
   plan.short = planClean(raw && raw.short);
   // 10.16: Claude's own compositions ("concepts"): drawn as native shapes by planRender under the keys ai:0 .. ai:3
-  plan.concepts = (Array.isArray(raw && raw.concepts) ? raw.concepts : []).filter(c => c && Array.isArray(c.elements) && c.elements.length >= 3).slice(0, 4)
+  plan.concepts = (Array.isArray(raw && raw.concepts) ? raw.concepts : []).filter(c => c && Array.isArray(c.elements) && c.elements.length >= 3).slice(0, 6)
     .map(c => ({ name: planClean(c.name) || 'AI concept', idea: planClean(c.idea), elements: c.elements }));
   if (typeof sectionKind === 'function' && groups.length >= 2 && groups.some(g => sectionKind(g.name) !== 'other')) {
     plan.sections = true; groups.forEach(g => { g.kind = sectionKind(g.name); });
