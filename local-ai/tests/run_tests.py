@@ -79,6 +79,7 @@ def main():
         subprocess.run([sys.executable, os.path.join(HERE, 'test_claude.py')])
         subprocess.run([sys.executable, os.path.join(HERE, 'test_hosted.py')])    # 10.18: hosted mode
         subprocess.run([sys.executable, os.path.join(HERE, 'test_v10_20.py')])    # 10.20: SL Smart Design bridge, registry regression
+        subprocess.run([sys.executable, os.path.join(HERE, 'test_slsd.py')])      # 10.20.1: SL Smart Design tab, Alternative Design, switch
         if edge:    # Edge hands over to helper processes: stop every Edge process using this run's own profile folder
             ps = f"Get-CimInstance Win32_Process -Filter \"Name='msedge.exe'\" | Where-Object {{ $_.CommandLine -like '*{PROFILE}*' }} | ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }}"
             subprocess.run(['powershell', '-NoProfile', '-Command', ps], capture_output=True)

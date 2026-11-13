@@ -1,3 +1,57 @@
+SL SMART DESIGN - ONE TAB, BOTH DESIGN TOOLS (V10.20.1, 13 Nov 2026)
+=====================================================================
+This section supersedes the V10.15-V10.20 notes below (kept for history and rollback).
+
+WHAT CHANGED AND WHY
+- V10.20 put AI Visual Builder on the SL Smart Design tab as a VBA button that asked the web add-in to open its panel.
+  That cannot work on the first click in a fresh presentation by any supported means (Microsoft documentation, Sep
+  2026): a web add-in's runtime is not running until the add-in is opened in that presentation;
+  Office.addin.setStartupBehavior is per document and needs one manual open first; OnDocumentOpened needs admin
+  deployment in the Microsoft 365 admin center and its handler may not show UI. The V10.20 fallback pressed the
+  Home-tab button through Windows UI Automation, started from VBA as a hidden "powershell -ExecutionPolicy Bypass"
+  (the pattern endpoint security watches for).
+- V10.20.1 turns it around: the SL Smart Design tab belongs to the AI Visual Builder web add-in (manifest-slsd.xml).
+    AI Visual Builder         a ShowTaskpane button: Office opens the real task pane on the first click, every time.
+    Alternative Design,       functions of the add-in (slsd.js) that ask the panel host (server.py /api/slsd/run,
+    SL Templates (6),         a fixed list) to run the ORIGINAL macro of the SL Smart Design VBA add-in through
+    Miscellaneous (2),        PowerPoint's documented Application.Run (slsd_com.py, ctypes, no new process, no
+    Shape Rename (2)          PowerShell). Licence check, Select Template window and template library unchanged.
+  The SL Smart Design VBA add-in stays installed (its macros are needed) with its own tab hidden: a copy made by
+  make_unified_slsd.py --hide-tab (only visible="false" changes; VBA project byte-identical, checked).
+- Alternative Design's blank gallery (traced, LVC_Template.pptx): the original window takes the BOTTOM-MOST shape of
+  the slide as the content (RenamePlaceholder). On LVC slides that is an empty body placeholder, a group or a
+  background shape, so it counts 0 or 1 points, looks in 0_point / 1_point (which do not exist) and shows an empty
+  frame. The thumbnails are fine (all 1,198 load; checked with Windows' own picture loader). Now slsd.js first finds
+  the content (the selected text box, else the one text box with 2-10 points, else the content placeholder), checks
+  the number of points exactly as the original counts them, explains in plain words when it cannot be used (1 point,
+  11+ points, Shift+Enter breaks, points in separate boxes, nothing selected among several), and sends the content to
+  the back so the original window reads it. If the window is cancelled, the shape's place and name are restored.
+
+FILES
+  ../manifest-slsd.xml        the ribbon (written by make_manifest_slsd.py; do not edit by hand)
+  ../slsd.js                  the tab's functions, Alternative Design preparation
+  ../slsd_com.py              Application.Run through COM (standard library)
+  ../slsd-notice.html         the short message window
+  make_icons.py               the tab's icons (assets/slsd)
+  make_unified_slsd.py        --hide-tab: the SL Smart Design copy with its own tab hidden
+  switch-slsd.ps1             Activate / Rollback / Status on this PC (backs up first; only its own values)
+  ../tests/test_slsd.py       unattended checks (132), incl. tests/slsd.html in headless Edge
+
+SWITCH THIS PC (PowerPoint closed)
+  1. Restart AI Visual Builder.bat            (the panel host must serve the new files)
+  2. powershell -ExecutionPolicy Bypass -File switch-slsd.ps1 -Action Activate
+  3. Start PowerPoint: one SL Smart Design tab: Design | SL Templates | Miscellaneous | Shape Rename; nothing on Home.
+  Back:   powershell -ExecutionPolicy Bypass -File switch-slsd.ps1 -Action Rollback   (restores the V10.20 state)
+  Check:  powershell -ExecutionPolicy Bypass -File switch-slsd.ps1 -Action Status
+
+KNOWN LIMITS
+- The SL Smart Design commands need the panel host running (it starts with Windows); if it is not, the buttons say so.
+- The Select Template window itself is the company's VBA form: unchanged (its source .pptm and the owner's approval are
+  needed to restyle it).
+- LICENCE: the installed SL Smart Design add-in stops Alternative Design after 31 Dec 2026 ("License expired"). Only the
+  SL Smart Design owner can issue an updated add-in; nothing here changes the licence check.
+
+
 AI VISUAL BUILDER ON THE SL SMART DESIGN RIBBON (V10.15)
 =========================================================
 Goal: an "AI Visuals" button beside "Alternative Design" (SL Smart Design tab, group "Design") that opens the AI

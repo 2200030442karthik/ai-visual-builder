@@ -1,6 +1,6 @@
 # AI Visual Builder — project status
 
-## Current version: V10.19 (13 Nov 2026)
+## Current version: V10.19 (13 Nov 2026); V10.20.1 (SL Smart Design integration) in progress, see below
 Authorized employee + Content Slide of the approved template → paste content → analyze → accurate infographic and
 pictorial suggestions → preview → insert editable PowerPoint shapes. JavaScript panel + small Python host; no AI
 models, no GPU. Three ways to generate: native infographics (built in, free), and optionally Napkin AI (single approved
@@ -33,6 +33,33 @@ Simplilearn brand style) or Claude AI (Anthropic API), both paid, confirmed per 
 | Panel host | `local-ai/server.py` | 10.19.0 (large gallery: /api/gallery); `paid_order` "auto"; `orchestrate` in /api/status; ribbon icons; `--test` hosts refuse paid requests; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
 | Manifest | `manifest-v10.xml` | 10.19.0.0: group "AI Visual Builder" at the end of PowerPoint's Home tab (the button the SL Smart Design "AI Visuals" button presses), buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
 | Diagnosis | `local-ai/tests/run_diag.py`, `diag.html`, `diag_cases.py` | every layout considered with its reason; every Napkin variation with arrangement, status and preview |
+
+## V10.20.1 — one SL Smart Design tab owned by the web add-in; Alternative Design blank gallery fixed (13 Nov, in progress)
+
+**Status: built and checked unattended (132 checks); NOT yet verified in real PowerPoint. The PC still runs V10.20
+until `switch-slsd.ps1 -Action Activate` is run.** Details: `local-ai/sl-smart-design/README.txt` (V10.20.1 section).
+
+**AI Visual Builder first click.** A VBA button cannot open a web add-in's task pane reliably by any supported means
+(setStartupBehavior is per document after a manual open; OnDocumentOpened needs admin deployment and allows no UI). So
+the SL Smart Design tab now belongs to the web add-in (`manifest-slsd.xml`, same add-in Id):
+- AI Visual Builder is a ShowTaskpane button;
+- the original SL Smart Design commands (Alternative Design, 6 SL Templates, 2 Miscellaneous, 2 Shape Rename) are
+  functions (`slsd.js`) that run the original macros through PowerPoint's `Application.Run`
+  (`server.py /api/slsd/run`, fixed list; `slsd_com.py`, ctypes COM, no new process);
+- the VBA add-in's own tab is hidden in a copy (`make_unified_slsd.py --hide-tab`, VBA byte-identical).
+- No Home-tab group; no UI Automation; Office never starts PowerShell.
+
+**Alternative Design blank gallery: root cause.** The original form takes the bottom-most shape as the content. On LVC
+slides that is a placeholder, group or background (0 or 1 point → `0_point`/`1_point` → empty frame). The template
+library is intact (1,198 templates in 2–10, every thumbnail loadable). `slsd.js` finds the content, checks 2–10 points
+as the original counts them, explains otherwise, and sends the content to the back for the original form; it restores
+the shape if the window is cancelled.
+
+**Switch / rollback:** `switch-slsd.ps1` (Activate / Rollback / Status): backs up both add-in files and the two
+registry values, changes only those, and restores them exactly. Tested on an isolated registry key.
+
+**Tests:** `tests/test_slsd.py` (COM, panel host, ribbon, hidden-tab add-in, template library, switch script,
+`tests/slsd.html` in headless Edge), added to `run_tests.py`.
 
 ## V10.19 — large text, same-slide insertion, icon layering, LVC type, AI-first ready, key-free install (13 Nov)
 

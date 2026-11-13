@@ -5,8 +5,12 @@ add-in (SLSD_AIVisualBuilder.ppam): the qualified ids idQ="sl:Template_Selector"
 Simplilearn.SLSmartDesign. Every other part - the VBA project with its forms, licence check and callbacks - is copied
 byte for byte, and checked to be identical. The original file is never written.
 
-Usage: python make_unified_slsd.py SOURCE.ppam OUT_DIR
+Usage: python make_unified_slsd.py SOURCE.ppam OUT_DIR [--hide-tab]
 Prints what changed; never prints VBA content.
+
+--hide-tab (V10.20.1): the SL Smart Design tab is now shown by the AI Visual Builder web add-in (manifest-slsd.xml), which
+runs this add-in's original macros; this add-in's own tab is hidden (visible="false" on the tab, ids unchanged) so there
+is one SL Smart Design tab. Its macros, forms, licence check and callbacks are untouched and stay loaded.
 """
 import hashlib, os, re, sys, zipfile
 
@@ -24,8 +28,20 @@ def unify(xml):
     return x
 
 
+def hide_tab(xml):
+    """The original ribbon with its tab hidden; nothing else changes (V10.20.1)."""
+    m = re.search(r'<tab\s+id="Template_Selector"[^>]*>', xml)
+    if not m:
+        raise SystemExit('The SL Smart Design ribbon is not the expected one (tab Template_Selector); nothing written.')
+    tag = m.group(0)
+    new = re.sub(r'\svisible="[^"]*"', ' visible="false"', tag) if 'visible=' in tag else tag[:-1].rstrip('/') + ' visible="false">'
+    return xml[:m.start()] + new + xml[m.end():]
+
+
 def main():
-    src, out_dir = sys.argv[1], sys.argv[2]
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    change = hide_tab if '--hide-tab' in sys.argv else unify
+    src, out_dir = args[0], args[1]
     os.makedirs(out_dir, exist_ok=True)
     dst = os.path.join(out_dir, os.path.basename(src))
     if os.path.abspath(dst) == os.path.abspath(src):
@@ -34,8 +50,9 @@ def main():
         for info in zin.infolist():
             data = zin.read(info.filename)
             if info.filename == 'customUI/customUI.xml':
-                new = unify(data.decode('utf-8-sig')).encode('utf-8')
-                print(f'customUI/customUI.xml: {len(data)} -> {len(new)} bytes (tab and Design group shared: idQ in {NS})')
+                new = change(data.decode('utf-8-sig')).encode('utf-8')
+                what = 'its own tab hidden (visible="false")' if change is hide_tab else f'tab and Design group shared: idQ in {NS}'
+                print(f'customUI/customUI.xml: {len(data)} -> {len(new)} bytes ({what})')
                 data = new
             zout.writestr(info, data)
     os.replace(dst + '.tmp', dst)
