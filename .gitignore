@@ -22,3 +22,7 @@ local-ai/tests/last-run-app.json
 
 # generated pilot manifests (deploy/make-pilot-manifest.py)
 deploy/out/
+
+# manager pilot package build output (deploy/build-manager-package.ps1) and local AI evaluation outputs: kept on disk, never committed
+Manager_Pilot_Package/
+evaluation/

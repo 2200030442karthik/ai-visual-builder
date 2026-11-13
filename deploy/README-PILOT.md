@@ -6,6 +6,12 @@ this project cannot create on its own: an Azure web app, a Microsoft Entra app r
 admin to deploy the add-in to the pilot users. Until then, AI Visual Builder runs only on the PC where its local
 server runs (see `local-ai/README-V10.txt`).
 
+## 0. Single-PC pilot for the manager (available now, no IT needed)
+Until the hosted service exists, `deploy/build-manager-package.ps1` builds `Manager_Pilot_Package/`. It holds the
+full desktop version as one zip with its own Python runtime and a per-user installer: no administrator rights,
+keys typed in at install time and a clean uninstall. See `deploy/manager-pilot/INSTALL-GUIDE.txt`. It runs entirely
+on that PC (https://localhost:44317) and uses the keys entered there; nothing is shared between PCs.
+
 ## 1. Architecture
 
 ```

@@ -34,6 +34,32 @@ Simplilearn brand style) or Claude AI (Anthropic API), both paid, confirmed per 
 | Manifest | `manifest-v10.xml` | 10.18.0.0: group "AI Visual Builder" at the end of PowerPoint's Home tab (the button the SL Smart Design "AI Visuals" button presses), buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
 | Diagnosis | `local-ai/tests/run_diag.py`, `diag.html`, `diag_cases.py` | every layout considered with its reason; every Napkin variation with arrangement, status and preview |
 
+## V10.18 addendum — manager's PC pilot installer, first real Claude request (13 Nov)
+`deploy/build-manager-package.ps1` builds `Manager_Pilot_Package/` (not committed). It is a self-contained Windows
+installer of the full desktop version for one user, with no administrator rights:
+- Python 3.14.7 (embeddable, signed by the PSF) and anthropic 2.3.0 are bundled;
+- the same server.py, panel, packs and checks;
+- a per-PC localhost certificate, a Windows-account access policy and the approved template fingerprint;
+- the organization's Napkin and Claude keys are typed in at install time (never in the package);
+- PowerPoint registration through the documented sideload key, autostart, an Apps & features entry and a clean
+  uninstall.
+
+Sources: `deploy/manager-pilot/`.
+
+Tested on this PC as a separate instance (port 44327, Python removed from PATH, files marked as downloaded):
+- install, HTTPS with normal certificate checking, the full app acceptance suite (27 of 27) and the server, Claude
+  and hosted tests on the bundled runtime;
+- key setup, restart and uninstall (nothing left behind).
+
+Not tested: PowerPoint loading the pilot add-in, which needs a PowerPoint restart, and a second PC.
+
+The first real Claude request (Opus 5.5, high effort, Generative AI sentence) went through the installed pilot:
+- 7,697 input and 13,581 output tokens, 114 s, $0.30;
+- 3 of 4 compositions offered, all native and complete;
+- comparison with Napkin in `evaluation/` (local, not committed).
+
+`paid_engines` stays 1.
+
 ## V10.18 — demo-ready, hosted pilot code, caption bands, both AI services (12 Nov)
 From the user's PowerPoint test of V10.17: the Generative AI definition ("...creates original content—such as text,
 images, video, audio, and code—in response to natural language prompts") gave items "Such as text" and "Code—in
