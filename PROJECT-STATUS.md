@@ -1,6 +1,6 @@
 # AI Visual Builder — project status
 
-## Current version: V10.12 (3 Nov 2026)
+## Current version: V10.18 (12 Nov 2026)
 Authorized employee + Content Slide of the approved template → paste content → analyze → accurate infographic and
 pictorial suggestions → preview → insert editable PowerPoint shapes. JavaScript panel + small Python host; no AI
 models, no GPU. Three ways to generate: native infographics (built in, free), and optionally Napkin AI (single approved
@@ -16,14 +16,163 @@ Simplilearn brand style) or Claude AI (Anthropic API), both paid, confirmed per 
 | Napkin PPTX | `local-ai/pptx.js` | reading and checks |
 | Napkin rebuild | `local-ai/rebuild.js` | `napkinFaithful`: Napkin's own arrangement (ring / fan / row / column / grid) and item look rebuilt natively; `napkinRebuild` (cards) for sequences and as a reported fallback |
 | Designs, slides, edits | `local-ai/studio.js` | step 5, free (no AI request): more designs of a saved content plan, content density, several slides (logical split, overview, batch insertion with recovery), editing of inserted visuals (PowerPoint tags `AIVB_V`/`AIVB_F` + a record on the slide, one undo) |
+| App (end users) | `local-ai/app.js` | 10.13: content → Generate visuals → gallery (10-20, filters, selection, large preview) → insert; More visuals, Several slides, Edit a visual; loading/empty/error/stale states; plain status words; developer mode (`?dev=1`, Ctrl+Alt+Shift+D) restores every technical section |
+| Engine choice | `local-ai/orchestrator.js` | 10.13: engines builtin, designs (free), napkin, claude (paid, `registerEngine`); paid policy `never` / `when-needed` / `always` (config.json `paid_policy`, `paid_order`); kept results reused, 24-hour resend guard, one request + one fallback; ranking (accuracy, editability, richness, readability), dedupe, variety |
+| Design pack "learning" | `local-ai/packs/learning-10.15.js` | 10.15: learner-style compositions in the spirit of the VisualX reference - learning map (hero panel, bracket, section panels of object columns), topic banner, skills to outcomes, icon rows, badge cards, section panels, learning poster, topic ribbon, colour tiles; 9 new native objects |
+| Labelled sections | `local-ai/sections.js` | 10.15: "What you learn: ... / Best for: ..." read as a title, a short topic name and named sections; glued labels separated; list entries split into short items |
+| SL Smart Design button | `local-ai/sl-smart-design/`, `local-ai/open-panel.ps1` | 10.15: "AI Visuals" beside Alternative Design (VBA callbacks + ribbon lines); the helper presses the add-in's Home-tab button through UI Automation |
+| Design pack "showcase" | `local-ai/packs/showcase-10.14.js` | 10.14: hero-style educational compositions - spotlight (hero panel: topic object, headline, takeaway), storyboard (visual summary cards), callout (topic object with called-out points), journey (winding learning path) |
+| Design pack "modern" | `local-ai/packs/modern-10.13.js` | 10.13: roadmap, pillars, quadrant framework; families say which content they `suits` (plan.js `planCandidates`) |
+| Original editable | `local-ai/faithful.js` + `svg2ppt.js` (`svgToPrims(..., { faithful })`) | 10.12.2: the original design as native objects: curved outlines sampled and matched to box / rounded box / pill / circle / ellipse, open curved strokes as straight-segment connectors, text boxes at the design's place and size (`tight`: no margins, no wrap), brand colours and contrast, icons and illustrations as separate pictures; `faithfulSplit` (continuation slides at clean gaps, one scale), `faithfulJoin` (words broken by Napkin), checks and editability report |
+| Original design | `local-ai/original.js` | 10.12.1: a drawn result's original (Napkin SVG, or the first slide of its PPTX drawn as SVG) as one SVG picture: cleaned (`cleanSvg` with embedded fonts kept), fitted by one factor and centred, readability (smallest text in pt; below 22 flagged, below `ORIGINAL_MIN_PT` 9 blocked) and content (its own text through `accuracy`) |
 | Napkin AI + Claude AI | `local-ai/napkin.js` | one provider panel per AI (`makePanel`): 1 or 4 variations, checks, previews (as inserted and as returned), not-offered variations kept for inspection, re-check without a new request, insertion, Napkin/Claude comparison |
 | Layout engine | `local-ai/plan.js`, `local-ai/packs/*.js` (`packs/README.txt`) | content plans (roles, groups, flow, sources), layout families registered in versioned design packs (core@10.10: 11, pro@10.11.0: 12), measured at 22 pt, checked |
 | Claude AI backend | `local-ai/claude_visual.py`, `configure-claude.ps1`, `Configure Claude.bat` | one design-specification request for 1 or 4 visuals (drawings kept for cached results and tests), `max_retries=0`, no fallback model; model / effort / max_tokens / prices in `%LOCALAPPDATA%\AIVisualBuilder\claude.json` |
 | Install / restart | `local-ai/start-ai-visual-builder.ps1` (+ `Restart AI Visual Builder.bat`), `install-v10-addin.ps1` (+ `Install V10 add-in.bat`, `Remove V10 add-in.bat`) | restart replaces every outdated copy; V10 registration by its own manifest Id, V9 never touched |
 | Access | `local-ai/access.py`, `access.example.json` | administrator policy in `%ProgramData%\AIVisualBuilder\access.json` |
-| Panel host | `local-ai/server.py` | 10.12.0; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
-| Manifest | `manifest-v10.xml` | 10.12.0.0 (SSO entry to add once the app is registered, see README) |
+| Panel host | `local-ai/server.py` | 10.18.0 (large gallery: /api/gallery); `paid_order` "auto"; `orchestrate` in /api/status; ribbon icons; `--test` hosts refuse paid requests; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
+| Manifest | `manifest-v10.xml` | 10.18.0.0: group "AI Visual Builder" at the end of PowerPoint's Home tab (the button the SL Smart Design "AI Visuals" button presses), buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
 | Diagnosis | `local-ai/tests/run_diag.py`, `diag.html`, `diag_cases.py` | every layout considered with its reason; every Napkin variation with arrangement, status and preview |
+
+## V10.18 addendum — manager's PC pilot installer, first real Claude request (13 Nov)
+`deploy/build-manager-package.ps1` builds `Manager_Pilot_Package/` (not committed). It is a self-contained Windows
+installer of the full desktop version for one user, with no administrator rights:
+- Python 3.14.7 (embeddable, signed by the PSF) and anthropic 2.3.0 are bundled;
+- the same server.py, panel, packs and checks;
+- a per-PC localhost certificate, a Windows-account access policy and the approved template fingerprint;
+- the organization's Napkin and Claude keys are typed in at install time (never in the package);
+- PowerPoint registration through the documented sideload key, autostart, an Apps & features entry and a clean
+  uninstall.
+
+Sources: `deploy/manager-pilot/`.
+
+Tested on this PC as a separate instance (port 44327, Python removed from PATH, files marked as downloaded):
+- install, HTTPS with normal certificate checking, the full app acceptance suite (27 of 27) and the server, Claude
+  and hosted tests on the bundled runtime;
+- key setup, restart and uninstall (nothing left behind).
+
+Not tested: PowerPoint loading the pilot add-in, which needs a PowerPoint restart, and a second PC.
+
+The first real Claude request (Opus 5.5, high effort, Generative AI sentence) went through the installed pilot:
+- 7,697 input and 13,581 output tokens, 114 s, $0.30;
+- 3 of 4 compositions offered, all native and complete;
+- comparison with Napkin in `evaluation/` (local, not committed).
+
+`paid_engines` stays 1.
+
+## V10.18 — demo-ready, hosted pilot code, caption bands, both AI services (12 Nov)
+From the user's PowerPoint test of V10.17: the Generative AI definition ("...creates original content—such as text,
+images, video, audio, and code—in response to natural language prompts") gave items "Such as text" and "Code—in
+response" (the list did not end at the second dash). Fixed in `sections.js`; the closing phrase stays in the heading.
+Definitions with a long heading lost most compositions (they do not show it, so they were incomplete): new caption
+band (`plan.js` planCaptionFamily, key `cap:<family>`) used by the orchestrator for such designs - Generative AI
+6 -> 15 complete designs, the others 16-24. Both AI services per new text when `paid_engines` is 2 (config.json;
+default 1). Hosted mode in `server.py` (AIVB_HOSTED=1; public host check, Entra required, data dir and keys from the
+environment), `deploy/` (pilot README, Dockerfile, app settings and access examples, manifest generator),
+`docs/DEMO-GUIDE.md`. SL Smart Design integration notes are kept internally (not in this repository). Tests: A25-A26, `tests/test_hosted.py`. Evidence
+`local-ai/tests/evidence/v10.18-bench` (before = V10.16; real Napkin designs kept from 12 Nov). **Not deployed; no
+Mac test; no new paid request.**
+
+## V10.17 — 20+ distinct designs from one Generate, scene compositions, learner-appeal ranking (12 Nov)
+Root causes (from the user's PowerPoint test of V10.16): (1) a slide with title, subtitle and one sentence ("Artificial
+Intelligence" / "AI" / "The best content ... covers A, B, and C") was not read (the statement reader needed one line
+and a verb list of single words), so it became two text cards ("AI" and the whole sentence); (2) the packs had too few
+structurally different compositions, so the look-alike check left 8-10 designs; (3) scores were capped at 100, so the
+order among the best designs was lost and older plain designs could lead; (4) the look-alike check saw only where
+coloured areas were, so dense section layouts all looked alike to it.
+Fixes: `sections.js` (title and subtitle lines, several-word lists after "covers/includes/..."); `packs/scenes-10.17.js`
+(16 compositions, 4 objects, a shared kit of soft cards, icon tiles, connectors, heroes); `orchestrator.js` (up to 24
+designs, every fitting composition drawn, learner appeal, no score cap, light/colour-aware look-alike check, Claude's
+concepts at base 90); `brand.js` + `server.py` soft tints (config "soft_tints", off by default); Claude asked for 4-6
+concepts. Benchmark (`tests/run_bench.py`, evidence `local-ai/tests/evidence/v10.17-bench`): AI slide: text cards ("AI" and
+the whole sentence, user's screenshot) -> 21 designs; Claude statement 8 -> 22; AI & ML 12 -> 22; Digital Marketing
+7 -> 16; Kubernetes 8 -> 24; 0 look-alikes within Generate. Designs that leave out only the topic's name (shown by the
+slide's title) are flagged in the contact sheets; every item and section name is on every design. Tests `tests/app.html` A21-A24. **Not yet verified in real PowerPoint; no paid request made.**
+
+## V10.16 — AI-first concepts, statements as pictures, distinct designs, large gallery (12 Nov)
+Root causes found: (1) one statement ("Claude ai helps you create, organize, and edit ...") was rejected by the content
+reader and marked "exact", so it got only two text banners and never reached the AI services; (2) V10.15 limited
+sectioned content to grouped layouts and "More visuals" re-offered the same families in other colours, so galleries
+were the same two-panel picture many times (benchmark: 14 and 17 look-alike pairs); (3) Claude only chose template
+names, so its design intelligence was reduced to our templates; (4) ranking padded the gallery with plain designs.
+Fixes: `sections.js` statementRead (subject, verbs, object, examples - the sentence's own words; the heading carries
+what it does); `packs/concepts-10.16.js` (six concept compositions: concept tiles, orbit, hexagon cluster, layered
+stack, bento grid, statement spotlight); orchestrator: shape-print look-alike check, completeness of facts (a
+statement's subject, verbs and object; section names), no weak designs when six complete ones exist, More visuals
+never repeats a family; Claude's plan answer adds 3-4 own compositions ("concepts") drawn as native shapes
+(`plan.js` planConceptFamily, `orchestrator.js` orchConceptDesigns); the large gallery (`gallery-dialog.html`, Office
+dialog, `server.py` /api/gallery). Benchmark (`tests/run_bench.py`, evidence in `local-ai/tests/evidence/v10.16-bench`):
+Claude AI statement 2 text banners -> 8 complete designs in 7 categories; AI & ML look-alike pairs 14 -> 1, repeated
+families 10 -> 0. SL Smart Design integration notes are kept internally (not in this repository). Tests `tests/app.html` 21 of 21 (new A17-A20). **Not yet verified in real
+PowerPoint; Claude's concepts not yet run against the real API.**
+
+## V10.15 — learner-style visuals, labelled sections, hover-only preview, SL Smart Design button (11 Nov)
+Why V10.14's visuals still looked basic for course summaries: (1) on this PC `config.json` had `"paid_policy": "never"`,
+so Napkin and Claude were never asked; (2) "What you learn: ... Best for: ..." was read as one plain list - the first
+section was dropped (Digital Marketing kept only the three "Best for" points) or each section became one card holding a
+whole sentence (AI & ML), and a label glued to the title ("Social Media GrowthWhat you learn:") became the heading;
+(3) there was no composition for named sections with an object per entry - the VisualX reference's structure (hero for
+the topic, pill headings, object-and-label columns).
+Now: sections.js reads labelled sections (title, short name, sections, short items in the text's words; glued labels
+separated); the plan has one named group per section, and only layouts that show each section under its name are used;
+the "learning" pack adds nine compositions and nine objects, ranked first for such content; Napkin and Claude are sent
+the sections and their items (Claude's brief and schema: sections as groups, short labels, a short topic name, the new
+layouts and objects); the app has no separate preview area (the hover popup is the preview), plain design names and an
+Insert button that names the choice; the add-in's group moved from the Insert tab to the Home tab, and an "AI Visuals"
+button for the SL Smart Design tab (VBA add-in) opens it through open-panel.ps1. Tests `tests/app.html` 17 of 17 (new
+A15, A16). **Not yet verified in real PowerPoint.**
+
+## V10.14 — richer, AI-designed visuals; hover preview; ribbon on the Insert tab (10 Nov)
+Why V10.13's visuals looked basic: the AI services were practically never asked (only when the free engines gave fewer
+than 10 strong designs, which they nearly always did); every layout was one visual language (tiles, panels, small icons,
+one type size, no focal element); Claude's plan only reached those same layouts; ranking rewarded correctness, not
+attractiveness, so near-identical lists crowded the gallery.
+Now: (1) "when-needed" asks one AI service for every new text a design can show (never for exact records, data tables or
+single statements), routed by content - Claude for technical structure, Napkin for concepts; the other as fallback;
+(2) Claude's plan carries a headline, a takeaway and the topic's object and is drawn in every composition that suits it
+(hybrid: AI design ideas, native editable result); (3) the showcase pack adds hero-style compositions; (4) ranking
+measures richness and drops the same composition in another colour or as a near-identical list; (5) hover preview in
+the gallery; (6) the ribbon group moved to PowerPoint's Insert tab. Tests `tests/app.html` 15 of 15 (new: hover,
+routing, hybrid, richness and variety); V10.12.2 11/11, V10.12.1 13/13, V10.12 14/14, regression 29/29, server and
+Claude ALL PASSED, ribbon check passed. No paid request during this work. **Not yet verified in real PowerPoint.**
+
+## V10.13 — a simple app: one "Generate visuals", the engine chosen behind it (10 Nov)
+The normal panel shows only: your content, Generate visuals, the gallery (10-20, best first, filters by kind, large
+preview), Insert selected visual, More visuals, Several slides, Edit a visual. Hidden from it (developer mode only):
+version, panel host status, setup and checks, the analysis step, timings, Napkin AI / Claude AI sections ("how many",
+credit tick, usage, tokens, re-check, insertion choices), the design studio's plan source, raw messages.
+Generate analyses the content itself, runs the free engines, then a paid one only by the administrator's policy
+(default when-needed), ranks, dedupes and varies the result. New layout families: roadmap, pillars, quadrant
+framework. Ribbon: own "Simplilearn" tab. Tests `tests/app.html` A1-A11 + no script errors: 12 of 12; ribbon check
+(13 URLs) passed; V10.12.2 11/11, V10.12.1 13/13, V10.12 14/14, regression 29/29, server and Claude ALL PASSED.
+A real Napkin request (4 variations, the Educational content sample) was sent once during development by a probe
+that drove Generate against a test host with this PC's key; test hosts now refuse paid requests (`TEST_NO_PAID`).
+**Not yet verified in real PowerPoint.**
+
+## V10.12.2 — "Original editable": Napkin's design as native, editable objects (3 Nov)
+A fourth choice under "What to insert" (Editable / **Original editable** / Original / Both), no new request.
+On the 14 saved real Napkin SVGs: 231 native objects and 103 pictures (icons and illustrations); 99 curved outlines
+drawn as native shapes or lines; every text native and word for word (figures, formulas, special characters); 11 of
+14 usable (the other 3 cover only 1-3 of the source points, as their original pictures do: blocked); the two tall
+designs on 2 slides. Rendered against the original: ink overlap 0.37 -> 0.64, colour 0.70 -> 0.78 (V10.12.1 editable
+version -> original editable). Evidence `tests/evidence/v10.12.2-faithful.png` (original / before / after).
+Tests `tests/faithful.html` G1-G9 + no request + no script errors: 11 of 11; V10.12.1 13 of 13, V10.12 14 of 14,
+regression 29 of 29, server and Claude ALL PASSED. **Not yet verified in real PowerPoint.**
+
+## V10.12.1 — insert the editable version, the original Napkin design, or both (3 Nov)
+"What to insert" in the Napkin section (`napkin.js`, `original.js`), no new request:
+
+| Choice | What goes in |
+|---|---|
+| Editable version (default) | as in V10.12: native shapes and text, tagged and recorded for step 5 |
+| Original design | the cleaned SVG as one picture through `setSelectedDataAsync` (XmlSvg), fitted into the slide's free content area, checked again there (readability), exactly one picture expected, placed where asked, named and tagged `AIVB_O` (step 5 says it is a picture) |
+| Both | two new slides after the selected one (same layout and master): editable, then original; `AIVB_BATCH` running/done like step 5's slides; removed together; any failure removes both |
+
+Each version validated separately; a variation is offered when either passes, and the other choices say "not available".
+The original's preview is the inserted picture (same SVG, same place). Duplicate guard: the same version of the same
+variation, just inserted, needs a second press. Tests: `tests/original.html` (O1-O11 + no request + no script errors,
+13 of 13; evidence `tests/evidence/v10.12.1-original.png`); regression 29 of 29, V10.12 studio 14 of 14, server and
+Claude ALL PASSED. **Not yet verified in real PowerPoint.**
 
 ## V10.12 — free design regeneration, editing inserted visuals, several slides (3 Nov)
 All in step 5 "Designs, slides and edits" (`studio.js`, pure functions in `plan.js`), no AI request:
@@ -97,13 +246,26 @@ and the new layouts in real PowerPoint.
 ## Limitations
 - PowerPoint's JS API cannot draw curves or set line spacing; curved Napkin icons stay separate pictures.
 - A rebuilt Napkin result keeps its arrangement, item look, wording, icons and colours, not its exact drawing (curved connectors, figures and globes are not redrawn; a half-disc hub becomes an ellipse).
-- Text is 22 pt or more everywhere; the guidelines' 18 pt infographic exception (p. 43) is not used.
+- Ribbon: an add-in's group goes at the end of a built-in tab (Home, here); it cannot join a built-in group or another add-in's tab. The SL Smart Design button works around this through UI Automation (open-panel.ps1): it needs the add-in's Home-tab group to exist, English tab and button names, and the VBA module imported into SL Smart Design's source file; the three buttons share one task pane - when it is already open, PowerPoint may keep its current page instead of opening the section asked for (the panel's own buttons do the same). The ribbon icons are served by the panel host: if it is not running when PowerPoint starts, generic icons are shown. A changed manifest needs "Install V10 add-in.bat" again and a PowerPoint restart.
+- Richer visuals are composed of solid-colour native shapes: PowerPoint's API sets no gradients, shadows or free-form shapes, so the "VisualX" look is approached through composition (focal objects, hero panels, big icons, headline hierarchy), not effects. The topic's large object is drawn only when the icon catalogue has an accurate one.
+- With "when-needed", every new suitable text uses one AI request (credits); set "paid_policy": "never" to keep Generate free.
+- Original editable: icons and illustrations stay pictures (PowerPoint's JavaScript API has no free-form shapes); rounded boxes use PowerPoint's default corner radius (slightly rounder than Napkin's); text uses PowerPoint's single line spacing (the API cannot set it), so multi-line text can sit a little taller; Napkin's bold renders as Open Sans Bold (Napkin embeds only the regular face, so its own picture shows a synthesised bold); small text on the mid-tone palette colours cannot reach WCAG 4.5:1 with an approved text colour (flagged); its text is Napkin's size (10-15 pt, below the 22 pt of the editable version; flagged); continuation slides only where the design has a clean horizontal gap.
+- The original Napkin design is a picture: its text keeps Napkin's sizes (usually 10-13 pt once fitted; flagged), it is not editable as shapes in the panel, and PowerPoint draws its SVG with its own renderer (Convert to Shape needs Microsoft 365).
+- Text is 22 pt or more everywhere in the editable versions; the guidelines' 18 pt infographic exception (p. 43) is not used.
 - The Test C original was not kept; its regression case is a reconstruction from the screenshot.
 - Designs that are not recognised (charts, matrices, labels around a picture) are converted shape by shape; a missing point is then reported (Partially complete), not added.
 - Built-in suggestions run in the panel (free); only paid Napkin calls are enforced server-side.
 - In Windows mode the PC's user, who holds the Napkin key, cannot be restricted; Entra mode with one shared host can.
 
 ## Change log
+- **V10.18** (12 Nov) — dash-list reading, caption bands, paid_engines 2, hosted mode + deploy/ pilot package, demo guide, SL export review; tests A25-A26, test_hosted.
+- **V10.17** (12 Nov) — scenes pack (16 compositions), 20+ designs per Generate (cap 24), learner-appeal ranking without score cap, colour-aware look-alike check, title/subtitle/sentence reading, soft tints option, Claude 4-6 concepts; tests A21-A24.
+- **V10.16** (12 Nov) — statementRead, concepts pack (6 compositions, 2 objects), look-alike and completeness ranking, Claude concepts (schema, brief, renderer), large gallery dialog, visual benchmark, SL Smart Design source review; tests A17-A20, concept schema check.
+- **V10.15** (11 Nov) — sections.js (labelled sections), learning pack (9 compositions, 9 objects), Claude brief for sections, hover-only preview, Home-tab group, SL Smart Design "AI Visuals" kit (VBA module, ribbon lines, copy script, open-panel.ps1); tests A15-A16, ribbon check covers the kit.
+- **V10.14** (10 Nov) — showcase design pack, Claude headline/takeaway/hero, AI services routed by content and used for every suitable new text, Claude plan drawn in all suitable compositions, richness ranking and composition-level dedupe, hover preview, ribbon group on the Insert tab; tests A12-A14.
+- **V10.13** (10 Nov) — simple app (app.js), hidden engine choice with policy and cost control (orchestrator.js), modern design pack, ribbon tab, developer mode; tests A1-A11 and the ribbon check.
+- **V10.12.2** (3 Nov) — "Original editable": Napkin's design as native objects (curved shapes recognised, tight text boxes, contrast, continuation slides, word joins), editability report; pills drawn as PowerPoint's stadium shape; tests G1-G9.
+- **V10.12.1** (3 Nov) — insert the editable version, the original Napkin design (one SVG picture) or both on two slides; separate validation, readability floor, duplicate guard; tests O1-O11.
 - **V10.12** (3 Nov 2026) — step 5: more designs of saved plans, content density, several slides with recovery, editing of inserted visuals (tags + records, undo); names-only insertion fix; tests Z and studio D1-S4.
 - **V10.11** (3 Nov) — design packs (23 families, 6 kinds), semantic roles, Claude design specification, one Generate action per provider.
 - **V10.10** (3 Nov) — Claude content plan, plan.js layout engine measured at 22 pt.

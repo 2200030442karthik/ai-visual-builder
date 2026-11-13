@@ -9,6 +9,13 @@
      - readable text: #404040 on light fills, white only on the dark neutral */
 const BRAND = { palette: TEMPLATE.accents.slice(), neutrals: TEMPLATE.neutrals.slice(), font: TEMPLATE.font, minPt: TEMPLATE.minBody, ink: TEMPLATE.text };
 const APPROVED = new Set(BRAND.palette.concat(BRAND.neutrals));
+/* 10.17: soft tints - one light tint of each palette colour for card and panel fills (the pastel cards of AI
+   infographics). Off unless the administrator allows them (config.json "soft_tints": true, sent with /api/status, or
+   TEMPLATE.softTints); when off, a tint becomes the light panel grey as before. Text and objects never use them. */
+const SOFT_T = 0.84;
+const SOFT_SET = new Set(BRAND.palette.map(c => tint(c, SOFT_T)));
+const softTints = () => !!(TEMPLATE.softTints || (typeof state !== 'undefined' && state && state.svc && state.svc.brand && state.svc.brand.soft_tints));
+const approved = (c, k) => APPROVED.has(c) || (k === 'fill' && softTints() && SOFT_SET.has(c));
 // Shapes never become #404040 (that is the text colour; dark filled graphics read as silhouettes, LVC guidelines p. 53).
 const NEAREST = BRAND.palette.concat(['#D9D9D9', '#7F7F7F']);
 
@@ -48,7 +55,7 @@ function brandPrim(p, stats) {
     return q;
   }
   if (q.t === 'image') return q;                       // pictures are made in the standard where they are made
-  ['fill', 'line', 'color'].forEach(k => { if (q[k] && k !== 'color' && !APPROVED.has(q[k])) { q[k] = brandColor(q[k]); stats.recolored++; } });
+  ['fill', 'line', 'color'].forEach(k => { if (q[k] && k !== 'color' && !approved(q[k], q.cmp ? 'part' : k)) { q[k] = brandColor(q[k]); stats.recolored++; } });
   if (q.t === 'line' && q.color && !APPROVED.has(q.color)) { q.color = brandColor(q.color); stats.recolored++; }
   if (q.grp && q.t === 'shape') {                      // a part of a pictorial icon: flat and filled
     if (!q.fill && q.line) { if (q.dash) { stats.outlines++; return null; } q.fill = q.line; stats.outlines++; }

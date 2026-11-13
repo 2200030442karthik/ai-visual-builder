@@ -1,0 +1,1431 @@
+{
+ "Before (bb88e98)": {
+  "claude": {
+   "generate": 2,
+   "more": 0,
+   "designs": [
+    {
+     "name": "Key message",
+     "category": "Infographic",
+     "family": "base-statement",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 0,
+     "shapes": 2,
+     "minPt": 40,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Statement banner",
+     "category": "Infographic",
+     "family": "s-banner",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 0,
+     "shapes": 2,
+     "minPt": 44,
+     "issues": 0,
+     "missing": []
+    }
+   ],
+   "lookAlikePairs": 0,
+   "pairs": [],
+   "categories": 1,
+   "familyRepeats": 0
+  },
+  "aiml": {
+   "generate": 10,
+   "more": 10,
+   "designs": [
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 114,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 112,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Colour tiles",
+     "category": "Icon summary",
+     "family": "colortiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 99,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Section panels",
+     "category": "Comparison",
+     "family": "splitpanels",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 110,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Capability map",
+     "category": "Framework",
+     "family": "capmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 99,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Skills to outcomes",
+     "category": "Learning map",
+     "family": "bridge",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 124,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon rows",
+     "category": "Icon summary",
+     "family": "iconrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 85,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Learning poster",
+     "category": "Hero",
+     "family": "poster",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 101,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic ribbon",
+     "category": "Hero",
+     "family": "ribbon",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 110,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Grouped columns",
+     "category": "Framework",
+     "family": "capability",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 99,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 114,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 112,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Colour tiles",
+     "category": "Icon summary",
+     "family": "colortiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 99,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Section panels",
+     "category": "Comparison",
+     "family": "splitpanels",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 110,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Capability map",
+     "category": "Framework",
+     "family": "capmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 99,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Skills to outcomes",
+     "category": "Learning map",
+     "family": "bridge",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 124,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon rows",
+     "category": "Icon summary",
+     "family": "iconrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 85,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Learning poster",
+     "category": "Hero",
+     "family": "poster",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 101,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic ribbon",
+     "category": "Hero",
+     "family": "ribbon",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 110,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Grouped columns",
+     "category": "Framework",
+     "family": "capability",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 99,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    }
+   ],
+   "lookAlikePairs": 14,
+   "pairs": [
+    [
+     1,
+     3
+    ],
+    [
+     0,
+     10
+    ],
+    [
+     1,
+     11
+    ],
+    [
+     3,
+     11
+    ],
+    [
+     2,
+     12
+    ],
+    [
+     1,
+     13
+    ],
+    [
+     3,
+     13
+    ],
+    [
+     11,
+     13
+    ],
+    [
+     4,
+     14
+    ],
+    [
+     5,
+     15
+    ],
+    [
+     6,
+     16
+    ],
+    [
+     7,
+     17
+    ],
+    [
+     8,
+     18
+    ],
+    [
+     9,
+     19
+    ]
+   ],
+   "categories": 5,
+   "familyRepeats": 10
+  },
+  "dm": {
+   "generate": 9,
+   "more": 9,
+   "designs": [
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 74,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 72,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Colour tiles",
+     "category": "Icon summary",
+     "family": "colortiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Section panels",
+     "category": "Comparison",
+     "family": "splitpanels",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 80,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Capability map",
+     "category": "Framework",
+     "family": "capmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Hierarchy",
+     "category": "Hierarchy",
+     "family": "tree",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 0,
+     "shapes": 39,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Skills to outcomes",
+     "category": "Learning map",
+     "family": "bridge",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 84,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon rows",
+     "category": "Icon summary",
+     "family": "iconrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 55,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Grouped columns",
+     "category": "Framework",
+     "family": "capability",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 74,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 72,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Colour tiles",
+     "category": "Icon summary",
+     "family": "colortiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Section panels",
+     "category": "Comparison",
+     "family": "splitpanels",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 80,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Capability map",
+     "category": "Framework",
+     "family": "capmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Hierarchy",
+     "category": "Hierarchy",
+     "family": "tree",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 0,
+     "shapes": 39,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Skills to outcomes",
+     "category": "Learning map",
+     "family": "bridge",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 84,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon rows",
+     "category": "Icon summary",
+     "family": "iconrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 55,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Grouped columns",
+     "category": "Framework",
+     "family": "capability",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    }
+   ],
+   "lookAlikePairs": 17,
+   "pairs": [
+    [
+     1,
+     3
+    ],
+    [
+     3,
+     8
+    ],
+    [
+     0,
+     9
+    ],
+    [
+     1,
+     10
+    ],
+    [
+     3,
+     10
+    ],
+    [
+     2,
+     11
+    ],
+    [
+     1,
+     12
+    ],
+    [
+     3,
+     12
+    ],
+    [
+     8,
+     12
+    ],
+    [
+     10,
+     12
+    ],
+    [
+     4,
+     13
+    ],
+    [
+     5,
+     14
+    ],
+    [
+     6,
+     15
+    ],
+    [
+     7,
+     16
+    ],
+    [
+     3,
+     17
+    ],
+    [
+     8,
+     17
+    ],
+    [
+     12,
+     17
+    ]
+   ],
+   "categories": 6,
+   "familyRepeats": 9
+  },
+  "k8s": {
+   "generate": 10,
+   "more": 7,
+   "designs": [
+    {
+     "name": "Concept cards",
+     "category": "Cards",
+     "family": "base-cards",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 0,
+     "shapes": 9,
+     "minPt": 28,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Badge cards",
+     "category": "Icon summary",
+     "family": "badges",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 35,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Modular blocks",
+     "category": "Architecture",
+     "family": "modules",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 35,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Alternating blocks",
+     "category": "Infographic",
+     "family": "zigzag",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 0,
+     "shapes": 16,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Visual summary cards",
+     "category": "Icon summary",
+     "family": "storyboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Illustrated cards",
+     "category": "Cards",
+     "family": "p-cards",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 32,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Illustrated list",
+     "category": "Cards",
+     "family": "p-list",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 32,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Tabbed cards",
+     "category": "Cards",
+     "family": "tabs",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 29,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon grid",
+     "category": "Cards",
+     "family": "grid",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 32,
+     "minPt": 26,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Structured list",
+     "category": "Cards",
+     "family": "rows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 35,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Colour tiles",
+     "category": "Icon summary",
+     "family": "colortiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 32,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Object scene",
+     "category": "Process",
+     "family": "p-row",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 26,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon grid",
+     "category": "Cards",
+     "family": "grid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 35,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Feature columns",
+     "category": "Pillars",
+     "family": "columns",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 35,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Modular blocks",
+     "category": "Architecture",
+     "family": "modules",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 35,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Visual summary cards",
+     "category": "Icon summary",
+     "family": "storyboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Structured list",
+     "category": "Cards",
+     "family": "rows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 35,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    }
+   ],
+   "lookAlikePairs": 4,
+   "pairs": [
+    [
+     1,
+     10
+    ],
+    [
+     2,
+     14
+    ],
+    [
+     4,
+     15
+    ],
+    [
+     9,
+     16
+    ]
+   ],
+   "categories": 6,
+   "familyRepeats": 4
+  }
+ },
+ "After (this version)": {
+  "claude": {
+   "generate": 8,
+   "more": 0,
+   "designs": [
+    {
+     "name": "Ecosystem orbit",
+     "category": "Orbit",
+     "family": "orbit",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 75,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Bento grid",
+     "category": "Bento grid",
+     "family": "bento",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 67,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 66,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Concept tiles",
+     "category": "Concept map",
+     "family": "concepttiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 77,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hexagon cluster",
+     "category": "Honeycomb",
+     "family": "honeycomb",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 71,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Layered stack",
+     "category": "Layered",
+     "family": "isostack",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 46,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Statement spotlight",
+     "category": "Hero",
+     "family": "keystatement",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 75,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    }
+   ],
+   "lookAlikePairs": 0,
+   "pairs": [],
+   "categories": 7,
+   "familyRepeats": 0
+  },
+  "aiml": {
+   "generate": 12,
+   "more": 1,
+   "designs": [
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 114,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 112,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Colour tiles",
+     "category": "Icon summary",
+     "family": "colortiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 99,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Layered stack",
+     "category": "Layered",
+     "family": "isostack",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 33,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Concept tiles",
+     "category": "Concept map",
+     "family": "concepttiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 124,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ecosystem orbit",
+     "category": "Orbit",
+     "family": "orbit",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 107,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Capability map",
+     "category": "Framework",
+     "family": "capmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 99,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Skills to outcomes",
+     "category": "Learning map",
+     "family": "bridge",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 124,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon rows",
+     "category": "Icon summary",
+     "family": "iconrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 85,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Learning poster",
+     "category": "Hero",
+     "family": "poster",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 101,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic ribbon",
+     "category": "Hero",
+     "family": "ribbon",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 110,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Grouped columns",
+     "category": "Framework",
+     "family": "capability",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 99,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Section panels",
+     "category": "Comparison",
+     "family": "splitpanels",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 110,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    }
+   ],
+   "lookAlikePairs": 1,
+   "pairs": [
+    [
+     1,
+     12
+    ]
+   ],
+   "categories": 8,
+   "familyRepeats": 0
+  },
+  "dm": {
+   "generate": 7,
+   "more": 1,
+   "designs": [
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 74,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 72,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Colour tiles",
+     "category": "Icon summary",
+     "family": "colortiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Capability map",
+     "category": "Framework",
+     "family": "capmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Skills to outcomes",
+     "category": "Learning map",
+     "family": "bridge",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 84,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon rows",
+     "category": "Icon summary",
+     "family": "iconrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 55,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Grouped columns",
+     "category": "Framework",
+     "family": "capability",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Section panels",
+     "category": "Comparison",
+     "family": "splitpanels",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 80,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    }
+   ],
+   "lookAlikePairs": 2,
+   "pairs": [
+    [
+     1,
+     7
+    ],
+    [
+     6,
+     7
+    ]
+   ],
+   "categories": 5,
+   "familyRepeats": 0
+  },
+  "k8s": {
+   "generate": 8,
+   "more": 0,
+   "designs": [
+    {
+     "name": "Ecosystem orbit",
+     "category": "Orbit",
+     "family": "orbit",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 45,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Bento grid",
+     "category": "Bento grid",
+     "family": "bento",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 40,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 39,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Concept tiles",
+     "category": "Concept map",
+     "family": "concepttiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 45,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hexagon cluster",
+     "category": "Honeycomb",
+     "family": "honeycomb",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 42,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Layered stack",
+     "category": "Layered",
+     "family": "isostack",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 39,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Statement spotlight",
+     "category": "Hero",
+     "family": "keystatement",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 43,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    }
+   ],
+   "lookAlikePairs": 0,
+   "pairs": [],
+   "categories": 7,
+   "familyRepeats": 0
+  }
+ }
+}

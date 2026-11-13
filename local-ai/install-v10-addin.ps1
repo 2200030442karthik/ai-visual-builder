@@ -28,12 +28,19 @@ if ($ClearCache) {
     Write-Host 'Office add-in cache emptied. Start PowerPoint again; the panel files are loaded fresh.' -ForegroundColor Green
     exit 0
 }
+# 10.15: where open-panel.ps1 is, for the "AI Visuals" button on the SL Smart Design tab (AIVisualBuilder.bas reads it
+# with GetSetting("AIVisualBuilder", "Install", "Path"))
+$VbaKey = 'HKCU:\Software\VB and VBA Program Settings\AIVisualBuilder\Install'
 if ($Remove) {
     if (Registered) { Remove-ItemProperty -Path $Key -Name $Id; Write-Host 'The V10 add-in was removed from PowerPoint (V9 unchanged). Restart PowerPoint.' }
     else { Write-Host 'The V10 add-in was not registered.' }
+    if (Test-Path $VbaKey) { Remove-Item -Path (Split-Path $VbaKey) -Recurse -Force }
     exit 0
 }
 New-Item -Path $Key -Force | Out-Null
 New-ItemProperty -Path $Key -Name $Id -Value $Manifest -PropertyType String -Force | Out-Null
+New-Item -Path $VbaKey -Force | Out-Null
+New-ItemProperty -Path $VbaKey -Name 'Path' -Value (Join-Path $Root 'local-ai') -PropertyType String -Force | Out-Null
 Write-Host "Registered AI Visual Builder V10 ($Ver) for PowerPoint desktop: $Manifest" -ForegroundColor Green
-Write-Host 'Restart PowerPoint; the button "AI Visual Builder V10" is on the Home tab. V9 is unchanged.'
+Write-Host 'Restart PowerPoint; the add-in is on the Home tab, group "AI Visual Builder" (Generate visuals, Several slides, Edit a visual),'
+Write-Host 'and - once SL Smart Design has the "AI Visuals" button (local-ai\sl-smart-design\README.txt) - beside Alternative Design. V9 is unchanged.'

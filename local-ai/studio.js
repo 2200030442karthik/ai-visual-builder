@@ -361,7 +361,12 @@ async function selectedVisual(context) {
   if (!id && state.canGroup) for (const s of sel.items) {
     try { const t = s.parentGroup.tags.getItemOrNullObject('AIVB_V'); t.load('value'); await context.sync(); if (!t.isNullObject) { id = t.value; break; } } catch (e) { /* not in a group */ }
   }
-  if (!id) throw Object.assign(new Error('notours'), { notours: true });
+  if (!id) {   // 10.12.1: the original design of a Napkin result, inserted as one picture
+    const o = sel.items.map(s => { const t = s.tags.getItemOrNullObject('AIVB_O'); t.load('value'); return t; });
+    await context.sync();
+    if (o.some(t => !t.isNullObject)) throw Object.assign(new Error('original'), { original: true });
+    throw Object.assign(new Error('notours'), { notours: true });
+  }
   return { slide, id };
 }
 /* The visual's shapes on the slide (top level) and its texts (inside groups too), as PowerPoint has them now. */
@@ -416,7 +421,8 @@ async function editLoad() {
       (E.hand.length ? ` ${E.hand.length} text${E.hand.length > 1 ? 's were' : ' was'} changed by hand in PowerPoint and ${E.hand.length > 1 ? 'are' : 'is'} kept in the form.` : ''));
   } catch (e) {
     ST.edit = null; renderEdit();
-    setStatus(e.notours ? 'The selected object was not inserted by AI Visual Builder 10.12 or later (visuals inserted before 10.12 carry no edit record), so it is not changed here. Edit it directly in PowerPoint, or insert it again from the panel.'
+    setStatus(e.original ? 'The selected object is an original design as the provider returned it, inserted as one picture: it is kept exactly as designed and is not changed here. In PowerPoint, right-click › Convert to Shape makes its parts editable shapes; or insert the editable version of the same variation and edit that here.'
+      : e.notours ? 'The selected object was not inserted by AI Visual Builder 10.12 or later (visuals inserted before 10.12 carry no edit record), so it is not changed here. Edit it directly in PowerPoint, or insert it again from the panel.'
       : 'Edit: ' + errText(e), true);
   }
   finally { ST.busy = false; studioButtons(); }

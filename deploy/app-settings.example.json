@@ -1,0 +1,10 @@
+{
+  "_comment": "Azure App Service > Configuration > Application settings for the AI Visual Builder pilot (deploy/README-PILOT.md). No secret here: the two keys are Key Vault references resolved by the platform.",
+  "AIVB_HOSTED": "1",
+  "AIVB_PUBLIC_HOST": "<app name>.azurewebsites.net",
+  "AIVB_DATA_DIR": "/data",
+  "AIVB_ACCESS": "/data/access.json",
+  "WEBSITES_PORT": "8000",
+  "NAPKIN_API_KEY": "@Microsoft.KeyVault(VaultName=<vault>;SecretName=napkin-api-key)",
+  "ANTHROPIC_API_KEY": "@Microsoft.KeyVault(VaultName=<vault>;SecretName=anthropic-api-key)"
+}

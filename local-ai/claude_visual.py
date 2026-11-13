@@ -77,12 +77,20 @@ Answer with the SVG only: start with <svg and end with </svg>, no explanation an
 # request for every variation; the drawing - where generated SVGs fail (clipped labels, crossing connectors) - is done by
 # code that measures it. The lists below must match the panel's (tests/test_claude.py checks them).
 PLAN_LAYOUTS = ['platform', 'stack3d', 'scene', 'capmap', 'swimlanes', 'planes', 'ecosystem', 'modules', 'pyramid', 'cycle', 'funnel', 'versus',
-                'architecture', 'layers', 'capability', 'tree', 'pipeline', 'timeline', 'stair', 'hub', 'grid', 'columns', 'rows']
+                'architecture', 'layers', 'capability', 'tree', 'pipeline', 'timeline', 'stair', 'hub', 'grid', 'columns', 'rows',
+                'roadmap', 'pillars', 'quadrant', 'spotlight', 'storyboard', 'callout', 'journey',
+                'learnmap', 'herobanner', 'bridge', 'iconrows', 'badges', 'splitpanels', 'poster', 'ribbon', 'colortiles',
+                'concepttiles', 'orbit', 'honeycomb', 'isostack', 'bento', 'keystatement']
 PICTORIALS = ['collect', 'evaluate', 'clean', 'features', 'train', 'mlcore', 'predict', 'deploy', 'problem', 'database', 'dataset', 'folder', 'document',
               'server', 'cloud', 'gateway', 'app', 'window', 'code', 'gear', 'monitor', 'chartUp', 'shield', 'lock', 'checklist', 'magnifier', 'filter',
               'warning', 'calendar', 'team', 'person', 'org', 'chat', 'sheet', 'pages', 'image', 'text', 'video', 'music', 'cyber', 'fraud', 'bank', 'cart',
               'car', 'factory', 'medical', 'xray', 'book', 'cap', 'bulb', 'coin', 'flag', 'target', 'milestone', 'info', 'access', 'spark', 'profile',
-              'shapes', 'globe', 'bowl', 'fingerprint']
+              'shapes', 'globe', 'bowl', 'fingerprint', 'brain', 'megaphone', 'mail', 'briefcase', 'rocket', 'growth', 'social', 'analysis', 'trophy',
+              'presentation', 'aidoc']
+# V10.16: Claude's own compositions ("concepts"): the native shapes and colour tokens it may use
+CONCEPT_SHAPES = ['rect', 'roundRect', 'ellipse', 'pill', 'hexagon', 'diamond', 'triangle', 'chevron', 'homePlate', 'parallelogram', 'donut',
+                  'blockArc', 'can', 'shield', 'star5', 'tab', 'cube', 'trapezoid', 'callout', 'rtTriangle', 'cloud', 'foldedCorner']
+CONCEPT_COLORS = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9', 'a10', 'panel', 'rule', 'line', 'white', 'ink']
 ROLES = ['source', 'stage', 'output', 'support_control', 'support_quality', 'support_foundation', 'component', 'concept']
 PLAN_SYSTEM = """You design one slide of a corporate training deck (Simplilearn): you analyse its content and return the content's
 structure and its visual design as JSON. The panel draws the infographic itself, as editable PowerPoint shapes, in up to
@@ -92,12 +100,23 @@ compositions show that best and which object depicts each item.
 Content - the most important rules:
 - Every point of the content becomes exactly one item, in the text's order. Never merge two points, never drop one,
   never add one. A heading or an introduction sentence is not an item.
+- Content written as labelled sections ("What you learn: a, b, and c. Best for: x, y, or z."): every section is a
+  group (role category, name exactly the section's label, e.g. "What you learn") and every entry of its list is one
+  item of that group, in order, with a short label (1-4 words, the text's own words): a lead-in such as "working with
+  tools like" is dropped ("ChatGPT or Python"); examples after "like" or "such as" go to detail; an acronym in
+  brackets may be the label with the full name as detail. Every section is kept - never only the last one.
 - label: the point's name as the text writes it (without numbering or a trailing colon).
 - detail: the point's key words from the text, 2 to 6 words (at most 45 characters), in the text's own wording, so the
   meaning stays the same. Values (numbers, formulas, codes, e-mail addresses, conditions) exactly as written. Empty
   when the text gives nothing beyond the label.
 - Never add facts, figures, examples, relationships or claims the text does not state. Never turn a statement into a question.
 - title: the content's topic in the text's words (its heading when it has one).
+- headline: the slide's message for learners in 3 to 8 words, in the text's own terms, inviting but plain (no
+  question, no exclamation mark, no new claim). May equal the title.
+- takeaway: the content's key message in one sentence of at most 90 characters, built only from what the text says;
+  "" when the text states no message beyond its points.
+- hero: the object from the pictorial list below that depicts the whole topic most accurately, or "" when none does.
+- short: the topic's short name for a hero badge: an acronym the text gives ("AI & ML"), else 1-3 of the title's words.
 
 Structure and semantics:
 - relation: "sequence" for a process or steps in order; "pipeline_with_support" when some items form a main flow and
@@ -121,20 +140,62 @@ Design:
   (technical illustration: one pictorial object per stage on one line, annotated), capmap (capability map: domain boxes,
   functions as a strip across them), swimlanes, planes (control and data planes), ecosystem (parts around a core),
   modules (modular blocks), pyramid, cycle, funnel, versus (two things compared), architecture, layers, capability, tree,
-  pipeline, timeline, stair, hub, grid, columns, rows. Never a composition that implies something the text does not say
+  pipeline, timeline, stair, hub, grid, columns, rows, roadmap (milestones on a road, steps in order), pillars (the
+  points as columns under the topic), quadrant (four points around the topic), spotlight (a hero panel with the topic's
+  object, headline and takeaway beside the points), storyboard (visual summary cards with big objects), callout (the
+  topic's object large in the middle, the points called out around it), journey (a learning journey of 4-8 steps on a
+  winding path), learnmap (a hero panel for the topic joined by a bracket to its sections, each section a panel of
+  object-and-label columns under a pill heading - for labelled sections), herobanner (a hero band with the topic,
+  the sections as cards below), bridge (two sections: what is learned on the left, the topic as a hub, what it is for
+  on the right), iconrows (each section a band with its name on a chip and its items as object columns), badges
+  (badge cards with an object disc over each), splitpanels (tall section panels led by an object for the section),
+  poster (the headline large, the items as tagged object tiles), ribbon (two sections: the topic on a band across
+  the middle, one section above it and one below), colortiles (colour tiles under each section's name), concepttiles
+  (a hero card for the topic, a bracket, the items as icon tiles in a panel), orbit (the topic as a hub, the items as
+  object discs around it), honeycomb (the items in hexagons along a zigzag), isostack (isometric slabs, one per
+  section or item), bento (a bento grid: the topic as the large tile, the items as tiles of different sizes),
+  keystatement (the topic in large type with what it does as pills, the items as a row of objects). Prefer the richer, more visual compositions when they fit the content. Never a composition that implies something the text does not say
   (an order for independent ideas, a hierarchy for a list).
 - custom: a composition of your own when the content suggests one the list lacks, else zones []. The area is a grid of
   12 columns x 6 rows; each zone: id, label (a group's name or ""), items (item ids), col, row, w, h (whole cells, inside
   the grid, zones not overlapping), style: band (a strip with its label on the left), panel (a box with its label on top),
   nodes_row or nodes_column (items side by side or stacked). connectors: {from, to} item ids, only for relationships the
-  text states. Every item in exactly one zone."""
+  text states. Every item in exactly one zone.
+- One statement ("X helps you create, organize and edit A, B, C and D"): X is the hero (short), the listed examples
+  are the items (the text's words), and what X does ("create, organize, and edit diverse types of content") is the
+  single group's name or the headline - never the whole sentence as one block of text, never invented items.
+- concepts: 4 to 6 complete compositions of your own design, each a genuinely different visual idea for this content,
+  modern and engaging for learners like a polished AI infographic (for example a hero object - a device, a disc, a
+  card - joined by elbow connectors with dots to cards that each hold an icon tile and a label; a header pill over a
+  panel of icon columns per section; a hero card joined by a bracket to icon tiles; an orbit around the topic; a
+  winding journey; layered slabs; a bento grid of tiles of different sizes; a split comparison; an illustrated scene
+  with callouts) - never the same arrangement in other colours, never plain text in boxes. Each: name (2-4 words), idea (one sentence: why this picture suits the content)
+  and elements, drawn in order (later elements on top) in the content area: x from 0 to 1079, y from 0 to 435 (points;
+  16:9 slide, the slide's title is above it). Element kinds:
+  shape: a native shape (shape from the list, color a token; text "" or a short label drawn on it);
+  text: a text box (text, size, bold, align left or center; never right);
+  object: a pictorial object from the list above, drawn in a square of side min(w, h) in color;
+  line: a connector from (x, y) to (x2, y2) in color.
+  item: the id of the item an element shows ("" for decoration, the hero or headings). Colour tokens: a1 to a10 the
+  template's accent colours (light blue, orange, mint, lilac, coral, gold, steel blue, pink, brown, mauve), panel
+  (light grey), rule (mid grey), line (connector grey), white, ink (dark text only). Text is always ink.
+  Rules: every item's label appears exactly once as the text of a text or shape element with that item's id, in the
+  text's words; its detail, when shown, as its own text element; the hero name and the group names or headline so
+  that nothing the text says is lost; nothing else is added. Text at 22 pt or more (labels 22-28, the hero name up to
+  44); a text box must be wide and tall enough for its words at 0.55 x size per character (0.6 for bold) and 1.2 x
+  size per line; no text overlaps another text, an object or a line; nothing outside the area; leave 12 pt between
+  unrelated elements. Flat design: no gradients, shadows, outlines around filled shapes or dashed lines. Make it
+  polished and engaging for learners: one clear focal element, a hierarchy of sizes, an object for every item,
+  generous spacing, balanced colour."""
 _S = {'type': 'string'}
 _I = {'type': 'integer'}
+_N = {'type': 'number'}
 PLAN_SCHEMA = {
     'type': 'object', 'additionalProperties': False,
-    'required': ['title', 'relation', 'groups', 'items', 'flow', 'layouts', 'custom'],
+    'required': ['title', 'headline', 'takeaway', 'hero', 'short', 'relation', 'groups', 'items', 'flow', 'layouts', 'custom', 'concepts'],
     'properties': {
-        'title': _S,
+        'title': _S, 'headline': _S, 'takeaway': _S,
+        'hero': {'type': 'string', 'enum': [''] + PICTORIALS}, 'short': _S,
         'relation': {'type': 'string', 'enum': ['sequence', 'pipeline_with_support', 'layers', 'hierarchy', 'categories', 'comparison', 'cycle', 'funnel', 'hub', 'independent']},
         'groups': {'type': 'array', 'items': {'type': 'object', 'additionalProperties': False, 'required': ['id', 'name', 'role'],
                    'properties': {'id': _S, 'name': _S, 'role': {'type': 'string', 'enum': ['flow', 'support', 'layer', 'category', 'output']}}}},
@@ -143,6 +204,14 @@ PLAN_SCHEMA = {
                                  'pictorial': {'type': 'string', 'enum': PICTORIALS}, 'icon_hint': _S, 'group': _S}}},
         'flow': {'type': 'array', 'items': _S},
         'layouts': {'type': 'array', 'items': {'type': 'string', 'enum': PLAN_LAYOUTS}},
+        'concepts': {'type': 'array', 'items': {'type': 'object', 'additionalProperties': False, 'required': ['name', 'idea', 'elements'], 'properties': {
+            'name': _S, 'idea': _S,
+            'elements': {'type': 'array', 'items': {'type': 'object', 'additionalProperties': False,
+                         'required': ['kind', 'shape', 'x', 'y', 'w', 'h', 'x2', 'y2', 'color', 'text', 'size', 'bold', 'align', 'object', 'item'],
+                         'properties': {'kind': {'type': 'string', 'enum': ['shape', 'text', 'object', 'line']}, 'shape': {'type': 'string', 'enum': [''] + CONCEPT_SHAPES},
+                                        'x': _N, 'y': _N, 'w': _N, 'h': _N, 'x2': _N, 'y2': _N, 'color': {'type': 'string', 'enum': [''] + CONCEPT_COLORS},
+                                        'text': _S, 'size': _I, 'bold': {'type': 'boolean'}, 'align': {'type': 'string', 'enum': ['left', 'center']},
+                                        'object': {'type': 'string', 'enum': [''] + PICTORIALS}, 'item': _S}}}}}},
         'custom': {'type': 'object', 'additionalProperties': False, 'required': ['name', 'zones', 'connectors'], 'properties': {
             'name': _S,
             'zones': {'type': 'array', 'items': {'type': 'object', 'additionalProperties': False, 'required': ['id', 'label', 'items', 'col', 'row', 'w', 'h', 'style'],

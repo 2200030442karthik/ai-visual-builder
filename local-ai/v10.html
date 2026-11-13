@@ -85,7 +85,7 @@
   </style>
 </head>
 <body>
-  <h1>AI Visual Builder <span style="font-size:11px;font-weight:400;color:var(--muted)">version 10.12</span></h1>
+  <h1>AI Visual Builder <span style="font-size:11px;font-weight:400;color:var(--muted)">version 10.18.0</span></h1>
   <p class="sub">Turns your text into accurate, editable infographics in the Simplilearn template. Analyse your content, then generate: native infographics (built in, free), or Napkin AI or Claude AI (optional, paid, asked before each request); preview, then insert. Nothing is sent to the internet unless you use one of those two.</p>
 
   <div class="panel" id="aiStatus">
@@ -408,6 +408,7 @@
       const poly = list => `<polygon points="${pts(list)}" ${a}/>`;
       switch (p.g) {
         case 'roundRect': return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${m * 0.1667}" ${a}/>`;
+        case 'pill':      return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${m / 2}" ${a}/>`;
         case 'ellipse':   return `<ellipse cx="${x + w / 2}" cy="${y + h / 2}" rx="${w / 2}" ry="${h / 2}" ${a}/>`;
         case 'chevron':   { const d = m * 0.5; return poly([[x, y], [x + w - d, y], [x + w, y + h / 2], [x + w - d, y + h], [x, y + h], [x + d, y + h / 2]]); }
         case 'homePlate': { const d = m * 0.5; return poly([[x, y], [x + w - d, y], [x + w, y + h / 2], [x + w - d, y + h], [x, y + h]]); }
@@ -431,10 +432,11 @@
     function textSVG(p) {
       const r = p.t === 'text' ? p : textRect(p.g, p.x, p.y, p.w, p.h);
       const jc = { top: 'flex-start', middle: 'center', bottom: 'flex-end' }[p.valign || 'middle'];
-      return `<foreignObject x="${r.x}" y="${r.y}" width="${Math.max(r.w, 1)}" height="${Math.max(r.h, 1)}">` +
-        `<div xmlns="http://www.w3.org/1999/xhtml" style="box-sizing:border-box;height:100%;padding:3.6px 7.2px;display:flex;flex-direction:column;` +
-        `justify-content:${jc};text-align:${p.align || 'center'};font-family:${FONT};font-size:${p.size}px;line-height:1.2;` +
-        `font-weight:${p.bold ? 700 : 400};color:${p.color || INK};white-space:pre-wrap">${esc(p.text)}</div></foreignObject>`;
+      // a tight box (10.12.2, "Original editable"): no margins, its own lines only, PowerPoint's single line spacing
+      return `<foreignObject x="${r.x}" y="${r.y}" width="${Math.max(r.w, 1)}" height="${Math.max(r.h, 1)}"${p.tight ? ' style="overflow:visible"' : ''}>` +
+        `<div xmlns="http://www.w3.org/1999/xhtml" style="box-sizing:border-box;height:100%;padding:${p.tight ? '0' : '3.6px 7.2px'};display:flex;flex-direction:column;` +
+        `justify-content:${jc};text-align:${p.align || 'center'};font-family:${FONT};font-size:${p.size}px;line-height:${p.tight ? 1.362 : 1.2};` +
+        `font-weight:${p.bold ? 700 : 400};color:${p.color || INK};white-space:${p.tight ? 'pre' : 'pre-wrap'}">${esc(p.text)}</div></foreignObject>`;
     }
     function toSVG(prims, W, H) {
       let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" role="img"><rect width="${W}" height="${H}" fill="#FFFFFF"/>`;
@@ -2434,7 +2436,7 @@
           await context.sync();
         });
         state.lastInsert = null;
-        const extra = (L.extraSlides || []).length ? ` and ${L.extraSlides.length} detail slide${L.extraSlides.length > 1 ? 's' : ''}` : '';
+        const extra = (L.extraSlides || []).length ? ` and ${L.extraWhat || `${L.extraSlides.length} detail slide${L.extraSlides.length > 1 ? 's' : ''}`}` : '';
         setStatus(L.newSlide ? `The new slide with the visual${extra} was removed.` : `Removed the ${L.ids.length} inserted object${L.ids.length === 1 ? '' : 's'}${extra}. (An empty placeholder that was replaced is not restored; add it back from Layout > Reset if needed.)`);
       } catch (e) { setStatus('Could not remove the visual (it may already have been changed or deleted): ' + errText(e), true); }
       finally { updateButtons(); }
@@ -2494,7 +2496,7 @@
 
     /* ===== Reused from V9: PowerPoint helpers (shape types, image insertion, reading slide text, slide size) ===== */
     const GEO = { rect: 'rectangle', roundRect: 'roundRectangle', ellipse: 'ellipse', chevron: 'chevron', homePlate: 'homePlate',
-      triangle: 'triangle', trapezoid: 'trapezoid', cube: 'cube', diamond: 'diamond',
+      triangle: 'triangle', trapezoid: 'trapezoid', cube: 'cube', diamond: 'diamond', pill: 'flowChartTerminator',
       rightArrow: 'rightArrow', leftArrow: 'leftArrow', downArrow: 'downArrow', upArrow: 'upArrow' };
     const VALIGN = { top: 'Top', middle: 'Middle', bottom: 'Bottom' };
     const HALIGN = { left: 'Left', center: 'Center', right: 'Right' };
@@ -2689,6 +2691,8 @@
         tr.font.bold = !!p.bold;
         tr.font.name = TEMPLATE.font;
         tr.paragraphFormat.horizontalAlignment = HALIGN[p.align || 'center'];
+        // 10.12.2: a text placed exactly as designed - no margins, no wrapping (its line breaks are its own)
+        if (p.tight) { const f = s.textFrame; f.leftMargin = 0; f.rightMargin = 0; f.topMargin = 0; f.bottomMargin = 0; f.wordWrap = false; }
       }
       return s;
     }
@@ -2768,8 +2772,18 @@
   <script src="/pptx.js"></script>
   <script src="/rebuild.js"></script>
   <script src="/plan.js"></script>
+  <script src="/sections.js"></script>
   <script src="/packs/pro-10.11.js"></script>
+  <script src="/packs/modern-10.13.js"></script>
+  <script src="/packs/showcase-10.14.js"></script>
+  <script src="/packs/learning-10.15.js"></script>
+  <script src="/packs/concepts-10.16.js"></script>
+  <script src="/packs/scenes-10.17.js"></script>
+  <script src="/original.js"></script>
+  <script src="/faithful.js"></script>
   <script src="/napkin.js"></script>
   <script src="/studio.js"></script>
+  <script src="/orchestrator.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>

@@ -84,9 +84,13 @@ function installMock(W) {
       M.slides.splice(o.targetSlideId ? M.slides.findIndex(x => x.id === o.targetSlideId) + 1 : M.slides.length, 0, s); } } };
   W.PowerPoint = { run: async f => f(ctx), GeometricShapeType: {} };
   W.Office = { context: { requirements: { isSetSupported: (set, v) => set === 'PowerPointApi' ? (v !== '1.8' || true) : true },
-    document: { setSelectedDataAsync(d, o, cb) { M.pictures = (M.pictures || 0) + 1; selected.items.push(shapeObj(selected, 'picture', { left: o.imageLeft, top: o.imageTop, width: o.imageWidth, height: o.imageHeight })); cb({ status: 'ok' }); } } }, AsyncResultStatus: { Succeeded: 'ok' }, CoercionType: { Image: 'image', XmlSvg: 'svg' } };
+    // a picture goes into the selected slide; 10.12.1 tests: it keeps its data, M.failPicture = PowerPoint refuses it,
+    // M.lostPicture = PowerPoint reports success but adds nothing
+    document: { setSelectedDataAsync(d, o, cb) { if (M.failPicture) { cb({ status: 'failed', error: { message: 'The picture could not be inserted (test).' } }); return; } M.pictures = (M.pictures || 0) + 1;
+      if (!M.lostPicture) selected.items.push(Object.assign(shapeObj(selected, 'picture', { left: o.imageLeft, top: o.imageTop, width: o.imageWidth, height: o.imageHeight }), { data: d, coercion: o.coercionType })); cb({ status: 'ok' }); } } }, AsyncResultStatus: { Succeeded: 'ok' }, CoercionType: { Image: 'image', XmlSvg: 'svg' } };
   M.added = () => M.slides.reduce((k, s) => k + s.items.filter(x => x.type !== 'Placeholder').length, 0);
-  M.reset = () => { M.slides.splice(0, M.slides.length, makeSlide('slide-1')); selected = M.slides[0]; M.reject = null; pending = null; M.pictures = 0; M.imported = 0; };
+  M.reset = () => { M.slides.splice(0, M.slides.length, makeSlide('slide-1')); selected = M.slides[0]; M.reject = null; pending = null; M.pictures = 0; M.imported = 0; M.failPicture = M.lostPicture = false; M.failText = null; };
+  M.selected = () => selected;
   // text that went in with another font than Open Sans
   M.fontBad = () => M.slides.flatMap(s => s.items).filter(x => x.type !== 'Placeholder' && x.textFrame && String(x.textFrame.textRange.text || '').trim() && x.textFrame.textRange.font.name !== 'Open Sans').length;
 }

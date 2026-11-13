@@ -482,6 +482,62 @@ PLAN_LAYOUTS.capability.name = 'Grouped columns';
 /* ---------- choosing and checking the layouts ---------- */
 /* Layouts to try, best first: the provider's recommendation, then the ones the structure suits. */
 const PLAN_UPGRADE = { architecture: 'platform', layers: 'stack3d', capability: 'capmap' };
+/* ---------- Claude's own compositions (V10.16) ----------
+   A concept is Claude's complete design for the content area (1079 x 435 pt): shapes from PowerPoint's presets, texts,
+   catalogue objects and connector lines, in colour tokens (a1-a10 the template's accents, panel, rule, line, white,
+   ink). It is drawn here as native shapes - nothing is rasterised - and then checked like every layout (planRender0):
+   approved colours and 22 pt (brandPrims), overlaps, clipping and the content area (visualQuality), and every item's
+   label and description on the slide. A text box Claude made too small for its words is made taller (never smaller
+   text); a concept that still fails is not offered, with the reason. Scaled to a smaller free area when needed. */
+const CONCEPT_COL = { panel: '#F2F2F2', rule: '#D9D9D9', line: '#7F7F7F', white: '#FFFFFF', ink: '#404040' };
+const conceptCol = t => { const m = /^a(\d{1,2})$/.exec(t || ''); return m ? TEMPLATE.accents[(+m[1] + 9) % 10] : CONCEPT_COL[t] || null; };
+function planConceptFamily(P, i) {
+  const c = (P.concepts || [])[i];
+  if (!c) return null;
+  return { name: c.name, family: 'ai-concept', kind: 'ai', pack: 'claude', needs: () => '', opts: [{ s: PLAN_DS }],
+    build: (P0, R) => {
+      const sx = R.w / 1079, sy = R.h / 435, out = [], num = v => (isFinite(+v) ? +v : 0);
+      for (const e of c.elements) {
+        const x = R.x + num(e.x) * sx, y = R.y + num(e.y) * sy, w = Math.max(1, num(e.w) * sx), h = Math.max(1, num(e.h) * sy), col = conceptCol(e.color);
+        const size = Math.max(PLAN_DS, Math.min(48, Math.round(num(e.size) || PLAN_DS))), txt = planClean(e.text || ''), al = e.align === 'left' ? 'left' : 'center';
+        if (e.kind === 'line') { out.push(seg(x, y, R.x + num(e.x2) * sx, R.y + num(e.y2) * sy, col || '#7F7F7F', 2.5)); continue; }
+        if (e.kind === 'object') { const D = Math.min(w, h); out.push(...comp(CMP[e.object] ? e.object : 'none', x + (w - D) / 2, y + (h - D) / 2, D, col && col !== '#FFFFFF' ? col : accent(0))); continue; }
+        if (e.kind === 'text') { if (txt) out.push(label(x, y, w, Math.max(h, linesAt(txt, w * 0.95, size) * size * 1.2 + 8), txt, { size, bold: !!e.bold, color: INK, align: al, valign: 'top' })); continue; }
+        out.push(box(GEO[e.shape] ? e.shape : 'roundRect', x, y, w, h, Object.assign({ fill: col || PANEL }, txt ? { text: txt, size, bold: !!e.bold, color: INK, align: al, valign: 'middle' } : {})));
+      }
+      return out;
+    } };
+}
+/* 10.18: a composition with a caption band - the topic (a statement's subject) and the heading (what it is or does)
+   above it, the composition drawn in the space below. For compositions that do not show those facts themselves (a
+   definition such as "Generative AI is a branch of artificial intelligence that creates ..."), so they are complete
+   instead of left out. A real layout key ("cap:<family>"): inserting redraws exactly what the preview shows. The topic
+   line is left out when the composition already shows the topic (no duplicated heading). */
+function planCaptionFamily(base) {
+  const B = PLAN_LAYOUTS[base];
+  if (!B || /^cap:/.test(base)) return null;
+  const lines = (P, withShort) => [withShort && P.statement && (P.short || P.statement.subject) ? { t: P.short || P.statement.subject, s: 26, b: true } : null,
+    P.sectionName ? { t: P.sectionName, s: 24 } : null].filter(Boolean);
+  return { key: 'cap:' + base, name: B.name, family: B.family || base, kind: B.kind || 'list', pack: B.pack || '', groups: B.groups, appeal: B.appeal,
+    needs: P => B.needs(P) || (P.sectionName || P.statement ? '' : 'nothing to caption'),
+    opts: B.opts,
+    build: (P, R, o) => {
+      for (const withShort of [true, false]) {
+        const L = lines(P, withShort);
+        if (!L.length || L.some(l => !planWords(l.t, R.w, l.s) || linesAt(l.t, R.w * 0.95, l.s) > 2)) return planNo('the caption does not fit');
+        const hs = L.map(l => planLH(l.t, R.w, l.s)), h = hs.reduce((a, b) => a + b, 0);
+        const R2 = { x: R.x, y: R.y + h + 20, w: R.w, h: R.h - h - 20 };
+        if (R2.h < 240) return planNo('no room under the caption');
+        const inner = B.build(P, R2, o);
+        if (!inner) return null;
+        const short = withShort && P.statement ? String(P.short || P.statement.subject) : '';
+        if (short && inner.some(p => p.text && String(p.text) === short)) continue;       // the composition shows the topic itself
+        let y = R.y; const cap = L.map((l, i) => { const p = label(R.x, y, R.w, hs[i], l.t, { size: l.s, bold: !!l.b, color: INK, align: 'left', valign: 'top', grp: 'caption' }); y += hs[i] - (i ? 0 : 4); return p; });
+        return cap.concat([rule(R.x + 4, y + 6, 120, 5, accent(1))], inner);
+      }
+      return null;
+    } };
+}
 function planCandidates(P) {
   const G = planGroups(P), grouped = G.length >= 2 && planAllGrouped(P), seq = planSeq(P), f = planFlow(P), r = planRoles(P);
   const support = r.supports.length > 0 && r.stages.length >= 2, arch = f.length >= 2 && P.items.some(i => !(P.flow || []).includes(i.id));
@@ -493,10 +549,15 @@ function planCandidates(P) {
     grouped ? ['capmap', 'stack3d', 'tree', 'capability', 'layers', 'swimlanes'] : [],
     seq ? ['pipeline', 'scene', 'timeline', 'stair'] : [],
     !seq && !support ? ['ecosystem', 'modules'] : [],
+    // 10.13: families of later packs say which content they suit (suits(P)); they come before the general ones
+    Object.values(PLAN_LAYOUTS).filter(L => L.suits && !L.hidden && (() => { try { return L.suits(P); } catch (e) { return false; } })()).map(L => L.key),
     ['hub', 'grid', 'columns', 'rows']);
   // Claude's own composition first, then its ranking (a core layout by its V10.11 successor), then what the structure suits
   const up = k => (PLAN_UPGRADE[k] && base.includes(PLAN_UPGRADE[k]) ? PLAN_UPGRADE[k] : k);
-  return [...new Set((P.custom ? ['custom'] : []).concat((P.layouts || []).map(up).filter(k => PLAN_LAYOUTS[k] && base.includes(k)), base))].filter(k => k === 'custom' || PLAN_LAYOUTS[k]);
+  const all = [...new Set((P.custom ? ['custom'] : []).concat((P.layouts || []).map(up).filter(k => PLAN_LAYOUTS[k] && base.includes(k)), base))].filter(k => k === 'custom' || PLAN_LAYOUTS[k]);
+  // 10.15: named sections ("What you learn" / "Best for") only in layouts that show each section under its name; never
+  // as levels, lanes or a flow they do not have
+  return grouped && P.sections ? all.filter(k => k === 'custom' || PLAN_LAYOUTS[k].groups || ['capmap', 'tree', 'capability'].includes(k)) : all;
 }
 /* V10.12: a plan's style applies while it is drawn: P.style.accent = the approved colour the palette starts at (a colour
    variant), P.style.spacing 'open' = more white space around the layout; P.start = the first step number. */
@@ -517,7 +578,8 @@ function planRender(P, key, R) {
 }
 /* One layout in R: the first size that passes every check; { ok, prims, ... } or { ok: false, why }. */
 function planRender0(P, key, R) {
-  const L = key === 'custom' ? (P.custom && planZoneFamily(Object.assign({ key: 'custom', name: P.custom.name || "Claude's composition", kind: 'custom', items: true }, P.custom))) : PLAN_LAYOUTS[key];
+  const L = key === 'custom' ? (P.custom && planZoneFamily(Object.assign({ key: 'custom', name: P.custom.name || "Claude's composition", kind: 'custom', items: true }, P.custom)))
+    : /^ai:\d$/.test(key) ? planConceptFamily(P, +key.slice(3)) : /^cap:/.test(key) ? planCaptionFamily(key.slice(4)) : PLAN_LAYOUTS[key];
   if (!L) return { ok: false, key, why: 'unknown layout' };
   const need = L.needs(P);
   if (need) return { ok: false, key, name: L.name, why: need };
@@ -593,6 +655,18 @@ function planFromClaude(raw) {
     else problems.push("Claude's own composition was not usable (zones outside the grid or without items)");
   }
   const plan = planSemantics({ title: planClean(raw && raw.title), relation: String(raw && raw.relation || 'independent'), items, groups, flow, layouts, custom, from: 'claude' });
+  // 10.14: the slide's message for learners (the showcase pack's headline and takeaway) and the topic's own object
+  plan.headline = planClean(raw && raw.headline) || plan.title;
+  plan.takeaway = planClean(raw && raw.takeaway).replace(/\.$/, '');
+  plan.hero = raw && raw.hero && CMP[raw.hero] ? String(raw.hero) : '';
+  // 10.15: labelled sections ("What you learn" / "Best for") as Claude grouped them: drawn under their names
+  plan.short = planClean(raw && raw.short);
+  // 10.16: Claude's own compositions ("concepts"): drawn as native shapes by planRender under the keys ai:0 .. ai:3
+  plan.concepts = (Array.isArray(raw && raw.concepts) ? raw.concepts : []).filter(c => c && Array.isArray(c.elements) && c.elements.length >= 3).slice(0, 6)
+    .map(c => ({ name: planClean(c.name) || 'AI concept', idea: planClean(c.idea), elements: c.elements }));
+  if (typeof sectionKind === 'function' && groups.length >= 2 && groups.some(g => sectionKind(g.name) !== 'other')) {
+    plan.sections = true; groups.forEach(g => { g.kind = sectionKind(g.name); });
+  }
   return { plan, problems };
 }
 /* A provider's drawing (napkinStructure) -> a plan of its items, in the user's order for a sequence. */

@@ -74,7 +74,32 @@ def msg(text, stop='end_turn', i=100, o=200):
     return SimpleNamespace(usage=SimpleNamespace(input_tokens=i, output_tokens=o), stop_reason=stop, content=[SimpleNamespace(type='text', text=text)])
 
 
+def concept_schema_tests(fails):
+    """10.16: the plan schema asks for Claude's own compositions (concepts) in shapes, colour tokens and objects the panel
+    draws; the saved answer the panel tests use (tests/fixtures/claude-statement-plan.json) matches the schema."""
+    S = C.PLAN_SCHEMA
+    if 'concepts' not in S['required'] or 'concepts' not in S['properties']:
+        fails.append('the plan schema does not ask for concepts')
+        return
+    E = S['properties']['concepts']['items']['properties']['elements']['items']
+    with open(os.path.join(HERE, 'fixtures', 'claude-statement-plan.json'), encoding='utf-8') as f:
+        fx = json.load(f)
+    bad = [k for k in S['required'] if k not in fx]
+    for c in fx.get('concepts', []):
+        for e in c['elements']:
+            if set(e) != set(E['required']) or e['kind'] not in E['properties']['kind']['enum'] or e['shape'] not in E['properties']['shape']['enum'] \
+                    or e['color'] not in E['properties']['color']['enum'] or e['object'] not in E['properties']['object']['enum']:
+                bad.append(f'{c["name"]}: {e}')
+    if bad:
+        fails.append(f'the saved concepts answer does not match the plan schema: {bad[:3]}')
+    if not all(o in C.PICTORIALS for o in ('presentation', 'aidoc')) or not all(k in C.PLAN_LAYOUTS for k in ('concepttiles', 'orbit', 'honeycomb', 'isostack', 'bento', 'keystatement')):
+        fails.append('the plan schema lacks the 10.16 objects or compositions')
+    if 'concepts:' not in C.PLAN_SYSTEM or 'One statement' not in C.PLAN_SYSTEM:
+        fails.append("Claude's brief does not describe the concepts or single statements")
+
+
 def visual_tests(fails, tmp):
+    concept_schema_tests(fails)
     # settings: claude.json written by Windows PowerShell 5.1 (with a BOM) is read; effort, model, prices
     with open(os.path.join(tmp, 'claude.json'), 'w', encoding='utf-8-sig') as f:
         json.dump({'api_key': KEY, 'enabled': True, 'model': 'claude-opus-5-5', 'effort': 'medium', 'max_tokens': 20000}, f)
@@ -151,6 +176,12 @@ def visual_tests(fails, tmp):
     js = open(os.path.join(HERE, '..', 'plan.js'), encoding='utf-8').read() + ''.join(open(os.path.join(HERE, '..', 'packs', f), encoding='utf-8').read() for f in os.listdir(os.path.join(HERE, '..', 'packs')) if f.endswith('.js'))
     gal = open(os.path.join(HERE, '..', 'gallery.js'), encoding='utf-8').read()
     objs = set(re.findall(r'^\s{2}([a-zA-Z0-9]+): \(x, y, s, c\)', gal[gal.index('const CMP = {'):gal.index('const CATALOG')], re.M))
+    # objects a design pack adds (Object.assign(CMP, { key: (x, y, s, c) => ... }), 10.15)
+    for f in os.listdir(os.path.join(HERE, '..', 'packs')):
+        src = open(os.path.join(HERE, '..', 'packs', f), encoding='utf-8').read() if f.endswith('.js') else ''
+        if 'Object.assign(CMP, {' in src:
+            blk = src[src.index('Object.assign(CMP, {'):]
+            objs |= set(re.findall(r'^\s{4}([a-zA-Z0-9]+): \(x, y, s, c\)', blk[:blk.index('  });')], re.M))
     if sorted(re.findall(r"regPlan\('([a-z0-9]+)'", js)) != sorted(C.PLAN_LAYOUTS) or [k for k in C.PICTORIALS if k not in objs]:
         fails.append(f'design lists out of step with the panel: families {sorted(set(re.findall(chr(114) + "egPlan", js)))[:3]}, objects missing {[k for k in C.PICTORIALS if k not in objs]}')
     for bad_answer, why in (('not json at all', 'no valid JSON'), (json.dumps({'items': [{'id': 'a'}]}), 'fewer than 2 items')):
