@@ -155,7 +155,7 @@ else {
 $pj = [ordered]@{ instance = $Instance; port = $Port; data_dir = $DataDir }
 if ($state.access_path) { $pj.access_path = $state.access_path }
 WriteJson $P.Pilot $pj
-New-Item -Path $WefKey -Force | Out-Null
+if (-not (Test-Path $WefKey)) { New-Item -Path $WefKey | Out-Null }   # never -Force on an existing key: it would wipe the other sideloaded add-ins
 New-ItemProperty -Path $WefKey -Name $AddinId -Value $P.Manifest -PropertyType String -Force | Out-Null
 $state.addin_id = $AddinId
 Say 'PowerPoint:  add-in registered (Home tab > AI Visual Builder).' Green

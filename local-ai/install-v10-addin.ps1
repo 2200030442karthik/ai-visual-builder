@@ -37,7 +37,7 @@ if ($Remove) {
     if (Test-Path $VbaKey) { Remove-Item -Path (Split-Path $VbaKey) -Recurse -Force }
     exit 0
 }
-New-Item -Path $Key -Force | Out-Null
+if (-not (Test-Path $Key)) { New-Item -Path $Key | Out-Null }   # never -Force on an existing key: it would wipe the other sideloaded add-ins
 New-ItemProperty -Path $Key -Name $Id -Value $Manifest -PropertyType String -Force | Out-Null
 New-Item -Path $VbaKey -Force | Out-Null
 New-ItemProperty -Path $VbaKey -Name 'Path' -Value (Join-Path $Root 'local-ai') -PropertyType String -Force | Out-Null
