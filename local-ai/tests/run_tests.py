@@ -72,12 +72,13 @@ def main():
         acceptance_page(cdp, 'studio.html', 'V10.12', 'last-run-studio.json', 'v10.12-studio.png')
         acceptance_page(cdp, 'original.html', 'V10.12.1', 'last-run-original.json', 'v10.12.1-original.png')
         acceptance_page(cdp, 'faithful.html', 'V10.12.2', 'last-run-faithful.json', 'v10.12.2-faithful.png')
-        acceptance_page(cdp, 'app.html', 'V10.19', 'last-run-app.json', 'v10.19-app.png')
+        acceptance_page(cdp, 'app.html', 'V10.20', 'last-run-app.json', 'v10.20-app.png')
         ribbon_check()
     finally:
         subprocess.run([sys.executable, os.path.join(HERE, 'test_server.py')])
         subprocess.run([sys.executable, os.path.join(HERE, 'test_claude.py')])
         subprocess.run([sys.executable, os.path.join(HERE, 'test_hosted.py')])    # 10.18: hosted mode
+        subprocess.run([sys.executable, os.path.join(HERE, 'test_v10_20.py')])    # 10.20: SL Smart Design bridge, registry regression
         if edge:    # Edge hands over to helper processes: stop every Edge process using this run's own profile folder
             ps = f"Get-CimInstance Win32_Process -Filter \"Name='msedge.exe'\" | Where-Object {{ $_.CommandLine -like '*{PROFILE}*' }} | ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }}"
             subprocess.run(['powershell', '-NoProfile', '-Command', ps], capture_output=True)
@@ -149,10 +150,21 @@ def ribbon_check():
         fails.append('the group is not on the Home tab')
     else:
         btns = tab.findall('.//v:Control', ns)
-        if len(btns) != 3 or any(c.find('v:Action', ns).get('{http://www.w3.org/2001/XMLSchema-instance}type') != 'ShowTaskpane' for c in btns):
-            fails.append(f'{len(btns)} buttons, or one does not open the task pane')
-        if len({c.find('v:Action/v:TaskpaneId', ns).text for c in btns}) != 1:
-            fails.append('the buttons open different task panes')
+        # 10.20: one shared runtime - "Generate visuals" shows the task pane, "Several slides" and "Edit a visual" are
+        # functions of that runtime (registered in bridge.js), which open the same pane on their section
+        kinds = [c.find('v:Action', ns).get('{http://www.w3.org/2001/XMLSchema-instance}type') for c in btns]
+        if len(btns) != 3 or kinds[0] != 'ShowTaskpane' or any(k != 'ExecuteFunction' for k in kinds[1:]):
+            fails.append(f'{len(btns)} buttons, or not: one task pane button and two function buttons ({kinds})')
+        bridge = open(os.path.join(HERE, '..', 'bridge.js'), encoding='utf-8').read()
+        for c in btns[1:]:
+            fn = (c.find('v:Action/v:FunctionName', ns).text or '') if c.find('v:Action/v:FunctionName', ns) is not None else ''
+            if f"associate('{fn}'" not in bridge:
+                fails.append(f'function {fn!r} is not registered in bridge.js')
+        rt = root.find('.//v:Host/v:Runtimes/v:Runtime', ns)
+        if rt is None or rt.get('lifetime') != 'long' or rt.get('resid') != 'Taskpane.Url':
+            fails.append('the shared runtime (Runtimes/Runtime resid=Taskpane.Url lifetime=long) is not declared')
+        if not any(s.get('Name') == 'SharedRuntime' for s in root.iter() if s.tag.endswith('}Set')):
+            fails.append('the SharedRuntime requirement is not declared')
         if len(tab.findall('v:Group', ns)) != 1 or tab.find('v:Group/v:Label', ns) is None:
             fails.append('one labelled group expected')
     urls = [u.get('DefaultValue') for u in root.iter() if u.tag.endswith('}Url') or u.tag.endswith('}Image') and u.get('DefaultValue')] +            [e.get('DefaultValue') for e in root.iter() if e.tag.split('}')[1] in ('IconUrl', 'HighResolutionIconUrl', 'SourceLocation')]
@@ -177,6 +189,28 @@ def ribbon_check():
     missing = [a for a in set(re.findall(r'onAction="([^"]+)"', add)) if not re.search(r'Public Sub ' + re.escape(a) + r'\(control As IRibbonControl\)', bas)]
     if missing:
         fails.append(f'SL Smart Design callbacks missing in AIVisualBuilder.bas: {missing}')
+    # 10.20: the unified SL Smart Design ribbon - the SL Smart Design AI add-in shares the tab and the Design group (idQ)
+    # with SL Smart Design (whose ribbon make_unified_slsd.py qualifies); every button has its VBA callback
+    ui = open(os.path.join(kit, 'SLSD_AIVisualBuilder.customUI.xml'), encoding='utf-8').read()
+    try:
+        x = ET.fromstring(ui)
+        cu = '{http://schemas.microsoft.com/office/2006/01/customui}'
+        tq = [t.get('idQ') for t in x.iter(cu + 'tab')]; gq = [g.get('idQ') for g in x.iter(cu + 'group')]
+        if tq != ['sl:Template_Selector'] or gq != ['sl:Template_id'] or 'xmlns:sl="Simplilearn.SLSmartDesign"' not in ui:
+            fails.append(f'SL Smart Design AI does not share the SL Smart Design tab and Design group: {tq} {gq}')
+        slsd = open(os.path.join(kit, 'SLSD_AIVisualBuilder.bas'), encoding='cp1252').read()
+        miss = [b.get('onAction') for b in x.iter(cu + 'button') if not re.search(r'Public Sub ' + re.escape(b.get('onAction')) + r'\(control As IRibbonControl\)', slsd)]
+        if miss:
+            fails.append(f'SL Smart Design AI callbacks missing in SLSD_AIVisualBuilder.bas: {miss}')
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('mk', os.path.join(kit, 'make_unified_slsd.py')); mk = importlib.util.module_from_spec(spec); spec.loader.exec_module(mk)
+        sample = '<customUI xmlns="http://schemas.microsoft.com/office/2006/01/customui"><ribbon><tabs><tab id="Template_Selector" label="SL Smart Design"><group id="Template_id" label="Design"><button id="Template_Button1" onAction="module1.ShowTemplateSelectorForm"/></group></tab></tabs></ribbon></customUI>'
+        u = mk.unify(sample)
+        if 'idQ="sl:Template_Selector"' not in u or 'idQ="sl:Template_id"' not in u or 'onAction="module1.ShowTemplateSelectorForm"' not in u:
+            fails.append('make_unified_slsd.py does not qualify the SL Smart Design tab and group as expected')
+        ET.fromstring(u)
+    except Exception as e:
+        fails.append(f'SL Smart Design AI ribbon: {e}')
     helper = open(os.path.join(HERE, '..', 'open-panel.ps1'), encoding='utf-8').read()
     labels = {s.get('id'): s.get('DefaultValue') for s in root.iter() if s.tag.endswith('}String')}
     for rid in ('Button.Label', 'Slides.Label', 'Edit.Label', 'Group.Label'):

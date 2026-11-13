@@ -43,7 +43,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import access as A
 import claude_visual as C
 
-VERSION = '10.19.0'
+VERSION = '10.20.0'
 HERE = os.path.dirname(os.path.abspath(__file__))
 # 10.18: hosted mode (a central HTTPS service for the team, e.g. Azure App Service; deploy/README-PILOT.md). Off unless
 # AIVB_HOSTED=1. Then: plain HTTP on $PORT behind the platform's HTTPS front end, bound to all interfaces; only the
@@ -53,7 +53,7 @@ HOSTED = os.environ.get('AIVB_HOSTED') == '1'
 DATA_DIR = os.environ.get('AIVB_DATA_DIR') or os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'AIVisualBuilder')
 STATIC = {'/': ('v10.html', 'text/html; charset=utf-8'), '/v10.html': ('v10.html', 'text/html; charset=utf-8'),
           '/gallery-dialog.html': ('gallery-dialog.html', 'text/html; charset=utf-8'),
-          **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'sections', 'original', 'faithful', 'napkin', 'studio', 'orchestrator', 'app')},
+          **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'sections', 'original', 'faithful', 'napkin', 'studio', 'orchestrator', 'app', 'bridge')},
           # the ribbon's icons (manifest-v10.xml), served by this host like the panel itself
           **{f'/assets/icon-{n}.png': (f'assets/icon-{n}.png', 'image/png') for n in (16, 32, 64, 80)},
           # design packs (packs/*.js): layout families added without changing the application
@@ -525,6 +525,56 @@ def gallery_put(b):
     return {'ok': True}
 
 
+# ---------------------------------------------------------------- SL Smart Design bridge (V10.20)
+# The AI Visual Builder button on the SL Smart Design tab (VBA, sl-smart-design/SLSD_AIVisualBuilder.bas) asks for the
+# panel here; the panel's shared runtime (bridge.js) of that presentation picks the request up, opens its task pane
+# with Office.addin.showAsTaskpane() and acknowledges. Only "open a view" can be asked: nothing is read or changed in
+# a presentation through this. In memory only; a request expires after 20 seconds.
+BRIDGE_VIEWS = ('generate', 'slides', 'edit')
+BRIDGE = {'req': None}
+BRIDGE_LOCK = threading.Lock()
+
+
+def _bridge_doc(d):
+    d = urllib.parse.unquote(str(d or '')).strip().replace('\\', '/').lower()
+    return d if ('/' in d or ':' in d) else ''          # an unsaved presentation ("Presentation1") has no path
+
+
+def bridge_open(b):
+    view = str(b.get('view') or 'generate')
+    if view not in BRIDGE_VIEWS:
+        raise NapkinError('Unknown view.', 400)
+    rid = hashlib.sha256(f'{time.time()}|{os.getpid()}|{view}'.encode()).hexdigest()[:16]
+    with BRIDGE_LOCK:
+        BRIDGE['req'] = {'id': rid, 'view': view, 'doc': _bridge_doc(b.get('doc')), 'at': time.time(), 'taken': False, 'acked': False}
+    return {'id': rid}
+
+
+def bridge_next(doc):
+    with BRIDGE_LOCK:
+        r = BRIDGE['req']
+        if not r or r['taken'] or time.time() - r['at'] > 20 or _bridge_doc(doc) != r['doc']:
+            return {}
+        r['taken'] = True
+        return {'id': r['id'], 'view': r['view']}
+
+
+def bridge_ack(b):
+    with BRIDGE_LOCK:
+        r = BRIDGE['req']
+        if r and r['id'] == str(b.get('id') or ''):
+            r['acked'] = True
+            log(f'bridge: the {r["view"]} view was opened in PowerPoint ({time.time() - r["at"]:.1f} s after the SL Smart Design button)')
+            return {'ok': True}
+    return {'ok': False}
+
+
+def bridge_status(rid):
+    with BRIDGE_LOCK:
+        r = BRIDGE['req']
+        return {'acked': bool(r and r['id'] == rid and r['acked']), 'taken': bool(r and r['id'] == rid and r['taken'])}
+
+
 def gallery_get(k):
     if not re.fullmatch(r'[0-9a-f]{32}', k or '') or k not in GALLERY:
         raise NapkinError('This gallery is not available any more. Press Generate visuals in the panel.', 404)
@@ -562,7 +612,8 @@ class Handler(BaseHTTPRequestHandler):
             self.connection.do_handshake()
 
     def log_message(self, fmt, *args):
-        if '/api/status' not in (args[0] if args else ''):
+        a0 = str(args[0]) if args else ''
+        if '/api/status' not in a0 and '/api/bridge/next' not in a0 and '/api/bridge/status' not in a0:   # polls: not logged
             log(self.address_string(), fmt % args)
 
     def guard(self, api):
@@ -646,6 +697,10 @@ class Handler(BaseHTTPRequestHandler):
                                        'brand': {'soft_tints': CONFIG['soft_tints'] is True}})
             if path == '/api/gallery':
                 return self.send(200, gallery_get(arg('k')))
+            if path == '/api/bridge/next':
+                return self.send(200, bridge_next(arg('doc')))
+            if path == '/api/bridge/status':
+                return self.send(200, bridge_status(arg('id')))
             if path.startswith(('/api/napkin/', '/api/claude/')) and not self.authorized():
                 return
             if path == '/api/napkin/status':
@@ -694,6 +749,10 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/gallery':
                 who = self.authorized()
                 return who and self.send(200, gallery_put(b))
+            if path == '/api/bridge/open':
+                return self.send(200, bridge_open(b))
+            if path == '/api/bridge/ack':
+                return self.send(200, bridge_ack(b))
             if path == '/api/selftest':
                 # result of the in-PowerPoint drawing self-test (API names and pass/fail only), kept for diagnosis
                 os.makedirs(DATA_DIR, exist_ok=True)

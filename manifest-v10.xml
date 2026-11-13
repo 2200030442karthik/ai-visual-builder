@@ -4,7 +4,7 @@
      PowerPoint shows "Sorry, we can't load the add-in". -->
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
   <Id>08d15d9d-8629-4583-b67d-5f80143dde6d</Id>
-  <Version>10.19.0.0</Version>
+  <Version>10.20.0.2</Version>
   <ProviderName>AI Visual Builder</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="AI Visual Builder"/>
@@ -14,13 +14,19 @@
   <SupportUrl DefaultValue="https://2200030442karthik.github.io/ai-visual-builder/"/>
   <AppDomains><AppDomain>https://localhost:44317</AppDomain></AppDomains>
   <Hosts><Host Name="Presentation"/></Hosts>
-  <Requirements><Sets DefaultMinVersion="1.1"><Set Name="PowerPointApi" MinVersion="1.5"/></Sets></Requirements>
+  <Requirements><Sets DefaultMinVersion="1.1"><Set Name="PowerPointApi" MinVersion="1.5"/><Set Name="SharedRuntime" MinVersion="1.1"/></Sets></Requirements>
   <DefaultSettings><SourceLocation DefaultValue="https://localhost:44317/v10.html"/></DefaultSettings>
   <Permissions>ReadWriteDocument</Permissions>
 
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
     <Hosts>
       <Host xsi:type="Presentation">
+        <!-- 10.20: one shared runtime (the panel keeps running when hidden) so the SL Smart Design ribbon's AI Visual Builder
+             button can open it with Office.addin.showAsTaskpane() (local-ai\bridge.js); Several slides and Edit a visual are
+             functions of that runtime -->
+        <Runtimes>
+          <Runtime resid="Taskpane.Url" lifetime="long"/>
+        </Runtimes>
         <DesktopFormFactor>
           <GetStarted>
             <Title resid="GetStarted.Title"/>
@@ -69,9 +75,8 @@
                     <bt:Image size="32" resid="Icon.32"/>
                     <bt:Image size="80" resid="Icon.80"/>
                   </Icon>
-                  <Action xsi:type="ShowTaskpane">
-                    <TaskpaneId>AIVisualBuilderV10Pane</TaskpaneId>
-                    <SourceLocation resid="Slides.Url"/>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>aivbOpenSlides</FunctionName>
                   </Action>
                 </Control>
                 <Control xsi:type="Button" id="AIVB10.Edit">
@@ -85,9 +90,8 @@
                     <bt:Image size="32" resid="Icon.32"/>
                     <bt:Image size="80" resid="Icon.80"/>
                   </Icon>
-                  <Action xsi:type="ShowTaskpane">
-                    <TaskpaneId>AIVisualBuilderV10Pane</TaskpaneId>
-                    <SourceLocation resid="Edit.Url"/>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>aivbOpenEdit</FunctionName>
                   </Action>
                 </Control>
               </Group>

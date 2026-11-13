@@ -7,7 +7,7 @@
    - The engines, their choice, ranking and cost control are in orchestrator.js; analysis runs inside Generate.
    - The ribbon opens the panel on a section: ?open=slides | edit (manifest-v10.xml).
    Loaded last (after studio.js). */
-const APP_VERSION = '10.19.0';
+const APP_VERSION = '10.20.0';
 const APP = { list: [], sel: -1, text: '', busy: false, stale: false, lastIns: null, dupOk: '', filter: 'All', shown: 0 };
 const QS = new URLSearchParams(location.search);
 // ?dev=1: this load only; Ctrl+Alt+Shift+D: remembered on this PC until pressed again (or ?dev=0)
