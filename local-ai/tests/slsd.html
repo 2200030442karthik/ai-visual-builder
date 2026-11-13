@@ -63,6 +63,19 @@ check('numbered list read as its points (numbers kept in the text)', r.ok && r.c
 r = S.pickContent([sh('a', { text: 'Problem_The issue\rSolution_The fix' })], []);
 check('heading_text lines (the original underscore form) are points', r.ok && r.count === 2, JSON.stringify(r));
 
+/* ---------- 2b. points a misnamed template did not take */
+const tb = (id, name, text) => ({ id, name, text });
+let pm = S.placeMissing([tb('a', 'Text_1', 'x'), tb('b', 'Text_2', 'y')], ['p1', 'p2']);
+check('placeMissing: a good template needs nothing', !pm.assign.length && !pm.unplaced.length, JSON.stringify(pm));
+pm = S.placeMissing([tb('a', 'Text 2', 'Lorem ipsum'), tb('b', 'Text 1', 'Lorem ipsum')], ['p1', 'p2']);
+check('placeMissing: "Text 1"/"Text 2" matched by number', JSON.stringify(pm.assign.map(a => a.id + a.text)) === '["bp1","ap2"]' && !pm.guessed, JSON.stringify(pm));
+pm = S.placeMissing([tb('a', 'Text 1', 'Lorem ipsum'), tb('b', 'Text 1', 'Lorem ipsum'), tb('c', 'Text 1', 'Lorem ipsum')], ['p1', 'p2', 'p3']);
+check('placeMissing: duplicate names filled in template order, marked as a guess', pm.assign.map(a => a.id + a.text).join() === 'ap1,bp2,cp3' && pm.guessed, JSON.stringify(pm));
+pm = S.placeMissing([tb('a', 'Text_1', 'p1'), tb('b', 'Text 2', 'Real text the template keeps')], ['p1', 'p2']);
+check('placeMissing: never overwrites a box with real text', pm.unplaced.join() === '2' && !pm.assign.length, JSON.stringify(pm));
+pm = S.placeMissing([tb('a', 'Text 1', 'Lorem ipsum')], ['Heading_Body text']);
+check('placeMissing: heading_text lines give the text part (as the original does)', pm.assign[0] && pm.assign[0].text === 'Body text', JSON.stringify(pm));
+
 /* ---------- 3. the whole run on a stand-in PowerPoint, with the original macro played as the original behaves */
 function stage(shapes, selected) {
   const W = shapes.map(d => {
@@ -79,16 +92,26 @@ function stage(shapes, selected) {
   window.PowerPoint = { run: async f => f({ sync: async () => {}, presentation: {
     getSelectedSlides: () => ({ load() {}, items: [slide] }), getSelectedShapes: () => ({ load() {}, items: (selected || []).map(id => ({ id })) }),
     slides: { getItem: () => slide } } }) };
-  window.Office = { AsyncResultStatus: { Succeeded: 'succeeded' }, EventType: { DialogMessageReceived: 'm' }, context: { ui: { displayDialogAsync(url) { st.notices.push(decodeURIComponent(url.split('&m=')[1] || '')); } } } };
+  window.Office = { AsyncResultStatus: { Succeeded: 'succeeded' }, EventType: { DialogMessageReceived: 'm' }, context: { ui: { displayDialogAsync(url, o, cb) {
+    // as PowerPoint does it: the dialog says "ready", the add-in hands it the text (never in the URL)
+    if (url.includes('?') || url.includes('#')) st.notices.push('TEXT IN URL: ' + url);
+    let h = null; const d = { addEventHandler(ev, f) { h = f; }, messageChild(s) { st.notices.push(JSON.parse(s).m); }, close() { st.closed = (st.closed || 0) + 1; } };
+    cb({ status: 'succeeded', value: d }); h({ message: 'ready' }); } } } };
   /* DynamicTemplateSelectorForm as the original does it: RenamePlaceholder (bottom-most -> Content_Text_Box), read
      Shapes("Content_Text_Box") (the first by z-order), on OK delete EVERY Content_Text_Box and paste Text_1..n */
   st.macro = choice => {
     st.list[0].name = 'Content_Text_Box';
     const c = st.list.find(w => w.name === 'Content_Text_Box');
     st.read = S.points(c._d.text).length;
-    if (choice === 'ok') {
+    const box = (id, name, text) => { const d = { text }; return { id, name, type: 'TextBox', load() {}, _d: d, textFrame: { textRange: { load() {}, get text() { return d.text; }, set text(v) { d.text = v; } } } }; };
+    if (choice === 'ok') {     // a well-made template: Text_1..Text_n, filled by the original
       st.list = st.list.filter(w => w.name !== 'Content_Text_Box');
-      for (let i = 1; i <= st.read; i++) st.list.push({ id: 'new' + i, name: 'Text_' + i, type: 'TextBox', load() {}, textFrame: { textRange: { text: '' } } });
+      for (let i = 1; i <= st.read; i++) st.list.push(box('new' + i, 'Text_' + i, S.points(c._d.text)[i - 1]));
+    }
+    if (choice === 'ok-spaced' || choice === 'ok-short') {   // library templates named "Text 1" on every box: the original fills nothing
+      st.list = st.list.filter(w => w.name !== 'Content_Text_Box');
+      const n = choice === 'ok-short' ? st.read - 1 : st.read;
+      for (let i = 1; i <= n; i++) st.list.push(box('sp' + i, 'Text 1', 'Lorem ipsum dolor sit amet'));
     }
   };
   return st;
@@ -120,6 +143,14 @@ const ev = () => { const e = { n: 0, completed() { e.n++; } }; return e; };
     const names = st.list.map(w => w.name);
     check('inserted: 6 points read, template boxes Text_1..Text_6 pasted', st.read === 6 && names.filter(n => /^Text_\d$/.test(n)).length === 6, names.join('|'));
     check('inserted: the older shape named Content_Text_Box is not deleted and keeps its name', names.includes('Content_Text_Box') && !names.includes('Points'), names.join('|'));
+    // B2. a library template whose boxes are all named "Text 1": the points placed in its order, the user told to check
+    st = stage([{ id: 'c', name: 'Body', type: 'Placeholder', ph: 'Body', text: lines(4) }]); serve(st, 'ok-spaced'); await S.alternativeDesign(ev());
+    const filled = st.list.filter(w => w.name === 'Text 1').map(w => w._d.text);
+    check('misnamed template ("Text 1" x4): every point placed in order, no Lorem ipsum left', filled.join('|') === S.points(lines(4)).join('|'), filled.join('|'));
+    check('misnamed template: the user is told to check the order', /placed in the template's own order/.test(st.notices[0] || ''), st.notices[0]);
+    // B3. a template with fewer boxes than points: says which points have no place
+    st = stage([{ id: 'c', name: 'Body', type: 'Placeholder', ph: 'Body', text: lines(5) }]); serve(st, 'ok-short'); await S.alternativeDesign(ev());
+    check('template too small: says point 5 has no place and how to undo', /point 5 of your 5/.test(st.notices[0] || '') && /Ctrl\+Z/.test(st.notices[0] || ''), st.notices[0]);
     // C. 11 points: not sent to SL Smart Design, explained
     st = stage([{ id: 'c', name: 'TextBox 1', type: 'TextBox', text: lines(11) }]); serve(st, 'ok'); st.asked = null;
     await S.alternativeDesign(ev());

@@ -601,6 +601,8 @@ SLSD_LOCK = threading.Lock()
 
 def _slsd_runner(macro):
     import slsd_com      # Windows only; imported when a command is first asked for
+    if TEST_NO_PAID:     # a test panel host never acts on the PowerPoint the user is working in
+        raise slsd_com.MacroError('PowerPoint commands are switched off on a test panel host.')
     slsd_com.run_macro(CONFIG['slsd_addin'], 'Module1', macro)
 
 

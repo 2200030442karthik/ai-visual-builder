@@ -61,6 +61,39 @@ registry values, changes only those, and restores them exactly. Tested on an iso
 **Tests:** `tests/test_slsd.py` (COM, panel host, ribbon, hidden-tab add-in, template library, switch script,
 `tests/slsd.html` in headless Edge), added to `run_tests.py`.
 
+**Real PowerPoint, 13 Nov 2026 evening (disposable copies of LVC_Template.pptx; screen locked at 20:07, testing stopped there):**
+
+| Check | Result |
+|---|---|
+| VBA SL Smart Design tab hidden; SL Animation, SL Design unchanged | PASS |
+| One SL Smart Design tab, 14 buttons in Design / SL Templates / Miscellaneous / Shape Rename | PASS |
+| No AI Visual Builder on Home | PASS |
+| Tab after a real PowerPoint restart, **Developer key registration** | **FAIL**: the ribbon appears only after Home > Add-ins > the add-in, in every session. The same holds for the V10.20 manifest (its Home group was also absent at start), so V10.20's Home-tab fallback could not have worked at start either |
+| Tab after a real PowerPoint restart, **trusted shared-folder catalog**, added once | **PASS**: tab present at start, all 14 buttons |
+| AI Visual Builder, first click in a fresh session | **PASS**: real task pane in 2.1 s |
+| Alternative Design, bug case (shape behind the content, 4 points) | **PASS**: gallery of 4-point templates; template applied; Text_1..4 = the points |
+| Alternative Design, 2..10 points | **PASS** for 2, 3, 5, 6, 7, 8, 9, 10 (2 chosen by the user); 4 placed nothing: library template defect, below |
+| Cancel restores the content's name and place | **PASS** (slides 28, 31) |
+| Busy guard (second click while Select Template is open) | PASS (plain message) |
+| 12 points: explained, no gallery | PASS (notice opened; its text not seen: screen locked) |
+| Icons on the SL Smart Design buttons | Office's generic icon for every button (also the old AI Visual Builder icon): open |
+| SL Templates (6), Miscellaneous (2), Shape Rename (2) in real PowerPoint | **not yet tested** |
+| AI generation / insert / edit / Undo through the new tab | **not yet tested** |
+
+Fixes made from these tests (all unattended checks pass, 144):
+- **Library defect found:** 29 of 1,198 templates (2.4 %) name their boxes "Text 1" (often every box) or lack them,
+  so the original insertion drops the points and leaves "Lorem ipsum" (2_point 0071; 3_point 0062, 0085, 0103; 4_point
+  0003, 0004, 0018, 0033, 0046, 0145, 0155, 0183, 0248; 5_point 0001, 0002, 0021, 0092, 0098, 0100, 0104, 0109, 0147, 0165;
+  6_point 0002, 0011, 0064, 0121, 0125; 8_point 0006). The library is not changed; `slsd.js placeMissing` places the
+  points the template did not take (numbered box first, then placeholder boxes in the template's order) and says so,
+  or says which points have no place (Ctrl+Z, another template). Not yet re-verified in real PowerPoint.
+- The notice text is handed to the dialog with `messageChild` (it was in the URL, which PowerPoint shows as the title).
+- A `--test` panel host never runs a macro in a real PowerPoint (a test had run Remove Animations on the open
+  disposable copy).
+- `switch-slsd.ps1 -Registration Catalog` (default): registers a trusted catalog of its own; creates missing parent
+  keys one by one; rollback removes it.
+
+
 ## V10.19 — large text, same-slide insertion, icon layering, LVC type, AI-first ready, key-free install (13 Nov)
 
 **Reading.** `sections.js paragraphRead` reads a paragraph of several sentences as:

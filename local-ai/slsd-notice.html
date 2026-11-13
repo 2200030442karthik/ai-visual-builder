@@ -28,13 +28,16 @@
     <footer><button id="ok" type="button">OK</button></footer>
   </main>
   <script>
-    const q = new URLSearchParams(location.search);
-    document.getElementById('t').textContent = (q.get('t') || 'SL Smart Design').slice(0, 80);
-    document.getElementById('m').textContent = (q.get('m') || '').slice(0, 600);
+    // the text arrives from the add-in (slsd.js notice: messageChild), so it never appears in the window title
+    const show = (t, m) => { document.getElementById('t').textContent = String(t || 'SL Smart Design').slice(0, 80); document.getElementById('m').textContent = String(m || '').slice(0, 600); };
     const close = () => { try { Office.context.ui.messageParent('ok'); } catch (e) { window.close(); } };
     document.getElementById('ok').addEventListener('click', close);
     document.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === 'Escape') close(); });
-    if (typeof Office !== 'undefined') Office.onReady(() => document.getElementById('ok').focus());
+    if (typeof Office !== 'undefined') Office.onReady(() => {
+      Office.context.ui.addHandlerAsync(Office.EventType.DialogParentMessageReceived, a => { try { const j = JSON.parse(a.message); show(j.t, j.m); } catch (e) { /* not ours */ } });
+      Office.context.ui.messageParent('ready');
+      document.getElementById('ok').focus();
+    });
   </script>
 </body>
 </html>

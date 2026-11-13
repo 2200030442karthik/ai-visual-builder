@@ -109,22 +109,56 @@
       renamed.forEach(x => { r.shapes.items.find(y => y.id === x.id).name = KEEP + ' (kept)'; });
       if (at.index > 0) s.setZOrder('SendToBack');
       await context.sync();
-      return { ok: true, slideId: r.slide.id, id: pick.id, index: at.index, name: at.name, count: pick.count, renamed };
+      return { ok: true, slideId: r.slide.id, id: pick.id, index: at.index, name: at.name, count: pick.count, renamed, lines: points(at.text) };
     });
   }
 
   /* After the Select Template window closed: when the content is still there (cancelled), its place and name back. */
+  /* 29 of the 1,198 library templates (2.4 %, 13 Nov 2026) name their text boxes "Text 1" (often every box the same)
+     instead of Text_1..Text_n, so the original insertion fills none of them: the points vanish and "Lorem ipsum" stays.
+     After an insertion the points the template did not take are placed here: a box numbered for the point first, then
+     the remaining placeholder boxes ("Text n"-like, still empty or "Lorem ipsum") in the template's own order.
+     shapes: [{ id, name, text }] in z-order; lines: the points. -> { assign: [{ id, text, k }], unplaced: [k], guessed } */
+  function placeMissing(shapes, lines) {
+    const n = lines.length, have = new Set((shapes || []).map(s => s.name));
+    let missing = []; for (let k = 1; k <= n; k++) if (!have.has('Text_' + k)) missing.push(k);
+    if (!missing.length) return { assign: [], unplaced: [], guessed: false };
+    const body = l => { const u = l.indexOf('_'); return u >= 0 ? l.slice(u + 1) : l; };
+    const num = s => { const m = /^text[\s_-]*(\d+)$/i.exec(s.name || ''); return m ? +m[1] : 0; };
+    let free = shapes.filter(s => num(s) && !/^Text_\d+$/.test(s.name) && (/lorem ipsum/i.test(s.text || '') || !String(s.text || '').trim()));
+    const assign = [];
+    missing = missing.filter(k => { const c = free.filter(s => num(s) === k); if (c.length !== 1) return true;
+      assign.push({ id: c[0].id, k, text: body(lines[k - 1]) }); free = free.filter(s => s !== c[0]); return false; });
+    let guessed = false;
+    missing = missing.filter(k => { const s = free.shift(); if (!s) return true; guessed = true; assign.push({ id: s.id, k, text: body(lines[k - 1]) }); return false; });
+    return { assign, unplaced: missing, guessed };
+  }
+
+  /* After the Select Template window closed: cancelled -> the content's place and name back; inserted -> the points
+     the template did not take placed (placeMissing). -> { inserted, placed, unplaced, guessed } */
   async function restoreAlternative(p) {
-    await PowerPoint.run(async context => {
+    return PowerPoint.run(async context => {
       const shapes = context.presentation.slides.getItem(p.slideId).shapes; shapes.load('items/id,items/name');
       await context.sync();
       const s = shapes.items.find(x => x.id === p.id);
+      const out = { inserted: !s, placed: 0, unplaced: [], guessed: false };
       if (s) {
         s.name = p.name;
         for (let i = 0; i < p.index; i++) s.setZOrder('BringForward');
       }
       p.renamed.forEach(x => { const o = shapes.items.find(y => y.id === x.id); if (o) o.name = KEEP; });
       await context.sync();
+      if (!s && p.lines && p.lines.length) {
+        const tf = shapes.items.map(x => /^text/i.test(x.name || '') ? x.textFrame.textRange : null);
+        tf.forEach(t => t && t.load('text'));
+        try { await context.sync(); } catch (e) { return out; }
+        const list = shapes.items.map((x, i) => ({ id: x.id, name: x.name, text: tf[i] ? tf[i].text : '' }));
+        const r = placeMissing(list, p.lines);
+        r.assign.forEach(a => { shapes.items.find(x => x.id === a.id).textFrame.textRange.text = a.text; });
+        await context.sync();
+        Object.assign(out, { placed: r.assign.length, unplaced: r.unplaced, guessed: r.guessed });
+      }
+      return out;
     });
   }
 
@@ -146,14 +180,17 @@
     }
   }
 
-  /* A short message in a small Office dialog (a function command has no window of its own). */
+  /* A short message in a small Office dialog (a function command has no window of its own). The text is handed to the
+     dialog with messageChild once it says "ready" - never in its URL, which PowerPoint shows in the dialog's title. */
   function notice(title, message) {
     try {
-      const url = `${location.origin}/slsd-notice.html?t=${encodeURIComponent(title)}&m=${encodeURIComponent(message)}`;
-      Office.context.ui.displayDialogAsync(url, { height: 30, width: 34, displayInIframe: true }, res => {
+      Office.context.ui.displayDialogAsync(`${location.origin}/slsd-notice.html`, { height: 30, width: 34, displayInIframe: true }, res => {
         if (res.status !== Office.AsyncResultStatus.Succeeded) return;
         const d = res.value;
-        d.addEventHandler(Office.EventType.DialogMessageReceived, () => d.close());
+        d.addEventHandler(Office.EventType.DialogMessageReceived, a => {
+          if (a && a.message === 'ready' && typeof d.messageChild === 'function') d.messageChild(JSON.stringify({ t: title, m: message }));
+          else d.close();
+        });
       });
     } catch (e) { console.warn('SL Smart Design:', title, message); }
   }
@@ -173,7 +210,13 @@
       notice('Alternative Design', e && e.message ? e.message : 'Alternative Design could not start.');
     } finally {
       done(event);
-      if (prep && prep.ok) { try { await restoreAlternative(prep); } catch (e) { /* the slide changed meanwhile */ } }
+      if (prep && prep.ok) {
+        try {
+          const r = await restoreAlternative(prep);
+          if (r.unplaced.length) notice('Alternative Design', `This template has no place for point${r.unplaced.length > 1 ? 's' : ''} ${r.unplaced.join(', ')} of your ${prep.lines.length}. Press Ctrl+Z to undo, then choose another template.`);
+          else if (r.guessed) notice('Alternative Design', `This template's text boxes are not numbered, so your ${prep.lines.length} points were placed in the template's own order. Check that the order reads right.`);
+        } catch (e) { /* the slide changed meanwhile */ }
+      }
     }
   }
 
@@ -197,7 +240,7 @@
     };
   }
 
-  root.SLSD = { points, pickContent, outOfRange, COMMANDS, LABELS, MIN, MAX, prepareAlternative, restoreAlternative, alternativeDesign, command };
+  root.SLSD = { points, pickContent, placeMissing, outOfRange, COMMANDS, LABELS, MIN, MAX, prepareAlternative, restoreAlternative, alternativeDesign, command };
 
   if (typeof Office === 'undefined') return;
   Office.onReady(info => {

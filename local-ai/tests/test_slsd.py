@@ -130,12 +130,13 @@ def t_server_inprocess():
     # the real runner sends PowerPoint's documented macro form
     import slsd_com
     sent = []
-    orig = slsd_com.run_macro
+    orig, test = slsd_com.run_macro, S.TEST_NO_PAID
     slsd_com.run_macro = lambda f, mod, mac: sent.append(f'{f}!{mod}.{mac}')
     try:
+        S.TEST_NO_PAID = False          # the production path, with run_macro replaced (nothing reaches PowerPoint)
         S._slsd_runner('ShowTemplateSelectorForm')
     finally:
-        slsd_com.run_macro = orig
+        slsd_com.run_macro, S.TEST_NO_PAID = orig, test
     check('host', 'macro name sent to PowerPoint', sent == ['SL_Smart_Design_v2_Key_Dec_25.ppam!Module1.ShowTemplateSelectorForm'], sent)
     try:
         S.slsd_status('nope'); check('host', 'unknown job: 404', False)
@@ -161,8 +162,8 @@ def t_server_http():
             if st.get('state') != 'running':
                 break
             time.sleep(0.25)
-        # no PowerPoint here: the real runner answers in plain words, nothing else happens
-        check('http', 'no PowerPoint: a plain error, no crash', st.get('state') == 'error' and 'PowerPoint' in st.get('message', ''), st)
+        # a test host never acts on a real PowerPoint (even when one is running): a plain error, nothing else happens
+        check('http', 'test host: PowerPoint commands switched off, plain error', st.get('state') == 'error' and 'switched off on a test panel host' in st.get('message', ''), st)
         for path in ('/slsd.js', '/slsd-notice.html', '/assets/slsd/design-32.png', '/tests/slsd.html'):
             try:
                 with urllib.request.urlopen(f'http://localhost:{PORT}{path}', timeout=5) as r:
@@ -337,11 +338,24 @@ def t_switch():
              f"Set-ItemProperty '{key}\\PowerPoint\\AddIns\\SL_Audomation' -Name Path -Value 'SL_Audomation.ppam'")
     try:
         regq(setup)
-        common = ['-OfficeRoot', key, '-AddInsDir', addins, '-StateDir', state, '-HiddenTabAddIn', HIDDEN]
+        catdir = os.path.join(tmp, 'catalog')
+        common = ['-OfficeRoot', key, '-AddInsDir', addins, '-StateDir', state, '-HiddenTabAddIn', HIDDEN, '-CatalogDir', catdir, '-CatalogUrl', r'\\TESTPC\share\catalog']
+        catkey = key + r'\WEF\TrustedCatalogs\{5D7F6C1E-3B1A-4E5C-9C2E-51D051500001}'
+        devq = f"(Get-ItemProperty '{key}\\WEF\\Developer').'08d15d9d-8629-4583-b67d-5f80143dde6d'"
+        # the Developer way (V10.20 style), then rolled back
+        rc, out = ps(['-Action', 'Activate', '-Registration', 'Developer', *common])
+        wef = regq(devq)
+        check('switch', 'Developer registration points at manifest-slsd.xml', rc == 0 and wef.lower() == os.path.join(ROOT, 'manifest-slsd.xml').lower(), wef or out[-300:])
+        rc, out = ps(['-Action', 'Rollback', *common])
+        check('switch', 'Developer registration rolled back', rc == 0 and regq(devq) == 'D:\\old\\manifest-v10.xml', out[-300:])
+        # the catalog way (default: the registration that keeps the tab after a PowerPoint restart)
         rc, out = ps(['-Action', 'Activate', *common])
-        check('switch', 'Activate runs', rc == 0, out[-300:])
-        wef = regq(f"(Get-ItemProperty '{key}\\WEF\\Developer').'08d15d9d-8629-4583-b67d-5f80143dde6d'")
-        check('switch', 'AI Visual Builder registration points at manifest-slsd.xml', wef.lower() == os.path.join(ROOT, 'manifest-slsd.xml').lower(), wef)
+        check('switch', 'Activate (catalog) runs', rc == 0, out[-300:])
+        cat = regq(f"$p = Get-ItemProperty '{catkey}'; \"$($p.Id)|$($p.Url)|$($p.Flags)\"")
+        check('switch', 'trusted catalog of its own registered (Id, Url, Flags 1)', cat == r'{5D7F6C1E-3B1A-4E5C-9C2E-51D051500001}|\\TESTPC\share\catalog|1', cat)
+        check('switch', 'the catalog folder holds manifest-slsd.xml', os.path.exists(os.path.join(catdir, 'manifest-slsd.xml')) and
+              open(os.path.join(catdir, 'manifest-slsd.xml'), 'rb').read() == open(os.path.join(ROOT, 'manifest-slsd.xml'), 'rb').read())
+        check('switch', 'no double registration: the Developer value of this Id removed', regq(devq) == '')
         check('switch', 'another web add-in\'s registration untouched', regq(f"(Get-ItemProperty '{key}\\WEF\\Developer').'other-addin-id'") == 'C:\\other\\manifest.xml')
         check('switch', 'V10.20 SL Smart Design AI VBA add-in no longer loaded (its key only)', regq(f"Test-Path '{key}\\PowerPoint\\AddIns\\SLSD_AIVisualBuilder'") == 'False'
               and regq(f"(Get-ItemProperty '{key}\\PowerPoint\\AddIns\\SL_Audomation').Path") == 'SL_Audomation.ppam')
@@ -355,6 +369,7 @@ def t_switch():
             check('switch', 'Rollback: previous SL Smart Design file back', f.read() == b'previous unified add-in')
         check('switch', 'Rollback: previous manifest value back', regq(f"(Get-ItemProperty '{key}\\WEF\\Developer').'08d15d9d-8629-4583-b67d-5f80143dde6d'") == 'D:\\old\\manifest-v10.xml')
         check('switch', 'Rollback: V10.20 VBA add-in key back with its values', regq(f"$p = Get-ItemProperty '{key}\\PowerPoint\\AddIns\\SLSD_AIVisualBuilder'; \"$($p.Path)|$($p.AutoLoad)\"") == 'SLSD_AIVisualBuilder.ppam|1')
+        check('switch', 'Rollback: the catalog entry removed again', regq(f"Test-Path '{catkey}'") == 'False')
         check('switch', 'Rollback: other registrations still untouched', regq(f"(Get-ItemProperty '{key}\\WEF\\Developer').'other-addin-id'") == 'C:\\other\\manifest.xml')
         src = open(os.path.join(KIT, 'switch-slsd.ps1'), encoding='utf-8').read()
         check('switch', 'never recreates a key with -Force, never touches the real PowerPoint while it runs',
