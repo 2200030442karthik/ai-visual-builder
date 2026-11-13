@@ -117,7 +117,7 @@ function sectionsPrep(SX, text) {
   const points = [], parts = [SX.full || SX.title].filter(Boolean);
   if (SX.intro) parts.push(SX.intro);
   SX.sections.forEach(s => {
-    parts.push(s.name + ':\n' + s.items.map(it => '- ' + it.label + (it.detail ? ': ' + it.detail : '')).join('\n'));
+    parts.push(s.name + (s.note ? ` (${s.note})` : '') + ':\n' + s.items.map(it => '- ' + it.label + (it.detail ? ': ' + it.detail : '')).join('\n'));
     s.items.forEach(it => points.push({ label: it.label, detail: it.detail, group: s.name }));
   });
   const concepts = [...new Set(points.map(p => p.label))];
@@ -128,17 +128,18 @@ function sectionsPrep(SX, text) {
     ` and ${st.object ? 'the ' + st.object : 'its examples'} as ${SX.sections[0].items.length} items with an object each: ${SX.sections[0].items.map(i => i.label).join('; ')}. A modern, engaging educational infographic; ` +
     'use the wording of the text; do not add facts, figures or items, and do not repeat the sentence as a block of text.' : '';
   return { content: st ? st.text : parts.join('\n\n'), concepts, ordered: false, list: true, points, headings: SX.sections.map(s => s.name).filter(Boolean), source: text, context: (ctx2 || context).slice(0, 900),
-    record: null, title: SX.title, short: SX.short, sections: SX.sections, statement: st || null };
+    record: null, title: SX.title, short: SX.short, sections: SX.sections, statement: st || null, paragraph: !!SX.paragraph, lead: SX.lead || '' };
 }
 /* The plan of sectioned content: one group per section (its name drawn as the group's heading), every item in it. */
 function sectionsPlan(SX) {
-  const groups = SX.sections.map((s, i) => ({ id: 's' + i, name: s.name, role: 'category', kind: s.kind }));
+  const sc = t => typeof sentenceCase === 'function' ? sentenceCase(t) : t;     // 10.19: LVC sentence case (brand.js)
+  const groups = SX.sections.map((s, i) => ({ id: 's' + i, name: sc(s.name), role: 'category', kind: s.kind }));
   const items = [];
-  SX.sections.forEach((s, i) => s.items.forEach(it => items.push({ id: 'p' + items.length, label: planClean(it.label), detail: planClean(it.detail || ''), group: 's' + i })));
+  SX.sections.forEach((s, i) => s.items.forEach(it => items.push({ id: 'p' + items.length, label: sc(planClean(it.label)), detail: planClean(it.detail || ''), group: 's' + i })));
   planIcons(items);
   const st = SX.statement || null;
-  return planSemantics({ title: SX.title, headline: SX.title, takeaway: '', hero: heroFor(SX.short, SX.full || SX.title), short: SX.short, statement: st, verbs: st ? st.verbs : [],
-    relation: groups.length >= 2 ? 'categories' : 'independent', items, groups: groups.length >= 2 ? groups : [], flow: [], layouts: [], from: 'text', sections: true,
+  return planSemantics({ title: SX.title, headline: SX.title, takeaway: SX.paragraph && SX.lead && SX.lead.length <= 140 ? SX.lead.replace(/[.!]\s*$/, '') : '', hero: heroFor(SX.short, SX.full || SX.title), short: SX.short, statement: st, verbs: st ? st.verbs : [],
+    relation: groups.length >= 2 ? 'categories' : 'independent', items, groups: groups.length >= 2 ? groups : [], flow: [], layouts: [], from: 'text', sections: true, paragraph: !!SX.paragraph,
     sectionName: groups.length === 1 ? groups[0].name : '' });
 }
 /* The object for a whole topic: its short name first ("AI & ML" -> the brain, "Digital Marketing" -> the megaphone),
@@ -241,5 +242,71 @@ function statementRead(text) {
   return { title: head || subject, full: head || subject, short, abbr, intro: '', sections: [sec],
     statement: { subject, verbs: usesVerbs ? [] : verbs.map(secCap), object, text: s, head: head || '' } };
 }
-/* What the text is: labelled sections, else one statement with a list, else null (V10.16). */
-const contentRead = text => sectionsRead(text) || statementRead(text);
+/* ---------- a paragraph of several sentences (V10.19) ----------
+   "Cloud computing delivers computing services over the internet ... . It offers three main service models: IaaS
+   provides ...; PaaS provides ...; and SaaS delivers ... . Key benefits include A, B, C and D. Organizations can choose
+   public, private or hybrid cloud deployments depending on ..." was read as its first list only (V10.18: the benefits
+   and deployment options were in no design). Now: the topic (the first sentence's subject), its lead idea (a sentence
+   without a list) and one section per sentence that names a list, the section's name in the sentence's own words
+   ("three main service models" -> "Service models"). Same shape as sectionsRead; nothing is added. */
+const PA_COUNT = /^(?:the\s+)?(?:two|three|four|five|six|seven|eight|nine|ten|several|many|various|\d+)\s+/i;
+const PA_QUAL = /^(?:main|key|major|core|primary|basic|important|common|different|essential)\s+/i;
+const PA_INCL = /^(.{3,70}?)\s+(?:include|includes|including|are|cover|covers|consist of|consists of|comprise|comprises|span|spans|range from|ranges from)\s+(.+)$/i;
+const PA_TAIL = /\s+(?:depending|based|according|for|to|in|on|that|which|so|because|when|if|across|within|with)\b/i;
+const paSentences = t => t.replace(/\s+/g, ' ').trim().split(/(?<=[a-z0-9)\]][.!?])\s+(?=[A-Z(])/).map(s => s.trim()).filter(Boolean);
+function paName(t) {
+  t = String(t).replace(/^(?:it|they|this|these|the course|the program(?:me)?|you|we|there)\s+/i, '').replace(ST_VERB, ' ').trim();
+  const v = ST_VERB.exec(' ' + t + ' ');
+  if (v && v.index < t.length) t = t.slice(v.index + v[0].length - 1).trim();
+  t = t.replace(/^(?:the|a|an)\s+/i, '').replace(PA_COUNT, '').replace(PA_QUAL, '').replace(/[,:;.]+$/, '').trim();
+  return t && t.split(/\s+/).length <= 6 ? secCap(stAcro(t)) : '';
+}
+/* "Infrastructure as a Service (IaaS) provides virtual machines, storage and networks" -> IaaS: what it provides */
+function paClause(c) {
+  c = c.replace(/^\s*(?:and|or|plus)\s+/i, '').replace(/[.;]+\s*$/, '').trim();
+  const v = ST_VERB.exec(' ' + c + ' ');
+  if (!v || v.index < 1) { const it = secItem(c); return it && it.label.split(/\s+/).length <= 7 ? it : null; }
+  const head = c.slice(0, v.index).trim(), rest = c.slice(v.index + v[0].length - 1).trim();
+  if (head.split(/\s+/).length > 7) return null;
+  const it = secItem(head);
+  const verb = v[0].trim();
+  return { label: it.label, detail: secCap((it.detail ? it.detail + ': ' : '') + verb + ' ' + rest) };
+}
+function paragraphRead(text) {
+  const raw = String(text || '').replace(/\r\n?/g, '\n').trim();
+  if (!raw || raw.length > 2400) return null;
+  let lines = raw.split('\n').map(l => l.trim()).filter(Boolean), head = '';
+  if (lines.length >= 2 && lines[0].split(/\s+/).length <= 8 && !/[.!?]$/.test(lines[0]) && !ST_VERB.test(' ' + lines[0] + ' ')) head = lines.shift().replace(/[:.]\s*$/, '');
+  if (lines.some(l => /^\s*(?:[-•*▪●◦–]|\d{1,2}[.)])\s/.test(l))) return null;     // bullet points: sectionsRead / the list readers
+  const S = paSentences(lines.join(' '));
+  if (S.length < 2) return null;
+  const secs = [], lead = [];
+  let subject = '';
+  for (const s0 of S) {
+    const s = s0.replace(/[.!?]+$/, '').trim();
+    if (!subject) { const v = ST_VERB.exec(' ' + s + ' '); if (v && v.index > 0) { const sj = stAcro(s.slice(0, v.index).trim()).replace(/^(?:the|a|an)\s+/i, ''); if (sj.split(/\s+/).length <= 5) subject = sj; } }
+    let sec = null, m;
+    if ((m = /^(.{6,}?):\s+(.+)$/.exec(s))) {                                     // "It offers three main service models: A ...; B ...; and C ..."
+      const body = m[2], parts = body.includes(';') ? body.split(/;\s*/) : stSplitList(body);
+      const items = parts.map(p => body.includes(';') ? paClause(p) : secItem(p)).filter(Boolean);
+      sec = { name: paName(m[1]), items };
+    } else if ((m = PA_INCL.exec(s)) && /,|\s(?:and|or)\s/.test(m[2])) {           // "Key benefits include A, B, C and D"
+      const L = stSplitList(m[2]);
+      if (L.every(x => x.split(/\s+/).length <= 6)) sec = { name: secCap(stAcro(m[1].replace(/^(?:the|its|their)\s+/i, ''))), items: L.map(secItem).filter(Boolean) };
+    } else if ((m = /\b((?:[A-Za-z][\w-]*,\s+)+(?:[A-Za-z][\w-]*,?\s+)?(?:and|or)\s+[A-Za-z][\w-]*)\s+([a-z][\w -]{2,40}?)(?=(?:\s+(?:depending|based|according|for|to|in|on|that|which|so|because|when|if|across|within|with)\b)|$)(.*)$/.exec(s))) {
+      // "Organizations can choose public, private or hybrid cloud deployments depending on ..."
+      const L = m[1].split(/,\s*|\s+(?:and|or)\s+/).map(x => x.trim()).filter(Boolean);
+      if (L.length >= 2 && L.length <= 8) sec = { name: secCap(stAcro(m[2].trim())), items: L.map(x => ({ label: secCap(stAcro(x)), detail: '' })), note: m[3].trim() };
+    }
+    if (sec && sec.name && sec.items.length >= 2 && sec.items.length <= 8) secs.push(sec);
+    else lead.push(s0);
+  }
+  const total = secs.reduce((a, x) => a + x.items.length, 0);
+  if (secs.length < 2 || total > 14 || new Set(secs.map(x => x.name.toLowerCase())).size !== secs.length) return null;
+  const title = head || subject;
+  if (!title) return null;
+  return { title, full: title, short: secShort(title), intro: lead.join(' '), lead: lead[0] || '', paragraph: true,
+    sections: secs.map(x => ({ name: x.name, kind: sectionKind(x.name), items: x.items, note: x.note || '' })) };
+}
+/* What the text is: labelled sections, else a paragraph of several lists (10.19), else one statement with a list, else null (V10.16). */
+const contentRead = text => sectionsRead(text) || paragraphRead(text) || statementRead(text);

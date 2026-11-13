@@ -28,7 +28,7 @@
      from its own items, at no extra cost, and they are marked as such. Before a request, a free check shows which
      layouts the content fits at 22 pt. Loaded after v10.html's scripts, gallery.js, understand.js, brand.js, svg2ppt.js,
      rebuild.js and plan.js. */
-const PANEL_VERSION = '10.18.0';      // must match server.py VERSION; a different host version is reported in the panel
+const PANEL_VERSION = '10.19.0';      // must match server.py VERSION; a different host version is reported in the panel
 const shortId = id => id ? `${id.slice(0, 4)}…${id.slice(-4)}` : '';
 /* Claude's time, tokens and estimated cost (from the prices in claude.json; the bill is in platform.claude.com). */
 const costText = c => `${c.model}${c.effort ? ' (effort ' + c.effort + ')' : ''}: ${c.seconds} s, ${c.usage.input_tokens} input + ${c.usage.output_tokens} output tokens` +
@@ -70,8 +70,9 @@ const PANELS = {};
 /* The panel's own analysis as a plan (the free layout check before a request). */
 function planFromPrep(prep) {
   // 10.15: content written as labelled sections ("What you learn" / "Best for"): one named group per section
-  if (prep.sections && prep.sections.length && typeof sectionsPlan === 'function') return sectionsPlan({ title: prep.title, full: prep.full || prep.title, short: prep.short, sections: prep.sections, statement: prep.statement });
-  const items = (prep.points || []).map((p, i) => ({ id: 'p' + i, label: planClean(p.label), detail: planClean(p.exact || p.detail || ''), group: '' })).filter(i => i.label);
+  if (prep.sections && prep.sections.length && typeof sectionsPlan === 'function') return sectionsPlan({ title: prep.title, full: prep.full || prep.title, short: prep.short, sections: prep.sections, statement: prep.statement, paragraph: prep.paragraph, lead: prep.lead });
+  const sc = t => typeof sentenceCase === 'function' && !prep.record ? sentenceCase(t) : t;   // 10.19: LVC sentence case (brand.js); exact records as written
+  const items = (prep.points || []).map((p, i) => ({ id: 'p' + i, label: sc(planClean(p.label)), detail: planClean(p.exact || p.detail || ''), group: '' })).filter(i => i.label);
   planIcons(items);
   return planSemantics({ title: prep.title || '', relation: prep.ordered ? 'sequence' : 'independent', items, groups: [], flow: prep.ordered ? items.map(i => i.id) : [], layouts: [], from: 'text' });
 }
@@ -717,10 +718,10 @@ function makePanel(P) {
     return { ids, rec };
   }
   async function putEditable(context, slide, it) {
-    const fa = freeArea(await readSlide(context, slide));
-    if (!fa.rect || fa.rect.w < 520 || fa.rect.h < 260) throw fullErr();
-    const b = it.plan ? planBuildFor(it, fa.rect) : napkinBuild(it, fa.rect, it.check.add || [], it.ordered, it.order, it.drop);
-    return Object.assign({ b }, await drawPrims(context, slide, b.prims, it, fa.rect, P.name));
+    // 10.19: the slide's free part (below its text), laid out there or scaled into it; else a new slide (app.js)
+    const fit = await fitArea(context, slide);
+    const b = fitBuild(fit, R => { try { return it.plan ? planBuildFor(it, R) : napkinBuild(it, R, it.check.add || [], it.ordered, it.order, it.drop); } catch (e) { return null; } });
+    return Object.assign({ b, k: b.k }, await drawPrims(context, slide, b.prims, it, b.rect, P.name));
   }
   /* The original as one picture in the slide's free part: validated again for that space, exactly one picture added,
      at its fitted place; named and tagged (AIVB_O) so step 5 recognises it. */
@@ -728,9 +729,9 @@ function makePanel(P) {
     const a = it.orig;
     if (!origOK(it)) throw new Error(`the original design cannot be inserted (${a && (a.ok ? a.block[0] : a.why) || 'not available'})`);
     slide.load('id');
-    const fa = freeArea(await readSlide(context, slide));
-    if (!fa.rect || fa.rect.w < 520 || fa.rect.h < 260) throw fullErr();
-    const at = originalPlace(a, fa.rect);
+    const fit = await fitArea(context, slide);           // 10.19: any free part; the picture is fitted and its text size checked
+    if (!fit.rect) throw fullErr();
+    const at = originalPlace(a, fit.rect);
     if (at.minPt < ORIGINAL_MIN_PT) throw new Error(`in the free part of this slide the original's smallest text would be ${at.minPt} pt (below ${ORIGINAL_MIN_PT} pt, unreadable); use an empty Content_Slide or the editable version`);
     const before = new Set(await shapeIds(context, slide));
     context.presentation.setSelectedSlides([slide.id]);         // the picture goes in through the selection
@@ -749,7 +750,7 @@ function makePanel(P) {
     return { ids, at };
   }
   async function insertNapkin(it, mode) {
-    const both = mode === 'both', onNew = both || $('newSlide').checked;
+    const both = mode === 'both', onNew = both || $('newSlide').checked || !!state.forceNew;
     let out = null;
     await PowerPoint.run(async context => {
       const pres = context.presentation, sel = pres.getSelectedSlides(), cnt = sel.getCount(), all = pres.slides;
@@ -760,11 +761,17 @@ function makePanel(P) {
       // checked again there; a tall design continues on new slides after it
       let fe = null;
       if (mode === 'origedit') {
-        const fa = onNew ? freeArea([]) : freeArea(await readSlide(context, sel.getItemAt(0)));
-        if (!fa.rect || fa.rect.w < 520 || fa.rect.h < 260) throw fullErr();
-        fe = faithfulBuild(it, fa.rect);
-        if (!fe.ok || fe.block.length) throw new Error(`the editable original design cannot be inserted here (${fe.ok ? fe.block[0] : fe.why})`);
-        fe.rect = fa.rect; fe.check = it.fe.check; fe.status = it.fe.status;   // the same texts: the content check of the preview holds
+        // 10.19: the selected slide's free part (below its text): drawn for it, else drawn full size and scaled into it
+        // (one-part designs), else a new slide (app.js)
+        const fit = onNew ? null : await fitArea(context, sel.getItemAt(0)), R0 = onNew ? freeArea([]).rect : fit.rect;
+        let ok = false;
+        if (R0 && R0.w >= 520 && R0.h >= 260) { fe = faithfulBuild(it, R0); ok = fe.ok && !fe.block.length; if (ok) fe.rect = R0; }
+        if (!ok && fit && !fit.full) {
+          const f0 = faithfulBuild(it, fit.base);
+          if (f0.ok && !f0.block.length && f0.parts.length === 1) { const sc = scalePrims(f0.parts[0], fit.base, fit.rect); fe = f0; fe.parts = [sc.prims]; fe.k = sc.k; fe.rect = fit.rect; ok = true; }
+        }
+        if (!ok) { if (!R0 || (fit && fit.full)) throw fullErr(); throw new Error(`the editable original design cannot be inserted here (${fe && fe.ok ? fe.block[0] : fe ? fe.why : 'no room'})`); }
+        fe.check = it.fe.check; fe.status = it.fe.status;   // the same texts: the content check of the preview holds
       }
       const many = both || (fe && fe.parts.length > 1), n = both ? 2 : fe ? fe.parts.length : 1;
       const slidesBefore = new Set(all.items.map(x => x.id)), batch = many ? (typeof newId === 'function' ? newId('B') : 'B' + Date.now().toString(36)) : '';
@@ -839,7 +846,8 @@ function makePanel(P) {
     N.busy = true; napkinButtons();
     try {
       if (!(await ensureGate())) return;
-      const onNew = mode === 'both' || $('newSlide').checked, r = await insertNapkin(it, mode), who = `${P.name} (request ${shortId(it.rid || '')}, variation ${it.n}${P.branded ? ', Simplilearn brand style' : ''})`;
+      state.lastFull = false;
+      const onNew = mode === 'both' || $('newSlide').checked || !!state.forceNew, r = await insertNapkin(it, mode), who = `${P.name} (request ${shortId(it.rid || '')}, variation ${it.n}${P.branded ? ', Simplilearn brand style' : ''})`;
       N.last = { ref: state.lastInsert, key, vers };
       const edit = r.e && (() => { const b = r.e.b, x = b.report;
         return { what: `${x.rebuilt ? 'rebuilt in the template as ' : ''}${x.native} native, editable objects${x.pictures ? ` and ${x.pictures} picture${x.pictures > 1 ? 's' : ''} (icons)` : ''}`,
@@ -856,7 +864,8 @@ function makePanel(P) {
       setStatus(mode === 'origedit' ? fed : mode === 'both' ? `Inserted ${who} on two new slides after the selected one: 1) editable version, ${edit.what}; 2) ${orig.what}. ${edit.note} ${orig.note}${typeof editNote === 'function' ? editNote(r.e.rec) : ''} “Remove last inserted visual” removes both slides.`
         : mode === 'orig' ? `${orig.note} ${who} inserted${onNew ? ' on a new slide with the same layout' : ''}: ${orig.what}. “Remove last inserted visual” takes it out again.`
         : `${edit.note} ${who} inserted: ${edit.what}${onNew ? ' on a new slide with the same layout' : ''}.${typeof editNote === 'function' ? editNote(r.e.rec) : ''} “Remove last inserted visual” takes it out again.`);
-    } catch (e) { setStatus(`Could not insert the ${P.name} result, so nothing was added${mode === 'both' ? ' (neither slide)' : mode === 'origedit' ? ' (no slide)' : ''}: ` + (e.full ? 'this slide has no free space.' : errText(e)), true); }
+      state.lastFit = (r.e && r.e.k) || (r.f && r.f.fe && r.f.fe.k) || 1;
+    } catch (e) { state.lastFull = !!e.full; setStatus(`Could not insert the ${P.name} result, so nothing was added${mode === 'both' ? ' (neither slide)' : mode === 'origedit' ? ' (no slide)' : ''}: ` + (e.full ? 'this slide has no free space.' : errText(e)), true); }
     finally { N.busy = false; napkinButtons(); updateButtons(); if (mode !== 'edit' && mode !== 'orig' && typeof checkBatch === 'function') checkBatch(); }
   }
   $p('Go').addEventListener('click', create);

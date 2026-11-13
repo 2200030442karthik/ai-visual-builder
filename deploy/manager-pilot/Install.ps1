@@ -9,7 +9,8 @@ param(
     [string]$Instance = 'AIVisualBuilderPilot',
     [int]$Port = 44317,
     [string]$DataDir,                 # default %LOCALAPPDATA%\AIVisualBuilder (as on the desktop version)
-    [switch]$SkipKeys,                # do not ask for keys now ("Set AI keys.bat" later)
+    [switch]$SkipKeys,                # (kept for older instructions: the user is never asked any more)
+    [switch]$AskKeys,                 # the administrator at the desk types the keys (hidden input)
     [string]$UseCertFrom,             # tests only: a folder with an already trusted localhost cert.pem/key.pem
     [switch]$NoAutostart
 )
@@ -47,13 +48,19 @@ if ($owner) {
     Say "Port $Port is used by $($pr.ProcessName) (process $($pr.Id)). Close it, then run Install again." Red; exit 1
 }
 
-# 2. Files: app and runtime (replaced on upgrade; keys and usage live in the data folder and are kept)
+# 2. Files: app and runtime (keys and usage live in the data folder and are kept). 10.19: an update keeps the previous
+# version (app.prev, runtime.prev) until the new one has started and answered; if it does not, the previous one is put
+# back and started again (step 7).
 New-Item -ItemType Directory -Force $P.Dest | Out-Null
+$prevVer = ''
+if (Test-Path (Join-Path $P.App 'server.py')) { $prevVer = ([regex]::Match((Get-Content (Join-Path $P.App 'server.py') -Raw), "VERSION = '([^']+)'")).Groups[1].Value }
 foreach ($d in 'app', 'runtime') {
-    $to = Join-Path $P.Dest $d
-    if (Test-Path $to) { Remove-Item $to -Recurse -Force }
+    $to = Join-Path $P.Dest $d; $bak = "$to.prev"
+    if (Test-Path $bak) { Remove-Item $bak -Recurse -Force }
+    if (Test-Path $to) { Rename-Item $to (Split-Path $bak -Leaf) }
     Copy-Item (Join-Path $Src $d) $to -Recurse
 }
+if ($prevVer) { Say "Update:      $prevVer -> $(([regex]::Match((Get-Content (Join-Path $P.App 'server.py') -Raw), "VERSION = '([^']+)'")).Groups[1].Value) (the previous version is kept until this one runs)" Green }
 foreach ($f in 'common.ps1', 'Uninstall.ps1', 'Configure-Keys.ps1', 'Restart.ps1', 'Uninstall AI Visual Builder.bat', 'Set AI keys.bat', 'Restart AI Visual Builder.bat', 'INSTALL-GUIDE.txt') {
     if (Test-Path (Join-Path $Src $f)) { Copy-Item (Join-Path $Src $f) $P.Dest -Force }
 }
@@ -132,8 +139,17 @@ if ($old -and $old.access_created -and -not $state.access_created) { $state.acce
 if ($old -and $old.cert_thumbprint -and -not $state.cert_thumbprint) { $state.cert_thumbprint = $old.cert_thumbprint }
 if ($old -and $old.data_dir_created) { $state.data_dir_created = $true }
 
-# 5. Organization keys for Napkin and Claude (this Windows user only; never in the package or the add-in)
-if (-not $SkipKeys) { ConfigureKeys $DataDir }
+# 5. Organization keys for Napkin and Claude (this Windows user only; never in the package or the add-in).
+# 10.19: the user is never asked. The administrator's key file (AIVB-keys.json beside this script, for this installation
+# only) is imported and deleted; keys already stored are kept; -AskKeys asks (the administrator at the desk).
+$imported = ImportAdminKeys $Src $DataDir
+if ($imported.Count) { Say "AI keys:     $($imported -join ' and ') set up by the administrator (key file imported and deleted)." Green }
+elseif ($AskKeys) { ConfigureKeys $DataDir }
+else {
+    $have = @('napkin.json', 'claude.json') | Where-Object { Test-Path (Join-Path $DataDir $_) }
+    if ($have) { Say 'AI keys:     already set up for this user (kept).' Green }
+    else { Say 'AI keys:     none yet - the built-in designs work now; your administrator adds the AI services ("Set AI keys.bat").' Yellow }
+}
 
 # 6. Pilot settings for the launcher, PowerPoint registration, autostart, Apps & features entry
 $pj = [ordered]@{ instance = $Instance; port = $Port; data_dir = $DataDir }
@@ -162,7 +178,15 @@ WriteJson $P.State $state
 
 # 7. Start and verify over HTTPS (normal certificate checking)
 $s = StartPilot $P $Port
+if (-not $s -and (Test-Path "$($P.App).prev")) {
+    # 10.19: roll back to the version that worked
+    [void](StopPilot $P)
+    foreach ($d in 'app', 'runtime') { $to = Join-Path $P.Dest $d; if (Test-Path "$to.prev") { Remove-Item $to -Recurse -Force; Rename-Item "$to.prev" $d } }
+    $s = StartPilot $P $Port
+    if ($s) { Say "The new version did not start, so version $($s.server) was put back and is running. See $DataDir\server.log." Yellow; exit 1 }
+}
 if (-not $s) { Say "The panel host did not start. See $DataDir\server.log, then run Install again." Red; exit 1 }
+foreach ($d in 'app', 'runtime') { $bak = (Join-Path $P.Dest $d) + '.prev'; if (Test-Path $bak) { Remove-Item $bak -Recurse -Force } }
 Say ''
 Say "AI Visual Builder $($s.server) is running on https://localhost:$Port/" Green
 Say ("  Generate allowed for this account: " + $(if ($s.access.authorized) { 'yes' } else { "NO - $($s.access.reason)" }))

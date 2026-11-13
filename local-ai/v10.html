@@ -85,7 +85,7 @@
   </style>
 </head>
 <body>
-  <h1>AI Visual Builder <span style="font-size:11px;font-weight:400;color:var(--muted)">version 10.18.0</span></h1>
+  <h1>AI Visual Builder <span style="font-size:11px;font-weight:400;color:var(--muted)">version 10.19.0</span></h1>
   <p class="sub">Turns your text into accurate, editable infographics in the Simplilearn template. Analyse your content, then generate: native infographics (built in, free), or Napkin AI or Claude AI (optional, paid, asked before each request); preview, then insert. Nothing is sent to the internet unless you use one of those two.</p>
 
   <div class="panel" id="aiStatus">
@@ -2300,11 +2300,14 @@
       const title = shapes.find(s => s.isTitle && s.text);
       if (title && title.top + title.height + 12 > base.y) { const b = title.top + title.height + 12; base.h -= b - base.y; base.y = b; }
       base.h = Math.min(base.h, S.h - T.bottomMargin * sy - base.y);
-      const obstacles = shapes.filter(s => !s.isTitle && !s.removable && s.width * s.height < 0.6 * S.w * S.h &&
-        s.left < base.x + base.w && s.left + s.width > base.x && s.top < base.y + base.h && s.top + s.height > base.y);
+      // 10.19: a text box or placeholder whose text starts at the top occupies only what its text fills (the content
+      // placeholder holding the slide's paragraph leaves the space below the text free for the visual)
+      const hOf = s => s.usedH != null ? s.usedH : s.height;
+      const obstacles = shapes.filter(s => !s.isTitle && !s.removable && s.width * hOf(s) < 0.6 * S.w * S.h &&
+        s.left < base.x + base.w && s.left + s.width > base.x && s.top < base.y + base.h && s.top + hOf(s) > base.y);
       let rects = [base];
       for (const o of obstacles) {
-        const pad = 14, ox1 = o.left - pad, oy1 = o.top - pad, ox2 = o.left + o.width + pad, oy2 = o.top + o.height + pad;
+        const pad = 14, ox1 = o.left - pad, oy1 = o.top - pad, ox2 = o.left + o.width + pad, oy2 = o.top + hOf(o) + pad;
         rects = rects.flatMap(r => {
           if (ox1 >= r.x + r.w || ox2 <= r.x || oy1 >= r.y + r.h || oy2 <= r.y) return [r];
           return [{ x: r.x, y: r.y, w: ox1 - r.x, h: r.h }, { x: ox2, y: r.y, w: r.x + r.w - ox2, h: r.h },
@@ -2328,29 +2331,81 @@
         }
         // An empty content placeholder ("Click to add text") can be replaced by the visual: nothing is lost.
         info.removable = s.type === 'Placeholder' && !info.isTitle && !info.text && !info.noText && !/footer|slide number|date/i.test(s.name);
+        // 10.19: how far down its text reaches (top-anchored text only; anything else keeps its whole box)
+        if (info.text && !info.isTitle) {
+          try {
+            const tf = s.textFrame, r = tf.textRange; r.font.load('size'); if (tf.load) tf.load('verticalAlignment'); await context.sync();
+            const va = String(tf.verticalAlignment || 'Top');
+            if (/^top/i.test(va)) info.usedH = Math.min(s.height, textUsedHeight(info.text, s.width, r.font.size));
+          } catch (e) { /* keep the whole box */ }
+        }
         out.push(info);
       }
       return out;
     }
     const overlaps = (s, r) => s.left < r.x + r.w && s.left + s.width > r.x && s.top < r.y + r.h && s.top + s.height > r.y;
+    /* 10.19: the height a text needs in a box w wide at `size` pt (Open Sans ~0.55 em a character, 1.2 line spacing),
+       with a 10 % reserve and the box's margins - generous, so a visual placed below never touches the text. */
+    function textUsedHeight(t, w, size) {
+      const s = size > 0 ? size : 24, inner = Math.max(40, w - 14.4), cw = s * 0.55;
+      const lines = String(t).split(/\r\n?|\n|\u000b/).reduce((a, p) => a + Math.max(1, Math.ceil(p.length * cw / inner)), 0);
+      return Math.ceil(lines * s * 1.2 * 1.1 + s * 0.3 + 14.4 + 6);
+    }
+    /* 10.19: same-slide insertion. A design is drawn for the template's content area (what the preview shows); on a slide
+       whose free part is smaller it is laid out again there at full size when it fits, else scaled down as a whole -
+       every shape and text by one factor, never below FIT_MIN - placed at the top of the free part; when even that does
+       not fit, the caller puts it on a new slide after the selected one. */
+    const FIT_MIN = 0.7;
+    function scalePrims(prims, from, to) {
+      const k = Math.min(to.w / from.w, to.h / from.h, 1), ox = to.x + (to.w - from.w * k) / 2, oy = to.y;
+      const X = v => ox + (v - from.x) * k, Y = v => oy + (v - from.y) * k;
+      const one = p => { const q = Object.assign({}, p);
+        if ('x' in q) q.x = X(q.x); if ('y' in q) q.y = Y(q.y); if ('w' in q) q.w *= k; if ('h' in q) q.h *= k;
+        ['x1', 'x2'].forEach(c => { if (c in q) q[c] = X(q[c]); }); ['y1', 'y2'].forEach(c => { if (c in q) q[c] = Y(q[c]); });
+        if (q.size) q.size = Math.max(1, Math.round(q.size * k * 2) / 2);
+        if (q.lineW) q.lineW = Math.max(0.75, q.lineW * k);
+        if (Array.isArray(q.cells)) q.cells = q.cells.map(one);
+        return q; };
+      return { k, prims: prims.map(one) };
+    }
+    /* The free part of the slide for a visual, or a full-size area to scale from: { rect, base, empties, full } */
+    async function fitArea(context, slide) {
+      const shapes = await readSlide(context, slide), fa = freeArea(shapes), T = TEMPLATE, sx = SLIDE.w / T.slide.w, sy = SLIDE.h / T.slide.h;
+      const base = { x: T.contentArea.x * sx, y: T.contentArea.y * sy, w: T.contentArea.w * sx, h: T.contentArea.h * sy };
+      const rect = fa.rect && fa.rect.w >= 200 && fa.rect.h >= 120 ? fa.rect : null;
+      const k = rect ? Math.min(rect.w / base.w, rect.h / base.h, 1) : 0;
+      return { rect, base, k, empties: rect ? shapes.filter(x => x.removable && overlaps(x, rect)) : [], full: !rect || k < FIT_MIN };
+    }
+    /* Prims for the slide: build(r) lays the design out in r ({prims} or null when it does not fit there). */
+    function fitBuild(fit, build) {
+      if (!fit.rect) throw Object.assign(new Error('full'), { full: true });
+      if (fit.rect.w >= 520 && fit.rect.h >= 260) {
+        const d = build(fit.rect);
+        if (d && d.prims && !checkLayout(d.prims, fit.rect).some(i => /outside/.test(i))) return Object.assign({}, d, { k: 1, rect: fit.rect });
+      }
+      if (fit.k < FIT_MIN) throw Object.assign(new Error('full'), { full: true });
+      const d0 = build(fit.base);
+      if (!d0 || !d0.prims) throw Object.assign(new Error('full'), { full: true });
+      const s = scalePrims(d0.prims, fit.base, fit.rect);
+      return Object.assign({}, d0, { prims: s.prims, k: s.k, rect: { x: fit.rect.x, y: fit.rect.y, w: fit.base.w * s.k, h: fit.base.h * s.k } });
+    }
+    const fitNote = k => k < 0.995 ? ` It was scaled to ${Math.round(k * 100)} % to fit beside the slide's text.` : '';
 
     /* Put one section's visual (one page of it) into the free area of a slide. Line pictures (only on PowerPoint without
        PowerPointApi 1.10) go in through the selection, so the slide must be the selected one. */
     async function placeVisual(context, slide, s, page, meta) {
-      const m = s.model, shapes = await readSlide(context, slide), fa = freeArea(shapes), minW = 520, minH = 260;
-      if (!fa.rect || fa.rect.w < minW || fa.rect.h < minH) throw Object.assign(new Error('full'), { full: true });
-      const placed = fa.rect, empties = shapes.filter(x => x.removable && overlaps(x, placed));
+      const m = s.model, fit = await fitArea(context, slide);
+      // 10.19: laid out in the slide's free part, or scaled into it (fitBuild); new slide only when neither works
+      const d = fitBuild(fit, R => { try { return s.choice ? buildChoice(R, s, s.choice, 0) : buildDiagram(R, m, s.diagram ? s.diagram.kind : s.want, page); } catch (e) { return null; } });
+      const placed = d.rect, empties = fit.empties.filter(x => overlaps(x, placed));
       {
-        const d = s.choice ? buildChoice(placed, s, s.choice, 0) : buildDiagram(placed, m, s.diagram ? s.diagram.kind : s.want, page);
-        const bad = checkLayout(d.prims, placed).filter(i => /outside/.test(i));
-        if (bad.length) throw new Error('The visual does not fit the free space on this slide (' + bad[0] + ') Use an empty Content_Slide.');
         for (const p of d.prims.filter(q => q.t === 'image' && q.under)) await insertSvgAt(p.svg, p);   // behind the shapes
         await drawOnSlide(context, slide, d.prims.filter(p => p.t !== 'image'), KIND_NAMES[d.kind], meta);
       }
       // Only now that the visual is in: an empty placeholder under it ("Click to add text") is no longer needed.
       empties.forEach(x => slide.shapes.getItem(x.id).delete());
       await context.sync();
-      return { placed, removed: empties.length };
+      return { placed, removed: empties.length, k: d.k };
     }
     const insertError = e => e.full ? 'This slide has no free space for the visual without covering existing content. Add a new slide with the Content_Slide layout (or make room), select it and press Insert again.'
       : /Click (a|the) slide/.test(errText(e)) ? 'PowerPoint insertion failed. Click once on a slide in the slide list on the left, then press Insert again.\n(Details: ' + errText(e) + ')'
@@ -2382,7 +2437,8 @@
       if (!(await ensureGate())) return;
       state.inserting = true; updateButtons();
       setStatus('Inserting…');
-      const t0 = performance.now(), onNew = $('newSlide').checked;
+      const t0 = performance.now(), onNew = $('newSlide').checked || !!state.forceNew;
+      state.lastFull = false;
       try {
         let r;
         await PowerPoint.run(async context => {
@@ -2419,8 +2475,9 @@
         });
         s.timings.insert = performance.now() - t0;
         setStatus(`Done! The editable ${(KIND_NAMES[s.diagram.kind] || 'diagram').toLowerCase()} is in the free content area of ${onNew ? 'a new slide after the selected one' : 'the slide'} (${Math.round(r.placed.w)} × ${Math.round(r.placed.h)} pt), ` +
-          `without covering existing text${(state.lastSkipped || []).length ? ` (${state.lastSkipped.length} decorative shape${state.lastSkipped.length > 1 ? 's were' : ' was'} refused by PowerPoint and left out)` : ''}${r.removed ? '. An empty content placeholder was replaced' : ''}${state.lastInsert.extraSlides.length ? `. ${state.lastInsert.extraSlides.length} detail slide${state.lastInsert.extraSlides.length > 1 ? 's' : ''} with the full descriptions follow it` : ''}. Took ${(s.timings.insert / 1000).toFixed(1)} s.${typeof editNote === 'function' ? editNote(r.rec) : ''} “Remove last inserted visual” takes it out again.`);
-      } catch (e) { setStatus(insertError(e), true); }
+          `without covering existing text${(state.lastSkipped || []).length ? ` (${state.lastSkipped.length} decorative shape${state.lastSkipped.length > 1 ? 's were' : ' was'} refused by PowerPoint and left out)` : ''}${r.removed ? '. An empty content placeholder was replaced' : ''}${state.lastInsert.extraSlides.length ? `. ${state.lastInsert.extraSlides.length} detail slide${state.lastInsert.extraSlides.length > 1 ? 's' : ''} with the full descriptions follow it` : ''}. Took ${(s.timings.insert / 1000).toFixed(1)} s.${fitNote(r.k || 1)}${typeof editNote === 'function' ? editNote(r.rec) : ''} “Remove last inserted visual” takes it out again.`);
+        state.lastFit = r.k || 1;
+      } catch (e) { state.lastFull = !!e.full; setStatus(insertError(e), true); }
       finally { state.inserting = false; renderPerf(); updateButtons(); }
     }
     /* Undo for the add-in's own insertion: deletes exactly the shapes it added (and the slide, if it made one). */
@@ -2600,6 +2657,22 @@
       if (q.rot) q.rot = normDeg(q.rot);
       return q;
     }
+    /* 10.19: paint order - a filled shape is drawn before everything that lies inside it (an icon or label on a card or
+       disc must never be hidden behind it). Stable: nothing else moves. */
+    function fixPaintOrder(prims) {
+      const P = prims.slice(), inside = (q, p) => q.x >= p.x - 1 && q.y >= p.y - 1 && q.x + q.w <= p.x + p.w + 1 && q.y + q.h <= p.y + p.h + 1 && q.w * q.h < 0.9 * p.w * p.h;
+      for (let pass = 0; pass < 3; pass++) {
+        let moved = false;
+        for (let i = 0; i < P.length; i++) {
+          const p = P[i];
+          if (p.t !== 'shape' || !p.fill || p.under) continue;
+          const j = P.findIndex((q, k) => k < i && q !== p && q.t !== 'line' && !q.under && inside(q, p));
+          if (j >= 0) { P.splice(i, 1); P.splice(j, 0, p); moved = true; }
+        }
+        if (!moved) break;
+      }
+      return P;
+    }
     /* A plainer version of a shape for a second attempt: no turn, no dash, a rectangle if the preset was refused. */
     function plainPrim(p) {
       if (p.t === 'line') return null;
@@ -2617,7 +2690,7 @@
       const newIds = async () => (await shapeIds(context, slide)).filter(id => !before.has(id));
       const removeNew = async keep => { const k = new Set(keep || []); (await newIds()).filter(id => !k.has(id)).forEach(id => shapes.getItem(id).delete()); await context.sync(); };
       const tables = prims.filter(p => p.t === 'table'), rest = prims.filter(p => p.t !== 'table');
-      const prepare = async () => { let cells = []; for (const t of tables) if (!(await addNativeTable(context, shapes, t))) cells = cells.concat(t.cells); return rest.concat(cells).map(safePrim).filter(Boolean); };
+      const prepare = async () => { let cells = []; for (const t of tables) if (!(await addNativeTable(context, shapes, t))) cells = cells.concat(t.cells); return fixPaintOrder(rest.concat(cells).map(safePrim).filter(Boolean)); };
       let made = [], skipped = [];
       try {
         prims = await prepare();
@@ -2658,12 +2731,22 @@
         const grps = [...new Set(prims.map(p => p.grp).filter(Boolean))];
         if (grps.length) {
           // Pictorial: each object (database, server, ...) is its own named group; labels and connectors stay separate.
+          const units = [], inGroup = new Set();
           for (const g of grps) {
-            const ids = made.filter((_, i) => prims[i].grp === g).map(s => s.id);
+            const idx = made.map((_, i) => i).filter(i => prims[i].grp === g), ids = idx.map(i => made[i].id);
             if (ids.length < 2) continue;
             const group = shapes.addGroup(ids);
             await context.sync();
+            idx.forEach(i => inGroup.add(i)); units.push({ s: group, first: Math.min(...idx) });
             try { group.name = (prims.find(p => p.grp === g).grpName || 'Object') + ' (AI Visual)'; await context.sync(); } catch (e) { /* name is optional */ }
+          }
+          // 10.19: PowerPoint puts a new group at the layer of its top-most member, which can lift a card above an icon
+          // drawn on it (the icon then hides behind the card). Restack every group and loose shape in the designed
+          // order (by its first primitive) so the slide shows exactly the preview.
+          made.forEach((s, i) => { if (!inGroup.has(i)) units.push({ s, first: i }); });
+          if (units.length > 1 && units.every(u => typeof u.s.setZOrder === 'function')) {
+            try { units.sort((a, b) => a.first - b.first).forEach(u => u.s.setZOrder('BringToFront')); await context.sync(); }
+            catch (e) { console.warn('Could not restack the visual', e); }
           }
         } else {
           const group = shapes.addGroup(made.map(s => s.id));

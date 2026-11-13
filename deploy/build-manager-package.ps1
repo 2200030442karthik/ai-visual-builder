@@ -60,21 +60,22 @@ if (-not $tpl) { $tpl = (Get-Content (Join-Path $La 'access.example.json') -Raw 
 [IO.File]::WriteAllText((Join-Path $Stage 'access-template.json'), ($tpl | ConvertTo-Json -Depth 6), (New-Object Text.UTF8Encoding $false))
 
 # 5. Scripts and guide
-foreach ($f in 'common.ps1', 'Install.ps1', 'Uninstall.ps1', 'Configure-Keys.ps1', 'Restart.ps1', 'Install AI Visual Builder.bat',
+foreach ($f in 'common.ps1', 'Install.ps1', 'Uninstall.ps1', 'Configure-Keys.ps1', 'Restart.ps1', 'Make-KeyFile.ps1', 'Make key file (administrator).bat', 'Install AI Visual Builder.bat',
                'Uninstall AI Visual Builder.bat', 'Set AI keys.bat', 'Restart AI Visual Builder.bat', 'INSTALL-GUIDE.txt') {
     Copy-Item (Join-Path $Src $f) $Stage
 }
 
 # 6. Safety check: nothing secret or private in the package
 $bad = Get-ChildItem $Stage -Recurse -File | Where-Object {
-    $_.Name -match '^(napkin|claude)\.json$|\.pem$|\.pfx$|usage\.json$|^access\.json$|\.bas$|\.frm$|\.frx$|\.pptm$|\.ppam$' }
+    $_.Name -match '^(napkin|claude)\.json$|\.pem$|\.pfx$|usage\.json$|^access\.json$|^AIVB-keys\.json$|\.bas$|\.frm$|\.frx$|\.pptm$|\.ppam$' }
 if ($bad) { throw "Private files in the package: $($bad.FullName -join ', ')" }
 $hit = Get-ChildItem $Stage -Recurse -File -Include *.py, *.js, *.html, *.json, *.ps1, *.txt, *.xml, *.pyw |
     Where-Object { $_.FullName -notlike "$sp*" } | Select-String -Pattern 'sk-ant-[A-Za-z0-9_\-]{20,}' -List
 if ($hit) { throw "Something like an API key in: $($hit.Path -join ', ')" }
 
 # 7. Zip (the one file to share) and checksum
-$zip = Join-Path $Out "AI-Visual-Builder-Pilot-10.18.zip"
+$Ver = ([regex]::Match((Get-Content (Join-Path $La 'server.py') -Raw), "VERSION = '([^']+)'")).Groups[1].Value
+$zip = Join-Path $Out "AI-Visual-Builder-Pilot-$Ver.zip"
 Get-ChildItem $Stage -Recurse -Directory -Filter '__pycache__' | Remove-Item -Recurse -Force
 Add-Type -AssemblyName System.IO.Compression.FileSystem     # standard zip (forward slashes), unlike Compress-Archive on PowerShell 5
 [IO.Compression.ZipFile]::CreateFromDirectory($Stage, $zip, [IO.Compression.CompressionLevel]::Optimal, $true)

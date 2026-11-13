@@ -1,9 +1,9 @@
-AI VISUAL BUILDER V10.18
+AI VISUAL BUILDER V10.19
 ========================
 Your content -> Generate visuals -> up to 20 editable designs -> insert the one you like, in the Simplilearn template.
 Lightweight: JavaScript in the panel, a small Python host on this PC, no AI models, no GPU.
 
-HOW TO USE (V10.18)
+HOW TO USE (V10.19)
 1. Once: double-click local-ai\Set up AI Visual Builder.bat (localhost certificate + start at sign-in), then
    "Install V10 add-in.bat". If PowerPoint says "Sorry, we can't load the add-in": double-click
    local-ai\Start AI Visual Builder.bat and reopen the panel.
@@ -147,6 +147,18 @@ DESIGNS, SLIDES AND EDITS (V10.12, step 5, free: no AI request)
   was interrupted is offered for removal.
 - Edit a visual: click a visual inserted by 10.12 or later > Edit the selected visual > change texts, icons, colours,
   spacing or layout > Preview change > Apply to the slide; Undo last edit. Only that visual's shapes change.
+
+V10.19: LARGE TEXT, SAME SLIDE, LVC TYPE
+- A paragraph of several sentences is read as its topic and one section per list (sections.js paragraphRead).
+- Large content: 20+ designs - one-slide designs first, then the same design on 2-3 slides (every point and
+  description), then condensed "names only" designs.
+- Insert goes on the selected slide, below its text (scaled down when needed, said); a slide with no room gets the
+  visual on a new slide after it, automatically. The large gallery closes after Insert.
+- Icons stay in front of their cards (paint order and restacking after grouping).
+- Text: 22 pt, headings 24 pt, sentence case (names and acronyms kept).
+- "paid_engines": 2 lets Napkin and Claude design at the same time (default 1).
+- Pilot installer: no key questions for users (administrator key file or "Set AI keys.bat"); updates roll back
+  automatically if the new version does not start.
 
 V10.18: DEMO AND TEAM PILOT
 - Manager demo: docs\DEMO-GUIDE.md (walkthrough, sample texts, honest status, what to do if something fails).

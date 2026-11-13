@@ -137,19 +137,26 @@ const editNote = rec => !rec ? ' (It could not be recorded for later editing.)' 
 /* Draws a plan layout on a slide in R (or the slide's free area) with tags and record; { ids, rec, r }. */
 async function drawPlanVisual(context, slide, plan, key, o) {
   o = o || {};
-  let rect = o.rect;
-  if (!rect) {
-    const fa = freeArea(await readSlide(context, slide));
-    if (!fa.rect || fa.rect.w < 520 || fa.rect.h < 260) throw Object.assign(new Error('full'), { full: true });
-    rect = fa.rect;
+  let rect = o.rect, prims = null, k = 1;
+  const draw = o.density === 'names' ? planNames(plan) : plan;
+  let r;
+  if (rect) {
+    r = planRender(draw, key, rect);
+    if (!r.ok) throw new Error(`the ${r.name || key} layout does not fit the visual's area (${r.why})`);
+    prims = r.prims;
+  } else {
+    // 10.19: the slide's free part (below the slide's own text), laid out there or scaled into it; else a new slide
+    const fit = await fitArea(context, slide);
+    let last = null;
+    const d = fitBuild(fit, R => { const x = planRender(draw, key, R); last = x; return x.ok ? x : null; });
+    r = d; prims = d.prims; rect = d.rect; k = d.k;
+    if (!r.name && last) r.name = last.name;
   }
-  const draw = o.density === 'names' ? planNames(plan) : plan, r = planRender(draw, key, rect);
-  if (!r.ok) throw new Error(`the ${r.name || key} layout does not fit ${o.rect ? "the visual's area" : 'the free part of this slide'} (${r.why})`);
   const meta = o.meta || studioMeta(draw), before = new Set(await shapeIds(context, slide));
-  await drawOnSlide(context, slide, r.prims, r.name, meta);
+  await drawOnSlide(context, slide, prims, r.name, meta);
   const ids = (await shapeIds(context, slide)).filter(x => !before.has(x));
   const rec = o.noRecord ? null : await studioAfterInsert(context, slide, ids, meta, { plan, layout: key, name: r.name, style: r.style, density: o.density || 'full', rect, from: o.from, ver: o.ver });
-  return { ids, rec, r, meta, rect };
+  return { ids, rec, r, meta, rect, k };
 }
 /* A rollback for a failed insertion: the shapes added to `slide` and the slides added to the presentation. */
 async function rollback(context, slide, before, slidesBefore) {
@@ -199,7 +206,8 @@ async function insertDesign() {
   if (!D || !state.inOffice || ST.busy) return;
   if (!(await ensureGate())) return;
   ST.busy = true; studioButtons();
-  const onNew = $('newSlide').checked;
+  const onNew = $('newSlide').checked || !!state.forceNew;
+  state.lastFull = false;
   try {
     let got = null;
     await PowerPoint.run(async context => {
@@ -210,16 +218,31 @@ async function insertDesign() {
       const slidesBefore = new Set(all.items.map(x => x.id));
       let slide = sel.getItemAt(0), before = null;
       try {
-        if (onNew) slide = await newSlideAfter(context, slide, D.full.title || '');
+        if (onNew) slide = await newSlideAfter(context, slide, (D.parts ? D.parts[0].plan.title : D.full.title) || '');
         slide.load('id');
         before = new Set(await shapeIds(context, slide));
-        const plan = Object.assign({}, D.full, { style: D.r.style });
-        got = await drawPlanVisual(context, slide, plan, D.r.key, { density: D.density, from: D.from });
-        state.lastInsert = { slideId: slide.id, ids: got.ids, newSlide: onNew, extraSlides: [] };
+        if (D.parts) {
+          // 10.19: a design in two parts - the first here (the slide's free part), the second on a new slide after it
+          got = await drawPlanVisual(context, slide, Object.assign({}, D.parts[0].plan, { style: D.parts[0].r.style }), D.parts[0].r.key, { density: 'full', from: D.from });
+          const extra = [];
+          for (const q of D.parts.slice(1)) {
+            const s2 = await newSlideAfter(context, extra.length ? context.presentation.slides.getItem(extra[extra.length - 1]) : slide, q.plan.title || '');
+            s2.load('id'); await context.sync();
+            await drawPlanVisual(context, s2, Object.assign({}, q.plan, { style: q.r.style }), q.r.key, { density: 'full', from: D.from, rect: Object.assign({}, TEMPLATE.contentArea) });
+            extra.push(s2.id);
+          }
+          context.presentation.setSelectedSlides([slide.id]); await context.sync();
+          state.lastInsert = { slideId: slide.id, ids: got.ids, newSlide: onNew, extraSlides: extra, extraWhat: `its continuation slide${extra.length > 1 ? 's' : ''}` };
+        } else {
+          const plan = Object.assign({}, D.full, { style: D.r.style });
+          got = await drawPlanVisual(context, slide, plan, D.r.key, { density: D.density, from: D.from });
+          state.lastInsert = { slideId: slide.id, ids: got.ids, newSlide: onNew, extraSlides: [] };
+        }
       } catch (e) { await rollback(context, slide, onNew ? null : before, slidesBefore); state.lastInsert = null; throw e; }
     });
-    setStatus(`Inserted: ${D.r.name} (${D.density === 'names' ? 'point names only' : 'every point and description'}), editable native shapes, no AI request.${editNote(got.rec)} “Remove last inserted visual” takes it out again.`);
-  } catch (e) { setStatus('Could not insert the design, so nothing was added: ' + (e.full ? 'this slide has no free space. Tick “Insert on a new slide”.' : errText(e)), true); }
+    state.lastFit = got.k || 1;
+    setStatus(`Inserted: ${D.r.name} (${D.parts ? `on ${D.parts.length} slides, every point and description` : D.density === 'names' ? 'point names only' : 'every point and description'}), editable native shapes.${fitNote(got.k || 1)}${editNote(got.rec)} “Remove last inserted visual” takes it out again.`);
+  } catch (e) { state.lastFull = !!e.full; setStatus('Could not insert the design, so nothing was added: ' + (e.full ? 'this slide has no free space for it.' : errText(e)), true); }
   finally { ST.busy = false; studioButtons(); updateButtons(); }
 }
 

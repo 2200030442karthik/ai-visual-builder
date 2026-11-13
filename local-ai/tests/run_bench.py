@@ -4,7 +4,7 @@ No network, no credits: the AI services are off and the stand-in PowerPoint is u
 
 Usage:  python tests/run_bench.py [--before GIT_REF] [--out DIR]
   --before  also run the benchmark on that commit (checked out into a temporary git worktree, removed afterwards)
-  --out     where the results go (default tests/evidence/v10.18-bench): <example>.png contact sheets,
+  --out     where the results go (default tests/evidence/v10.19-bench): <example>.png contact sheets,
             summary.json (every measurement) and summary.md (the table)
 
 Automated numbers are not proof of visual quality: the contact sheets are the evidence to look at.
@@ -17,7 +17,7 @@ sys.path.insert(0, HERE)
 from edge_cdp import EDGE  # noqa: E402
 
 NAMES = {'genai': 'Generative AI (one sentence, list between dashes)', 'ai': 'Artificial Intelligence slide (title, subtitle, one sentence)', 'claude': 'Claude AI (one statement)', 'aiml': 'AI & ML (What you learn / Best for)', 'dm': 'Digital Marketing (topics and outcomes)',
-         'k8s': 'Kubernetes (one statement)'}
+         'cloud': 'Cloud computing (a paragraph of four sentences)', 'dslife': 'Data science lifecycle (eight labelled points)', 'k8s': 'Kubernetes (one statement)'}
 
 
 def run(probe_py, svg_dir):
@@ -79,7 +79,7 @@ def main():
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     ap = argparse.ArgumentParser()
     ap.add_argument('--before')
-    ap.add_argument('--out', default=os.path.join(HERE, 'evidence', 'v10.18-bench'))
+    ap.add_argument('--out', default=os.path.join(HERE, 'evidence', 'v10.19-bench'))
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     tmp = tempfile.mkdtemp(prefix='aivb-bench-')

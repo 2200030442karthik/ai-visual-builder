@@ -7,7 +7,7 @@
    - The engines, their choice, ranking and cost control are in orchestrator.js; analysis runs inside Generate.
    - The ribbon opens the panel on a section: ?open=slides | edit (manifest-v10.xml).
    Loaded last (after studio.js). */
-const APP_VERSION = '10.18.0';
+const APP_VERSION = '10.19.0';
 const APP = { list: [], sel: -1, text: '', busy: false, stale: false, lastIns: null, dupOk: '', filter: 'All', shown: 0 };
 const QS = new URLSearchParams(location.search);
 // ?dev=1: this load only; Ctrl+Alt+Shift+D: remembered on this PC until pressed again (or ?dev=0)
@@ -301,15 +301,25 @@ async function appInsert() {
   APP.busy = true; appButtons();
   if (c.engine === 'builtin') $('reviewed').checked = $('appReviewed').checked;
   appSay('Inserting…');
+  let ok = false, moved = false;
   try {
-    const ok = await c.insert();
+    state.lastFull = false; state.lastFit = 1;
+    ok = await c.insert();
+    // 10.19: the visual goes on the selected slide (its free part, scaled when needed); only when the slide has no room
+    // at all does it go on a new slide right after it - automatically, said in the message, undone like any insert
+    if (!ok && state.lastFull && !$('newSlide').checked) {
+      state.forceNew = true;
+      try { ok = await c.insert(); moved = ok; } finally { state.forceNew = false; }
+    }
     if (ok) {
       APP.lastIns = { ref: state.lastInsert, id: c.id }; APP.dupOk = '';
-      const extra = state.lastInsert && (state.lastInsert.extraSlides || []).length;
-      appSay(`Inserted “${appName(c)}”${state.lastInsert && state.lastInsert.newSlide ? ' on a new slide' : ''}${extra ? ` and ${extra} more slide${extra > 1 ? 's' : ''}` : ''}. Every text and shape is editable in PowerPoint. Undo last insert takes it out.`);
+      const extra = state.lastInsert && (state.lastInsert.extraSlides || []).length, k = state.lastFit || 1;
+      appSay(`Inserted “${appName(c)}”${moved ? ' on a new slide after this one (this slide had no free space for it)' : state.lastInsert && state.lastInsert.newSlide ? ' on a new slide' : ' on this slide'}` +
+        `${extra ? ` and ${extra} more slide${extra > 1 ? 's' : ''}` : ''}${k < 0.995 ? `, scaled to ${Math.round(k * 100)} % to fit beside the text` : ''}. Every text and shape is editable in PowerPoint. Undo last insert takes it out.`);
     } else appSay('Nothing was inserted. ' + friendly($('status').textContent), true);
   } catch (e) { appSay('Nothing was inserted: ' + friendly(errText(e)), true); }
   finally { APP.busy = false; appButtons(); updateButtons(); }
+  return ok;
 }
 
 /* ---------- several slides and editing (step 5's panel) ---------- */
@@ -374,7 +384,8 @@ async function galMessage(s) {
   let m; try { m = JSON.parse(s); } catch (e) { return; }
   if (!m || typeof m.action !== 'string') return;
   if (m.action === 'select' && APP.list[m.i]) appSelect(m.i);
-  else if (m.action === 'insert' && APP.list[m.i]) { appSelect(m.i); await appInsert(); }
+  // 10.19: Insert in the large gallery inserts, then closes it (back to PowerPoint); "Open large gallery" reopens it
+  else if (m.action === 'insert' && APP.list[m.i]) { appSelect(m.i); if (await appInsert()) { galClose(); return; } }
   else if (m.action === 'more') await appMore();
   else if (m.action === 'slides' || m.action === 'edit') { galClose(); appStudio(m.action); }
   else if (m.action === 'close') galClose();

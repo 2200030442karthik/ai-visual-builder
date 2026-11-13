@@ -1,6 +1,6 @@
 # AI Visual Builder — project status
 
-## Current version: V10.18 (12 Nov 2026)
+## Current version: V10.19 (13 Nov 2026)
 Authorized employee + Content Slide of the approved template → paste content → analyze → accurate infographic and
 pictorial suggestions → preview → insert editable PowerPoint shapes. JavaScript panel + small Python host; no AI
 models, no GPU. Three ways to generate: native infographics (built in, free), and optionally Napkin AI (single approved
@@ -30,9 +30,72 @@ Simplilearn brand style) or Claude AI (Anthropic API), both paid, confirmed per 
 | Claude AI backend | `local-ai/claude_visual.py`, `configure-claude.ps1`, `Configure Claude.bat` | one design-specification request for 1 or 4 visuals (drawings kept for cached results and tests), `max_retries=0`, no fallback model; model / effort / max_tokens / prices in `%LOCALAPPDATA%\AIVisualBuilder\claude.json` |
 | Install / restart | `local-ai/start-ai-visual-builder.ps1` (+ `Restart AI Visual Builder.bat`), `install-v10-addin.ps1` (+ `Install V10 add-in.bat`, `Remove V10 add-in.bat`) | restart replaces every outdated copy; V10 registration by its own manifest Id, V9 never touched |
 | Access | `local-ai/access.py`, `access.example.json` | administrator policy in `%ProgramData%\AIVisualBuilder\access.json` |
-| Panel host | `local-ai/server.py` | 10.18.0 (large gallery: /api/gallery); `paid_order` "auto"; `orchestrate` in /api/status; ribbon icons; `--test` hosts refuse paid requests; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
-| Manifest | `manifest-v10.xml` | 10.18.0.0: group "AI Visual Builder" at the end of PowerPoint's Home tab (the button the SL Smart Design "AI Visuals" button presses), buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
+| Panel host | `local-ai/server.py` | 10.19.0 (large gallery: /api/gallery); `paid_order` "auto"; `orchestrate` in /api/status; ribbon icons; `--test` hosts refuse paid requests; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
+| Manifest | `manifest-v10.xml` | 10.19.0.0: group "AI Visual Builder" at the end of PowerPoint's Home tab (the button the SL Smart Design "AI Visuals" button presses), buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
 | Diagnosis | `local-ai/tests/run_diag.py`, `diag.html`, `diag_cases.py` | every layout considered with its reason; every Napkin variation with arrangement, status and preview |
+
+## V10.19 — large text, same-slide insertion, icon layering, LVC type, AI-first ready, key-free install (13 Nov)
+
+**Reading.** `sections.js paragraphRead` reads a paragraph of several sentences as:
+- its topic;
+- its lead idea;
+- one section per list, named in the text's own words.
+
+The cloud computing paragraph (V10.18: only its first list) now gives Service models (IaaS, PaaS, SaaS, each with its
+description), Key benefits (4) and Cloud deployments (public, private, hybrid).
+
+**20+ for large content.** When fewer than 26 complete one-slide designs exist, `orchestrator.js orchDesigns` adds:
+- the same design on 2–3 slides, with every point and description;
+- condensed "names only" designs, said in their name.
+
+One-slide designs are ranked first.
+
+**Benchmark** (`tests/evidence/v10.19-bench`, before = V10.18): every example now gets 22 to 24 designs, with no layout
+issues; Kubernetes and Claude AI were already at 24.
+
+| Example | V10.18 | V10.19 |
+|---|---|---|
+| Cloud paragraph | 9 (10 missing content) | 24 (all complete) |
+| Lifecycle (8 points) | 11 (7 text-only) | 24 (none text-only) |
+| Generative AI | 15 | 24 |
+| Digital Marketing | 16 | 22 |
+
+**Same slide by default.**
+- `v10.html`: `textUsedHeight`, `fitArea`, `fitBuild`, `scalePrims`.
+- A slide's top-anchored text occupies only what it fills.
+- The visual is laid out in the free part below it, or scaled down as a whole (to at least 70 %, said in the message).
+- When the slide has no room, the visual goes automatically on a new slide after it (`app.js`, said).
+- This applies to built-in, design-pack, Napkin and Claude designs.
+
+**Large gallery** closes after Insert.
+
+**Icon layering.**
+- `fixPaintOrder`: a container is always drawn before what lies inside it.
+- After grouping, the groups are restacked in the designed order with `setZOrder` (PowerPoint puts a new group at its
+  top-most member's layer, which hid icons behind cards).
+
+**LVC type.**
+- Sizes go only down to 24 pt (headings) or 22 pt.
+- Sentence case for labels made from the user's text (`brand.js sentenceCase`, applied where the plan is made): acronyms,
+  inner capitals and names the text capitalises are kept; records and exact values are never changed.
+
+**AI-first ready.**
+- With `paid_engines` 2, Napkin and Claude now design in parallel; each adds its designs as they arrive.
+- Claude is asked for exactly six content-specific compositions, at LVC sizes.
+- The default stays 1 (the user's decision until the comparison).
+
+**Pilot installer** (`deploy/manager-pilot`):
+- Users are never asked for keys: an administrator key file (AIVB-keys.json, "Make key file (administrator).bat") is
+  imported and deleted, or "Set AI keys.bat" is used.
+- Updates keep the previous version and roll back automatically when the new one does not start.
+- The zip is named by version.
+
+**Tests:**
+- `tests/app.html` A27-A32;
+- the stand-in PowerPoint groups like PowerPoint and supports `setZOrder`;
+- the benchmark has 2 large-text examples.
+
+All suites pass, here and on the installed package's bundled Python.
 
 ## V10.18 addendum — manager's PC pilot installer, first real Claude request (13 Nov)
 `deploy/build-manager-package.ps1` builds `Manager_Pilot_Package/` (not committed). It is a self-contained Windows
@@ -260,6 +323,7 @@ and the new layouts in real PowerPoint.
 - In Windows mode the PC's user, who holds the Napkin key, cannot be restricted; Entra mode with one shared host can.
 
 ## Change log
+- **V10.19** (13 Nov) — paragraph reading, 20+ for large content (2-3 slide and condensed designs), same-slide insertion with fit/scale/auto new slide, gallery closes after insert, icon z-order fix, LVC 22/24 pt and sentence case, parallel AI services (paid_engines 2), key-free pilot install with rollback; tests A27-A32.
 - **V10.18** (12 Nov) — dash-list reading, caption bands, paid_engines 2, hosted mode + deploy/ pilot package, demo guide, SL export review; tests A25-A26, test_hosted.
 - **V10.17** (12 Nov) — scenes pack (16 compositions), 20+ designs per Generate (cap 24), learner-appeal ranking without score cap, colour-aware look-alike check, title/subtitle/sentence reading, soft tints option, Claude 4-6 concepts; tests A21-A24.
 - **V10.16** (12 Nov) — statementRead, concepts pack (6 compositions, 2 objects), look-alike and completeness ranking, Claude concepts (schema, brief, renderer), large gallery dialog, visual benchmark, SL Smart Design source review; tests A17-A20, concept schema check.

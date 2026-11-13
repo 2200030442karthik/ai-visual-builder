@@ -164,12 +164,14 @@ Design:
 - One statement ("X helps you create, organize and edit A, B, C and D"): X is the hero (short), the listed examples
   are the items (the text's words), and what X does ("create, organize, and edit diverse types of content") is the
   single group's name or the headline - never the whole sentence as one block of text, never invented items.
-- concepts: 4 to 6 complete compositions of your own design, each a genuinely different visual idea for this content,
-  modern and engaging for learners like a polished AI infographic (for example a hero object - a device, a disc, a
-  card - joined by elbow connectors with dots to cards that each hold an icon tile and a label; a header pill over a
-  panel of icon columns per section; a hero card joined by a bracket to icon tiles; an orbit around the topic; a
-  winding journey; layered slabs; a bento grid of tiles of different sizes; a split comparison; an illustrated scene
-  with callouts) - never the same arrangement in other colours, never plain text in boxes. Each: name (2-4 words), idea (one sentence: why this picture suits the content)
+- concepts: exactly 6 complete compositions of your own design, each a genuinely different visual idea that comes from
+  THIS content's meaning (what flows into what, what contains what, what is compared, what grows, what surrounds the
+  topic) rather than from a generic template - modern and engaging for learners like a polished AI infographic. Use six
+  different structures and metaphors, for example: a hero object (a device, a disc, a card) joined by elbow connectors
+  with dots to cards that each hold an icon tile and a label; an input -> topic -> outputs flow; a header pill over a
+  panel of icon columns per section; an orbit or ecosystem around the topic; a winding learner journey; layered slabs or
+  a stack; a bento grid of tiles of different sizes; a split comparison; a framework of quadrants; an illustrated scene
+  with callouts - never the same arrangement in other colours or mirrored, never plain text in boxes. Each: name (2-4 words), idea (one sentence: why this picture suits the content)
   and elements, drawn in order (later elements on top) in the content area: x from 0 to 1079, y from 0 to 435 (points;
   16:9 slide, the slide's title is above it). Element kinds:
   shape: a native shape (shape from the list, color a token; text "" or a short label drawn on it);
@@ -181,8 +183,8 @@ Design:
   (light grey), rule (mid grey), line (connector grey), white, ink (dark text only). Text is always ink.
   Rules: every item's label appears exactly once as the text of a text or shape element with that item's id, in the
   text's words; its detail, when shown, as its own text element; the hero name and the group names or headline so
-  that nothing the text says is lost; nothing else is added. Text at 22 pt or more (labels 22-28, the hero name up to
-  44); a text box must be wide and tall enough for its words at 0.55 x size per character (0.6 for bold) and 1.2 x
+  that nothing the text says is lost; nothing else is added. Text sizes follow the template exactly: 22 pt for labels
+  and descriptions, 24 pt for headings and the hero name (bold) - no other sizes; sentence case; a text box must be wide and tall enough for its words at 0.55 x size per character (0.6 for bold) and 1.2 x
   size per line; no text overlaps another text, an object or a line; nothing outside the area; leave 12 pt between
   unrelated elements. Flat design: no gradients, shadows, outlines around filled shapes or dashed lines. Make it
   polished and engaging for learners: one clear focal element, a hierarchy of sizes, an object for every item,

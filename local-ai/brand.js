@@ -46,6 +46,37 @@ function brandColor(c) {
 }
 const readableOn = fill => fill && luminance(fill) <= 0.22 ? '#FFFFFF' : BRAND.ink;
 
+/* 10.19: LVC sentence case for labels written in Title Case ("What You Learn" -> "What you learn"). Kept as written:
+   the first word, acronyms (AI, SEO), words with inner capitals or digits (ChatGPT, IaaS, H2O), and every word the
+   source text itself capitalises in mid-sentence (names: Python, Kubernetes, TikTok) - see brandSource. A text that is
+   not Title Case (a sentence, a single word) is not changed. */
+BRAND.headPt = 24;
+let BRAND_KEEP = new Set();
+function brandSource(text) {
+  const keep = new Set();
+  String(text || '').split(/(?<=[.!?:;\n])\s*/).forEach(s => {
+    if (sentenceCase(s, true) !== s) return;                                   // a Title Case heading says nothing about names
+    s.trim().split(/\s+/).slice(1).forEach(w => { const c = w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9+#]+$/g, ''); if (/^[A-Z]/.test(c)) keep.add(c.toLowerCase()); });
+  });
+  BRAND_KEEP = keep;
+}
+const SMALL = /^(?:a|an|and|as|at|but|by|for|from|in|into|of|on|or|over|the|to|via|vs|with)$/i;
+function sentenceCase(t, probe) {
+  const s = String(t);
+  if (/\n/.test(s) || (!probe && s.length > 80)) return s;
+  const words = s.split(/(\s+)/), real = words.filter(w => /[A-Za-z]/.test(w));
+  if (real.length < 2) return s;
+  const caps = real.slice(1).filter(w => /^[A-Z][a-z]/.test(w.replace(/^[^A-Za-z]+/, ''))).length, big = real.slice(1).filter(w => !SMALL.test(w.replace(/[^A-Za-z]/g, ''))).length;
+  if (!big || caps < Math.max(1, Math.ceil(big * 0.6))) return s;            // not Title Case
+  let first = true;
+  return words.map(w => {
+    if (!/[A-Za-z]/.test(w)) return w;
+    const core = w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9+#]+$/g, '');
+    if (first) { first = false; return w; }
+    if (/^[A-Z][a-z]+$/.test(core) && (probe || !BRAND_KEEP.has(core.toLowerCase()))) return w.replace(core, core.toLowerCase());
+    return w;                                                                  // AI, ChatGPT, IaaS, names from the text
+  }).join('');
+}
 /* One primitive in the standard, or null (an outline-only decoration inside an icon). stats counts the corrections. */
 function brandPrim(p, stats) {
   const q = Object.assign({}, p);
@@ -74,6 +105,11 @@ function brandPrim(p, stats) {
   if (q.text != null && String(q.text).trim()) {
     q.color = q.t === 'shape' && q.fill ? readableOn(q.fill) : BRAND.ink;
     q.font = BRAND.font;
+    // 10.19: LVC type scale - headings 24 pt, everything else 22 pt (never larger, never in between)
+    // only ever down (a layout measured at its size never overflows): above 24 -> 24, between 22 and 24 -> 22
+    if (q.size > BRAND.minPt && q.size !== BRAND.headPt) { q.size = q.size > BRAND.headPt ? BRAND.headPt : BRAND.minPt; stats.sized = (stats.sized | 0) + 1; }
+    // sentence case is applied to the plan's labels where the plan is made (napkin.js planFromPrep, sections.js
+    // sectionsPlan), so every layout and every content check sees the same words; exact values are never changed
     if (!(q.size >= BRAND.minPt)) {
       q.size = BRAND.minPt; stats.raised++;
       const r = q.t === 'text' ? q : textRect(q.g, q.x, q.y, q.w, q.h);

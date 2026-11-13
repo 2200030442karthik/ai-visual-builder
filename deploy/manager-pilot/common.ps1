@@ -59,6 +59,35 @@ function ReadSecret([string]$prompt) {
     try { [Runtime.InteropServices.Marshal]::PtrToStringBSTR($b).Trim() } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b) }
 }
 
+# 10.19: keys without asking the user. The administrator puts AIVB-keys.json (from "Make key file.bat" or by hand:
+# {"napkin_api_key": "...", "anthropic_api_key": "sk-ant-..."}) next to Install.bat for the installation only; it is
+# imported for this Windows user (same files and rights as "Set AI keys.bat") and then overwritten and deleted.
+# Returns what was imported. Never prints a key.
+function ImportAdminKeys([string]$From, [string]$DataDir) {
+    $f = Join-Path $From 'AIVB-keys.json'
+    $got = @()
+    if (-not (Test-Path $f)) { return $got }
+    try {
+        $j = Get-Content $f -Raw -Encoding UTF8 | ConvertFrom-Json
+        New-Item -ItemType Directory -Force $DataDir | Out-Null
+        if ($j.napkin_api_key -and "$($j.napkin_api_key)".Trim().Length -ge 10) {
+            $nf = Join-Path $DataDir 'napkin.json'; $old = ReadJson $nf
+            WriteJson $nf ([ordered]@{ api_key = "$($j.napkin_api_key)".Trim(); enabled = $true; style_id = $(if ($old -and $old.style_id) { $old.style_id } else { '' }) }) -Private
+            $got += 'Napkin AI'
+        }
+        if ($j.anthropic_api_key -and "$($j.anthropic_api_key)".Trim().StartsWith('sk-ant-')) {
+            $cf = Join-Path $DataDir 'claude.json'; $old = ReadJson $cf
+            $c = [ordered]@{ api_key = "$($j.anthropic_api_key)".Trim(); enabled = $true; model = 'claude-opus-5-5' }
+            if ($old) { foreach ($q in 'model', 'effort', 'max_tokens') { if ($old.$q) { $c[$q] = $old.$q } } }
+            WriteJson $cf $c -Private
+            $got += 'Claude'
+        }
+    } finally {
+        try { $n = (Get-Item $f).Length; [IO.File]::WriteAllBytes($f, (New-Object byte[] $n)); Remove-Item $f -Force } catch { Say "Delete $f by hand: it holds the keys." Yellow }
+    }
+    return $got
+}
+
 # Asks for the organization's Napkin and Claude keys (hidden input) and stores them for this Windows user only,
 # in the same files and format as the desktop version (napkin.json, claude.json). Enter keeps or skips.
 function ConfigureKeys([string]$DataDir) {

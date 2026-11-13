@@ -1,24 +1,40 @@
 AI VISUAL BUILDER (PILOT) - INSTALLATION GUIDE
 ==============================================
-Version 10.18 for Windows 10/11 (64-bit) with Microsoft 365 PowerPoint desktop. About 5 minutes.
-The package is the full desktop version: one-click Generate with Claude and Napkin, the large gallery and hover
-previews, insert as editable shapes, Several slides, Edit a visual, Undo, and the Simplilearn template check.
-It contains its own Python runtime, so there is nothing else to install. No administrator rights are needed.
+For Windows 10/11 (64-bit) with Microsoft 365 PowerPoint desktop. It takes about 5 minutes.
 
-BEFORE YOU START
-- The organization's Napkin AI API token and Anthropic (Claude) API key, from whoever manages them. They are typed
-  in once during installation (hidden) and stored only for your Windows user. They are not in this package.
-- Close PowerPoint (save your work first).
+This is the full desktop version. One click on Generate gives 20+ designs from Claude, Napkin and the built-in engines.
+You also get:
+- the large gallery and hover previews;
+- insertion on the same slide, as editable shapes;
+- Several slides, Edit a visual and Undo;
+- the Simplilearn template check.
 
-INSTALL
-1. Copy AI-Visual-Builder-Pilot-10.18.zip to your PC (e.g. Downloads).
-2. Right-click the zip > Extract All > Extract.
+The package contains its own Python runtime, so nothing else needs to be installed. No administrator rights are needed.
+
+INSTALL (the user)
+1. Close PowerPoint (save your work first).
+2. Copy AI-Visual-Builder-Pilot-<version>.zip to your PC (e.g. Downloads), right-click it > Extract All > Extract.
 3. Open the extracted folder "AIVB Pilot" and double-click "Install AI Visual Builder.bat".
    - If Windows SmartScreen says "Windows protected your PC": More info > Run anyway (only for this file).
 4. When Windows asks whether to install a certificate for "localhost", choose YES.
-   (It lets PowerPoint load the add-in from your own PC over HTTPS. Uninstall removes it.)
-5. Paste the Napkin token, press Enter; paste the Claude key, press Enter. Nothing is shown while you paste.
-6. Wait for "AI Visual Builder 10.18.0 is running", then press any key to close the window.
+   It lets PowerPoint load the add-in from your own PC over HTTPS, and Uninstall removes it.
+5. Wait for "AI Visual Builder ... is running", then press any key to close the window.
+You are not asked for any API key.
+
+AI SERVICES (the administrator, once per user)
+The organization's Napkin and Claude keys are set up by the administrator, never typed by the user and never shared
+in the package. Use one of these two ways:
+A. Before step 3, the administrator puts AIVB-keys.json in the "AIVB Pilot" folder. It is made on the administrator's
+   PC with "Make key file (administrator).bat". The installer imports it for this Windows user and deletes it.
+B. After installation, the administrator double-clicks "Set AI keys.bat" in
+   %LOCALAPPDATA%\Programs\AIVisualBuilderPilot and types the keys (hidden).
+Without keys, everything works with the built-in designs.
+Never put AIVB-keys.json in a shared folder or in email.
+
+UPDATE TO A NEW VERSION
+Extract the new zip and run "Install AI Visual Builder.bat" again. Keys, settings and the certificate are kept.
+The previous version stays until the new one is running. If the new one does not start, the previous version is put
+back automatically.
 
 USE
 1. Start PowerPoint and open a deck on the Simplilearn LVC template. Select a Content_Slide.
@@ -26,39 +42,49 @@ USE
    If the group is missing after restarting PowerPoint: Home > Add-ins > More Add-ins > MY ADD-INS >
    Upload My Add-in > Browse > %LOCALAPPDATA%\Programs\AIVisualBuilderPilot\manifest-pilot.xml > Upload (once).
 3. Paste slide content (or use the text already on the slide) and press Generate visuals.
-4. Rest the pointer on a design to see it large; "Open large gallery" shows all of them.
-5. Double-click a design to insert it. Click any text on the slide to edit it. "Undo last insert" removes it.
-6. "Several slides" splits long content over several slides; "Edit a visual" changes an inserted visual.
-Napkin and Claude requests are paid by the organization. The panel shows when it uses them; designs it has
-already made for the same text are reused at no cost.
+4. Rest the pointer on a design to see it large. "Open large gallery" shows all the designs.
+5. Double-click a design, or Insert, to put it on the selected slide:
+   - It goes below the slide's own text, scaled if needed.
+   - It goes on a new slide only when the slide has no room; the message says so.
+   - The large gallery closes after Insert.
+   - "Undo last insert" removes it.
+6. Long content: designs marked "2 slides" or "3 slides" keep every point and description. Designs marked
+   "names only" are condensed.
+7. "Several slides" splits long content over several slides. "Edit a visual" changes an inserted visual.
 
 CHECKLIST (first use)
-[ ] Panel opens (no "Sorry, we can't load the add-in")
-[ ] Generate gives many designs, including ones marked as designed by Napkin AI or Claude
-[ ] Hover preview and large gallery work
-[ ] Insert, edit a text on the slide, move a shape
-[ ] Undo last insert
-[ ] Several slides, Edit a visual
+[ ] The panel opens (no "Sorry, we can't load the add-in").
+[ ] Generate gives 20 or more designs.
+[ ] The hover preview and large gallery work; the gallery closes after Insert.
+[ ] Insert on a slide that has text: the visual goes below the text. You can edit a text and move a shape.
+[ ] Undo last insert works.
+[ ] Several slides and Edit a visual work.
 
 IF SOMETHING GOES WRONG
-- "Sorry, we can't load the add-in" or the panel cannot reach the service: double-click
-  "Restart AI Visual Builder.bat" (in %LOCALAPPDATA%\Programs\AIVisualBuilderPilot), then reopen the panel.
-- No Napkin/Claude designs: double-click "Set AI keys.bat" in the same folder and enter the keys again.
-- The installer says the certificate was not trusted: run it again and choose Yes; if the question never
-  appears, company policy blocks it - contact IT.
-- The .bat closes immediately with a policy error: company policy blocks PowerShell scripts - contact IT.
+- "Sorry, we can't load the add-in", or the panel cannot reach the service: double-click
+  "Restart AI Visual Builder.bat" in %LOCALAPPDATA%\Programs\AIVisualBuilderPilot, then reopen the panel.
+- No Napkin or Claude designs: ask the administrator to add the keys (see AI SERVICES).
+- The installer says the certificate was not trusted: run it again and choose Yes. If the question never appears,
+  company policy blocks it; contact IT.
+- The .bat closes immediately with a policy error: company policy blocks PowerShell scripts; contact IT.
 - Log file: %LOCALAPPDATA%\AIVisualBuilder\server.log
 
 UNINSTALL
 Settings > Apps > Installed apps > "AI Visual Builder (Pilot)" > Uninstall, or double-click
-"Uninstall AI Visual Builder.bat". It removes the add-in, the background service, the certificate (Windows asks to
-confirm: Yes), the stored keys and the program folder. Other add-ins and your presentations are not touched.
+"Uninstall AI Visual Builder.bat". It removes:
+- the add-in;
+- the background service;
+- the certificate (Windows asks you to confirm: choose Yes);
+- the stored keys;
+- the program folder.
+Other add-ins and your presentations are not touched.
 
 WHAT IS INSTALLED (for IT)
-- %LOCALAPPDATA%\Programs\AIVisualBuilderPilot   app + Python 3.14.7 (python.org, signed) + anthropic SDK 2.3.0
-- %LOCALAPPDATA%\AIVisualBuilder                 localhost certificate, keys (readable only by the user), usage, log
-- %ProgramData%\AIVisualBuilder\access.json       who may generate (this Windows account) + template check
-- HKCU\Software\Microsoft\Office\16.0\WEF\Developer   PowerPoint add-in registration (sideload, this user only)
-- Startup folder shortcut "AIVisualBuilderPilot"   starts the service (pythonw.exe, https://localhost:44317 only)
-- Current-user "Localhost" root certificate "AI Visual Builder pilot (localhost)"
+- %LOCALAPPDATA%\Programs\AIVisualBuilderPilot: the app, Python 3.14.7 (from python.org, signed) and the anthropic
+  SDK 2.3.0.
+- %LOCALAPPDATA%\AIVisualBuilder: the localhost certificate, the keys (readable only by the user), usage and the log.
+- %ProgramData%\AIVisualBuilder\access.json: who may generate (this Windows account) and the template check.
+- HKCU\Software\Microsoft\Office\16.0\WEF\Developer: the PowerPoint add-in registration (sideload, this user only).
+- The Startup folder shortcut "AIVisualBuilderPilot": starts the service (pythonw.exe, https://localhost:44317 only).
+- A current-user root certificate, "AI Visual Builder pilot (localhost)".
 Network: outbound HTTPS to api.napkin.ai and api.anthropic.com only. The service listens on 127.0.0.1 only.

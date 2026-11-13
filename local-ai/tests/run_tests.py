@@ -72,7 +72,7 @@ def main():
         acceptance_page(cdp, 'studio.html', 'V10.12', 'last-run-studio.json', 'v10.12-studio.png')
         acceptance_page(cdp, 'original.html', 'V10.12.1', 'last-run-original.json', 'v10.12.1-original.png')
         acceptance_page(cdp, 'faithful.html', 'V10.12.2', 'last-run-faithful.json', 'v10.12.2-faithful.png')
-        acceptance_page(cdp, 'app.html', 'V10.18', 'last-run-app.json', 'v10.18-app.png')
+        acceptance_page(cdp, 'app.html', 'V10.19', 'last-run-app.json', 'v10.19-app.png')
         ribbon_check()
     finally:
         subprocess.run([sys.executable, os.path.join(HERE, 'test_server.py')])

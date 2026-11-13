@@ -105,7 +105,7 @@ async function run() {
 
   /* ===== S (10.15): content written as labelled sections - "What you learn" / "Best for" ===== */
   {
-    const texts = c => c.prims.filter(p => p.text).map(p => String(p.text));
+    const texts = c => c.prims.concat(...(c.nextPrims || [])).filter(p => p.text).map(p => String(p.text));   // 10.19: a design on several slides: all of them
     const dmT = 'Digital Marketing and Social Media GrowthWhat you learn: Search Engine Optimization (SEO), paid advertising, email campaigns, and audience building on platforms like TikTok and LinkedIn. Best for: Launching side hustles, promoting brands, or growing digital content.';
     const dmNeed = ['What you learn', 'Best for', 'SEO', 'Paid advertising', 'Email campaigns', 'Audience building', 'Launching side hustles', 'Promoting brands', 'Growing digital content'];
     fresh(); W.__cfg.policy = 'never'; await gate();
@@ -251,6 +251,70 @@ async function run() {
         fromAI: [...new Set(L.filter(c => c.engine === 'napkin' || c.engine === 'claude').map(c => c.engine))], n: L.length };
     }
     W.__cfg = Object.assign(W.__cfg, { napkin: 'off', claude: 'off', policy: 'never', engines: 1, claudePlanFor: null }); await gate(); fresh();   // the next tests start clean
+  }
+
+  /* ===== Y (10.19): large text, same-slide insertion, gallery closes, icon layering, LVC type ===== */
+  {
+    res.v19 = {};
+    const cT = 'Cloud computing delivers computing services over the internet so organizations no longer need to own and maintain physical data centers. ' +
+      'It offers three main service models: Infrastructure as a Service (IaaS) provides virtual machines, storage and networks; Platform as a Service (PaaS) provides tools to build and deploy applications; ' +
+      'and Software as a Service (SaaS) delivers ready-to-use applications through a browser. Key benefits include lower upfront costs, on-demand scalability, global availability and faster innovation. ' +
+      'Organizations can choose public, private or hybrid cloud deployments depending on their security, compliance and cost needs.';
+    const dT = 'Data Science Lifecycle\n- Problem definition: understand the business question and success metrics\n- Data collection: gather data from databases, APIs and files\n' +
+      '- Data cleaning: handle missing values, duplicates and outliers\n- Exploratory analysis: find patterns with statistics and charts\n- Feature engineering: create variables that improve the model\n' +
+      '- Modeling: train and compare machine learning algorithms\n- Evaluation: measure accuracy, precision and recall\n- Deployment: put the model into production and monitor it';
+    const pr = ev('t => paragraphRead(t)')(cT);
+    res.v19.read = pr && { title: pr.title, sections: pr.sections.map(s => s.name + ': ' + s.items.map(i => i.label).join(', ')) };
+    const all = c => (c.prims || []).concat(...(c.nextPrims || [])), txt = c => all(c).filter(p => p.text).map(p => String(p.text)).join(' ').toLowerCase();
+    const cloudFacts = ['cloud computing', 'iaas', 'paas', 'saas', 'lower upfront costs', 'on-demand scalability', 'global availability', 'faster innovation', 'public', 'private', 'hybrid', 'service models', 'key benefits', 'cloud deployments'];
+    fresh(); let L = await gen(cT);
+    res.v19.cloud = { n: L.length, multi: L.filter(c => c.slides > 1).length, names: L.filter(c => c.condensed).length, firstOneSlide: L[0] && L[0].slides === 1,
+      incomplete: L.filter(c => cloudFacts.some(f => !txt(c).includes(f))).map(c => c.title).slice(0, 5) };
+    // a design on several slides: the first part here, the rest on new slides after it; Undo takes all of it out
+    { const i = L.findIndex(c => c.slides === 3);
+      M.reset(); await gate(); const n0 = M.slides.length; A.appSelect(i); await A.appInsert();
+      const added = M.slides.length - n0; await W.eval('removeLast()');
+      res.v19.multiInsert = { offered: i >= 0, slidesAdded: added, undone: M.slides.length === n0 }; }
+    fresh(); L = await gen(dT);
+    res.v19.lifecycle = { n: L.length, incomplete: L.filter(c => ['problem definition', 'data collection', 'data cleaning', 'exploratory analysis', 'feature engineering', 'modeling', 'evaluation', 'deployment'].some(f => !txt(c).includes(f))).map(c => c.title).slice(0, 5) };
+    // same slide by default: below the slide's own text (its placeholder holds two lines), scaled when needed; a slide
+    // with no room: automatically on a new slide after it (said); never over the text
+    const kT = 'Kubernetes automates deployment, scaling, and management of containerized applications.';
+    fresh(); L = await gen(kT);
+    const ph = () => M.slides[0].items.find(x => x.name === 'Content Placeholder 2');
+    const sameSlide = async (text, i) => {
+      M.reset(); await gate(); A.APP.lastIns = null; ph().textFrame.textRange.text = text; const n0 = M.slides.length, before = new Set(M.slides[0].items.map(x => x.id));
+      A.appSelect(i); await A.appInsert();
+      const mine = M.slides[0].items.filter(x => !before.has(x.id)), boxes = mine.map(x => [x.top, x.top + x.height]);
+      return { newSlides: M.slides.length - n0, onThisSlide: mine.length, top: Math.round(Math.min(...boxes.map(b => b[0]))), bottom: Math.round(Math.max(...boxes.map(b => b[1]))), note: d.getElementById('status').textContent.slice(0, 200), fit: W.eval('state.lastFit') };
+    };
+    const di = L.findIndex(c => c.engine === 'designs');
+    res.v19.same = await sameSlide(kT, di);
+    res.v19.same.textBottom = Math.round(205 + ev('textUsedHeight')(kT, 1079, 24));
+    res.v19.full = await sameSlide(Array.from({ length: 14 }, (_, k) => 'Line ' + (k + 1) + ' of the text that fills the whole content placeholder of this slide').join('\n'), di);
+    await W.eval('removeLast()');
+    // the large gallery closes after Insert (back to PowerPoint); "Open large gallery" opens it again
+    M.reset(); await gate(); fresh(); L = await gen(kT);
+    W.eval("GAL.open = true; 1");
+    W.postMessage({ aivbGallery: JSON.stringify({ action: 'insert', i: 2 }) }, W.location.origin);
+    for (let k = 0; k < 40 && W.eval('GAL.open'); k++) await new Promise(r => setTimeout(r, 200));
+    res.v19.gallery = { inserted: !!(W.eval('state.lastInsert') || {}).ids, closed: !W.eval('GAL.open') };
+    await W.eval('removeLast()');
+    // icon layering: a card whose label is drawn last, with an icon (its own group) drawn on it - the icon stays in front
+    M.reset(); await gate();
+    const prims = [{ t: 'shape', g: 'roundRect', x: 200, y: 260, w: 300, h: 200, fill: '#E8F1FB', grp: 'card' }, { t: 'shape', g: 'ellipse', x: 230, y: 280, w: 60, h: 60, fill: '#3645A9', grp: 'icon', cmp: 'body' },
+      { t: 'shape', g: 'rect', x: 245, y: 295, w: 30, h: 30, fill: '#FFFFFF', grp: 'icon', cmp: 'detail' }, { t: 'text', text: 'Card label', x: 300, y: 290, w: 180, h: 40, size: 22, grp: 'card' }];
+    await W.PowerPoint.run(async ctx => { const s = ctx.presentation.getSelectedSlides().getItemAt(0); await W.drawOnSlide(ctx, s, prims, 'layer test', null); });
+    const top = M.slides[0].items.map(x => x.type === 'Group' ? (x.group.shapes.items.some(y => /ellipse/i.test(y.kind)) ? 'icon' : 'card') : x.kind);
+    res.v19.layers = { order: top.join(','), iconAboveCard: top.indexOf('icon') > top.indexOf('card'), restacked: (M.zorders || 0) > 0 };
+    const fixed = ev('fixPaintOrder')([prims[1], prims[0], prims[3]]);
+    res.v19.paint = fixed.map(p => p.g || 'text').join(',');
+    // LVC type: 22 pt text, 24 pt headings, nothing else; sentence case (names the text capitalises kept)
+    fresh(); L = await gen(samples['Educational content']);
+    const sizes = new Set(L.flatMap(c => all(c).filter(p => p.text).map(p => p.size)));
+    W.eval("brandSource('Learn to build apps with tools like ChatGPT or Python. Deploy them on Kubernetes.'); 1");
+    res.v19.type = { sizes: [...sizes].sort(), sentence: ['What You Learn', 'Hands-On Projects With Python', 'Working With ChatGPT', 'Neural networks', 'AI Tools For Kubernetes'].map(t => ev('sentenceCase')(t)) };
+    fresh();
   }
 
   /* ===== I: insertion of each kind, editable; duplicate guard; undo ===== */
@@ -419,6 +483,19 @@ async function run() {
     ['A26 AI services: one per new text by default (the other only as fallback); with the administrator setting paid_engines 2, Napkin and Claude both design for it and both appear in the gallery',
       res.v18.engines1.paid === 1 && res.v18.engines2.paid === 2 && res.v18.engines2.napkinAsked === 1 && res.v18.engines2.claudeAsked === 1 && res.v18.engines2.fromAI.length === 2,
       JSON.stringify({ engines1: res.v18.engines1, engines2: res.v18.engines2 })],
+    ['A27 A paragraph of several sentences (cloud computing) is read as its topic and one section per list - service models, key benefits, cloud deployments - with every item',
+      res.v19.read && res.v19.read.title === 'Cloud computing' && res.v19.read.sections.length === 3 && /IaaS, PaaS, SaaS/.test(res.v19.read.sections[0]) && /Public, Private, Hybrid/.test(res.v19.read.sections[2]), JSON.stringify(res.v19.read)],
+    ['A28 Large text: one Generate gives 20+ designs with every point (one-slide designs first, then the same design on 2-3 slides, condensed names-only versions said in their name); a multi-slide design inserts here and on new slides, Undo removes all',
+      res.v19.cloud.n >= 20 && !res.v19.cloud.incomplete.length && res.v19.cloud.firstOneSlide && res.v19.cloud.multi > 0 && res.v19.lifecycle.n >= 20 && !res.v19.lifecycle.incomplete.length &&
+      res.v19.multiInsert.offered && res.v19.multiInsert.slidesAdded === 2 && res.v19.multiInsert.undone, JSON.stringify({ cloud: res.v19.cloud, lifecycle: res.v19.lifecycle, multi: res.v19.multiInsert })],
+    ['A29 Same slide by default: a slide with text gets the visual below its text (scaled when needed, never over it, said); a slide without room gets it on a new slide after it, automatically and said',
+      res.v19.same.newSlides === 0 && res.v19.same.onThisSlide > 0 && res.v19.same.top >= res.v19.same.textBottom && res.v19.same.bottom <= 720 && /on this slide/.test(res.v19.same.note) &&
+      res.v19.full.newSlides === 1 && /new slide after this one/.test(res.v19.full.note), JSON.stringify({ same: res.v19.same, full: res.v19.full })],
+    ['A30 The large gallery closes after Insert (the visual goes in, back to PowerPoint)', res.v19.gallery.inserted && res.v19.gallery.closed, JSON.stringify(res.v19.gallery)],
+    ['A31 Icons stay in front: a card drawn before its icon stays behind it after grouping (restacked in the designed order); a container drawn after its contents is moved behind them',
+      res.v19.layers.iconAboveCard && res.v19.layers.restacked && res.v19.paint === 'roundRect,ellipse,text', JSON.stringify({ layers: res.v19.layers, paint: res.v19.paint })],
+    ['A32 LVC type: every text 22 pt (24 pt headings), Open Sans; labels in sentence case, acronyms and the names the text capitalises kept',
+      res.v19.type.sizes.every(s => s === 22 || s === 24) && res.v19.type.sentence.join('|') === 'What you learn|Hands-On projects with Python|Working with ChatGPT|Neural networks|AI tools for Kubernetes', JSON.stringify(res.v19.type)],
     ['No script errors in the panel', !errors.length, errors.join(' | ') || 'none'],
   ].map(([name, ok, evidence]) => ({ name, ok: !!ok, evidence }));
   out.textContent = JSON.stringify(res);

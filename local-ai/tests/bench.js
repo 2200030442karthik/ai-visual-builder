@@ -21,6 +21,16 @@ const EX = {
     facts: ['Digital Marketing', 'What you learn', 'Best for', 'SEO', 'Paid advertising', 'Email campaigns', 'Audience building', 'TikTok', 'LinkedIn', 'side hustles', 'brands', 'digital content'] },
   k8s: { text: 'Kubernetes automates deployment, scaling, and management of containerized applications.',
     facts: ['Kubernetes', 'automates', 'deployment', 'scaling', 'management', 'containerized applications'] },
+  // 10.19: large text - a paragraph of several sentences, and a slide of eight labelled points
+  cloud: { text: 'Cloud computing delivers computing services over the internet so organizations no longer need to own and maintain physical data centers. ' +
+      'It offers three main service models: Infrastructure as a Service (IaaS) provides virtual machines, storage and networks; Platform as a Service (PaaS) provides tools to build and deploy applications; ' +
+      'and Software as a Service (SaaS) delivers ready-to-use applications through a browser. Key benefits include lower upfront costs, on-demand scalability, global availability and faster innovation. ' +
+      'Organizations can choose public, private or hybrid cloud deployments depending on their security, compliance and cost needs.',
+    facts: ['Cloud computing', 'IaaS|Infrastructure as a Service', 'PaaS|Platform as a Service', 'SaaS|Software as a Service', 'lower upfront costs', 'scalability', 'global availability', 'faster innovation', 'public', 'private', 'hybrid'] },
+  dslife: { text: 'Data Science Lifecycle\n- Problem definition: understand the business question and success metrics\n- Data collection: gather data from databases, APIs and files\n' +
+      '- Data cleaning: handle missing values, duplicates and outliers\n- Exploratory analysis: find patterns with statistics and charts\n- Feature engineering: create variables that improve the model\n' +
+      '- Modeling: train and compare machine learning algorithms\n- Evaluation: measure accuracy, precision and recall\n- Deployment: put the model into production and monitor it',
+    facts: ['Data Science Lifecycle', 'Problem definition', 'Data collection', 'Data cleaning', 'Exploratory analysis', 'Feature engineering', 'Modeling', 'Evaluation', 'Deployment'] },
 };
 // the same stand-in host as tests/app.html: signed in, Content_Slide selected, both AI services off
 const ACC = `access: { configured: true, mode: 'windows', authorized: true, user: 'test', reason: '', template: { layout_name: 'Content_Slide', fingerprint: { shapes: { 'content placeholder': [101.7, 205, 1078.5, 435.2], 'heading placeholder': [101.7, 119.1, 1078.5, 71.2], 'section tag strip': [1287.2, 0, 80.8, 720.3] }, tolerance: 3 } } }`;
@@ -39,8 +49,8 @@ const look = prims => ({ sp: shapePrint ? shapePrint(prims) : cells(prims, p => 
 const same = (a, b) => jac(a.sp, b.sp) >= 0.72 && jac(a.fp, b.fp) >= 0.45;
 const vq = W.eval('typeof visualQuality === "function" && typeof qualityItems === "function"') ? W.eval('(p, R) => visualQuality(qualityItems(p), R)') : null;
 function measure(c, facts) {
-  const prims = c.prims || [], texts = prims.filter(p => p.text).map(p => String(p.text)).join('\n').toLowerCase();
-  const q = vq ? vq(prims, R) : null;
+  const prims = (c.prims || []).concat(...(c.nextPrims || [])), texts = prims.filter(p => p.text).map(p => String(p.text)).join('\n').toLowerCase();
+  const q = vq ? vq(c.prims || [], R) : null;     // 10.19: layout per slide (a design on several slides: its first), content over all its slides
   return { name: String(c.title || c.name || '').replace(/ · .*$/, ''), category: c.category || '', family: c.family || '', engine: c.engine || '', edit: c.edit || '',
     objects: new Set(prims.filter(p => p.cmp && p.cmp !== 'none').map(p => p.grp)).size, shapes: prims.length,
     minPt: Math.min(99, ...prims.filter(p => p.text).map(p => p.size || 99)), issues: q ? (q.block || []).length : -1,

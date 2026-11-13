@@ -516,10 +516,12 @@ function planConceptFamily(P, i) {
 function planCaptionFamily(base) {
   const B = PLAN_LAYOUTS[base];
   if (!B || /^cap:/.test(base)) return null;
-  const lines = (P, withShort) => [withShort && P.statement && (P.short || P.statement.subject) ? { t: P.short || P.statement.subject, s: 26, b: true } : null,
+  // 10.19: LVC sizes (24 pt headings); a paragraph read as sections (sections.js paragraphRead) is captioned with its topic
+  const topic = P => P.statement ? (P.short || P.statement.subject) : P.paragraph ? P.title : '';
+  const lines = (P, withShort) => [withShort && topic(P) ? { t: topic(P), s: 24, b: true } : null,
     P.sectionName ? { t: P.sectionName, s: 24 } : null].filter(Boolean);
   return { key: 'cap:' + base, name: B.name, family: B.family || base, kind: B.kind || 'list', pack: B.pack || '', groups: B.groups, appeal: B.appeal,
-    needs: P => B.needs(P) || (P.sectionName || P.statement ? '' : 'nothing to caption'),
+    needs: P => B.needs(P) || (P.sectionName || P.statement || P.paragraph ? '' : 'nothing to caption'),
     opts: B.opts,
     build: (P, R, o) => {
       for (const withShort of [true, false]) {

@@ -1,0 +1,5503 @@
+{
+ "Before (14c7377)": {
+  "genai": {
+   "generate": 15,
+   "more": 1,
+   "designs": [
+    {
+     "name": "Disc and tile grid",
+     "category": "Concept map",
+     "family": "discgrid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 86,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Circuit board",
+     "category": "Concept scene",
+     "family": "chipboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 79,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub with side cards",
+     "category": "Hub and spoke",
+     "family": "hubcorners",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 94,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Zigzag spine",
+     "category": "Story flow",
+     "family": "zigzag",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 10,
+     "shapes": 83,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon band",
+     "category": "Icon summary",
+     "family": "iconband",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 41,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Folder tabs",
+     "category": "Cards",
+     "family": "tabcards",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 45,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Spotlight",
+     "category": "Hero",
+     "family": "spotlight",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 75,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Modular blocks",
+     "category": "Architecture",
+     "family": "modules",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 45,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Pillars",
+     "category": "Pillars",
+     "family": "pillars",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 51,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Callout diagram",
+     "category": "Hero",
+     "family": "callout",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 76,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning poster",
+     "category": "Hero",
+     "family": "poster",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 41,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub and spokes",
+     "category": "Hub and spoke",
+     "family": "hub",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 54,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon grid",
+     "category": "Cards",
+     "family": "grid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 45,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Feature columns",
+     "category": "Pillars",
+     "family": "columns",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 45,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Structured list",
+     "category": "Cards",
+     "family": "rows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 45,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Visual summary cards",
+     "category": "Icon summary",
+     "family": "storyboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 50,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    }
+   ],
+   "lookAlikePairs": 0,
+   "pairs": [],
+   "categories": 9,
+   "familyRepeats": 0
+  },
+  "ai": {
+   "generate": 24,
+   "more": 7,
+   "designs": [
+    {
+     "name": "Device links",
+     "category": "Concept scene",
+     "family": "devicelinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 67,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Disc and tile grid",
+     "category": "Concept map",
+     "family": "discgrid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 71,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub with side cards",
+     "category": "Hub and spoke",
+     "family": "hubcorners",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 75,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Zigzag spine",
+     "category": "Story flow",
+     "family": "zigzag",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 55,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic tree",
+     "category": "Hierarchy",
+     "family": "treedown",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 76,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 61,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Split panel",
+     "category": "Hero",
+     "family": "splitpanel",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 61,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ribbon tags",
+     "category": "Ribbons",
+     "family": "ribbontags",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 62,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Quadrant circle",
+     "category": "Framework",
+     "family": "quadcircle",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 63,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Focus target",
+     "category": "Focus",
+     "family": "target",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 76,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon band",
+     "category": "Icon summary",
+     "family": "iconband",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 28,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Folder tabs",
+     "category": "Cards",
+     "family": "tabcards",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 30,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Mind map",
+     "category": "Mind map",
+     "family": "mindmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 64,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Layered stack",
+     "category": "Layered",
+     "family": "isostack",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 36,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Pillars",
+     "category": "Pillars",
+     "family": "pillars",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 35,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Modular blocks",
+     "category": "Architecture",
+     "family": "modules",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 30,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Circuit board",
+     "category": "Concept scene",
+     "family": "chipboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 56,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ring and cards",
+     "category": "Concept map",
+     "family": "mirrorlinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 71,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Section rows",
+     "category": "Learning map",
+     "family": "sectionrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 25,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Speech bubbles",
+     "category": "Story flow",
+     "family": "callouts",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 58,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 60,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI"
+     ]
+    },
+    {
+     "name": "Badge cards",
+     "category": "Icon summary",
+     "family": "badges",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 29,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "AI"
+     ]
+    },
+    {
+     "name": "Colour tiles",
+     "category": "Icon summary",
+     "family": "colortiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 26,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI"
+     ]
+    },
+    {
+     "name": "Spotlight",
+     "category": "Hero",
+     "family": "spotlight",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 63,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Callout diagram",
+     "category": "Hero",
+     "family": "callout",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 63,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Visual summary cards",
+     "category": "Icon summary",
+     "family": "storyboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 33,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon grid",
+     "category": "Cards",
+     "family": "grid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 30,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Feature columns",
+     "category": "Pillars",
+     "family": "columns",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 30,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning poster",
+     "category": "Hero",
+     "family": "poster",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 29,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Structured list",
+     "category": "Cards",
+     "family": "rows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 30,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Statement spotlight",
+     "category": "Hero",
+     "family": "keystatement",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 66,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    }
+   ],
+   "lookAlikePairs": 0,
+   "pairs": [],
+   "categories": 16,
+   "familyRepeats": 0
+  },
+  "claude": {
+   "generate": 24,
+   "more": 11,
+   "designs": [
+    {
+     "name": "Device links",
+     "category": "Concept scene",
+     "family": "devicelinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 113,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Disc and tile grid",
+     "category": "Concept map",
+     "family": "discgrid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 79,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub with side cards",
+     "category": "Hub and spoke",
+     "family": "hubcorners",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 85,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic tree",
+     "category": "Hierarchy",
+     "family": "treedown",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 87,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 67,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Split panel",
+     "category": "Hero",
+     "family": "splitpanel",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 68,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Zigzag spine",
+     "category": "Story flow",
+     "family": "zigzag",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 70,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ribbon tags",
+     "category": "Ribbons",
+     "family": "ribbontags",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Quadrant circle",
+     "category": "Framework",
+     "family": "quadcircle",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 69,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Focus target",
+     "category": "Focus",
+     "family": "target",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 88,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon band",
+     "category": "Icon summary",
+     "family": "iconband",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 35,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Folder tabs",
+     "category": "Cards",
+     "family": "tabcards",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Mind map",
+     "category": "Mind map",
+     "family": "mindmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 71,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Bento grid",
+     "category": "Bento grid",
+     "family": "bento",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hexagon cluster",
+     "category": "Honeycomb",
+     "family": "honeycomb",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 71,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Layered stack",
+     "category": "Layered",
+     "family": "isostack",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 46,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ecosystem orbit",
+     "category": "Orbit",
+     "family": "orbit",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 75,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Modular blocks",
+     "category": "Architecture",
+     "family": "modules",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Feature columns",
+     "category": "Pillars",
+     "family": "columns",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Circuit board",
+     "category": "Concept scene",
+     "family": "chipboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 68,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Concept tiles",
+     "category": "Concept map",
+     "family": "concepttiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 77,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ring and cards",
+     "category": "Concept map",
+     "family": "mirrorlinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 80,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 66,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Statement spotlight",
+     "category": "Hero",
+     "family": "keystatement",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 75,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Spotlight",
+     "category": "Hero",
+     "family": "spotlight",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 69,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Quadrant framework",
+     "category": "Framework",
+     "family": "quadrant",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 39,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Visual summary cards",
+     "category": "Icon summary",
+     "family": "storyboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 42,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon grid",
+     "category": "Cards",
+     "family": "grid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Pillars",
+     "category": "Pillars",
+     "family": "pillars",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 43,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ecosystem",
+     "category": "Hub and spoke",
+     "family": "ecosystem",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 38,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Callout diagram",
+     "category": "Hero",
+     "family": "callout",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 70,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning poster",
+     "category": "Hero",
+     "family": "poster",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 35,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Structured list",
+     "category": "Cards",
+     "family": "rows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Badge cards",
+     "category": "Icon summary",
+     "family": "badges",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 40,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub and spokes",
+     "category": "Hub and spoke",
+     "family": "hub",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 46,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    }
+   ],
+   "lookAlikePairs": 1,
+   "pairs": [
+    [
+     8,
+     25
+    ]
+   ],
+   "categories": 19,
+   "familyRepeats": 0
+  },
+  "aiml": {
+   "generate": 22,
+   "more": 2,
+   "designs": [
+    {
+     "name": "Device links",
+     "category": "Concept scene",
+     "family": "devicelinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 141,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 114,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Disc and tile grid",
+     "category": "Concept map",
+     "family": "discgrid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 109,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub with side cards",
+     "category": "Hub and spoke",
+     "family": "hubcorners",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 113,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic tree",
+     "category": "Hierarchy",
+     "family": "treedown",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 111,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Split panel",
+     "category": "Hero",
+     "family": "splitpanel",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 105,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Circle headers",
+     "category": "Section columns",
+     "family": "circleheads",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 96,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Mind map",
+     "category": "Mind map",
+     "family": "mindmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 119,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ribbon tags",
+     "category": "Ribbons",
+     "family": "ribbontags",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 100,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Layered stack",
+     "category": "Layered",
+     "family": "isostack",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 33,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ecosystem orbit",
+     "category": "Orbit",
+     "family": "orbit",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 107,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Colour tiles",
+     "category": "Icon summary",
+     "family": "colortiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 99,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Capability map",
+     "category": "Framework",
+     "family": "capmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 99,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Concept tiles",
+     "category": "Concept map",
+     "family": "concepttiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 124,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ring and cards",
+     "category": "Concept map",
+     "family": "mirrorlinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 112,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Section rows",
+     "category": "Learning map",
+     "family": "sectionrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 92,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 112,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Circuit board",
+     "category": "Concept scene",
+     "family": "chipboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 126,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Topic ribbon",
+     "category": "Hero",
+     "family": "ribbon",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 110,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Skills to outcomes",
+     "category": "Learning map",
+     "family": "bridge",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 124,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Grouped columns",
+     "category": "Framework",
+     "family": "capability",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 99,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Learning poster",
+     "category": "Hero",
+     "family": "poster",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 101,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Folder tabs",
+     "category": "Cards",
+     "family": "tabcards",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 131,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon rows",
+     "category": "Icon summary",
+     "family": "iconrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 85,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    }
+   ],
+   "lookAlikePairs": 2,
+   "pairs": [
+    [
+     4,
+     22
+    ],
+    [
+     15,
+     23
+    ]
+   ],
+   "categories": 14,
+   "familyRepeats": 0
+  },
+  "dm": {
+   "generate": 16,
+   "more": 4,
+   "designs": [
+    {
+     "name": "Device links",
+     "category": "Concept scene",
+     "family": "devicelinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 101,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Disc and tile grid",
+     "category": "Concept map",
+     "family": "discgrid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 74,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub with side cards",
+     "category": "Hub and spoke",
+     "family": "hubcorners",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 73,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic tree",
+     "category": "Hierarchy",
+     "family": "treedown",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 71,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Circle headers",
+     "category": "Section columns",
+     "family": "circleheads",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 66,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Mind map",
+     "category": "Mind map",
+     "family": "mindmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 79,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 72,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ribbon tags",
+     "category": "Ribbons",
+     "family": "ribbontags",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 70,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Colour tiles",
+     "category": "Icon summary",
+     "family": "colortiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Capability map",
+     "category": "Framework",
+     "family": "capmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Ring and cards",
+     "category": "Concept map",
+     "family": "mirrorlinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 72,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Section rows",
+     "category": "Learning map",
+     "family": "sectionrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 62,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Circuit board",
+     "category": "Concept scene",
+     "family": "chipboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 96,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Skills to outcomes",
+     "category": "Learning map",
+     "family": "bridge",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 84,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Grouped columns",
+     "category": "Framework",
+     "family": "capability",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Split panel",
+     "category": "Hero",
+     "family": "splitpanel",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 65,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Folder tabs",
+     "category": "Cards",
+     "family": "tabcards",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 70,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon rows",
+     "category": "Icon summary",
+     "family": "iconrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 55,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Section panels",
+     "category": "Hero",
+     "family": "splitpanels",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 80,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    }
+   ],
+   "lookAlikePairs": 3,
+   "pairs": [
+    [
+     4,
+     17
+    ],
+    [
+     12,
+     18
+    ],
+    [
+     7,
+     19
+    ]
+   ],
+   "categories": 12,
+   "familyRepeats": 0
+  },
+  "k8s": {
+   "generate": 24,
+   "more": 10,
+   "designs": [
+    {
+     "name": "Device links",
+     "category": "Concept scene",
+     "family": "devicelinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 81,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Disc and tile grid",
+     "category": "Concept map",
+     "family": "discgrid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 49,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 39,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub with side cards",
+     "category": "Hub and spoke",
+     "family": "hubcorners",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 53,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic tree",
+     "category": "Hierarchy",
+     "family": "treedown",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 54,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Quadrant circle",
+     "category": "Framework",
+     "family": "quadcircle",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 41,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Split panel",
+     "category": "Hero",
+     "family": "splitpanel",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 39,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Zigzag spine",
+     "category": "Story flow",
+     "family": "zigzag",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 61,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ribbon tags",
+     "category": "Ribbons",
+     "family": "ribbontags",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 40,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Focus target",
+     "category": "Focus",
+     "family": "target",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 54,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon band",
+     "category": "Icon summary",
+     "family": "iconband",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 31,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Folder tabs",
+     "category": "Cards",
+     "family": "tabcards",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 33,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Mind map",
+     "category": "Mind map",
+     "family": "mindmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 42,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Bento grid",
+     "category": "Bento grid",
+     "family": "bento",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 40,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hexagon cluster",
+     "category": "Honeycomb",
+     "family": "honeycomb",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 42,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Layered stack",
+     "category": "Layered",
+     "family": "isostack",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 39,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ecosystem orbit",
+     "category": "Orbit",
+     "family": "orbit",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 45,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Feature columns",
+     "category": "Pillars",
+     "family": "columns",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 34,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Modular blocks",
+     "category": "Architecture",
+     "family": "modules",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 34,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Circuit board",
+     "category": "Concept scene",
+     "family": "chipboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 59,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Concept tiles",
+     "category": "Concept map",
+     "family": "concepttiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 45,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ring and cards",
+     "category": "Concept map",
+     "family": "mirrorlinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 49,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Section rows",
+     "category": "Learning map",
+     "family": "sectionrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 28,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Speech bubbles",
+     "category": "Story flow",
+     "family": "callouts",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 36,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Statement spotlight",
+     "category": "Hero",
+     "family": "keystatement",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 43,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Colour tiles",
+     "category": "Icon summary",
+     "family": "colortiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 32,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Structured list",
+     "category": "Cards",
+     "family": "rows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 34,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Pillars",
+     "category": "Pillars",
+     "family": "pillars",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub and spokes",
+     "category": "Hub and spoke",
+     "family": "hub",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 40,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Spotlight",
+     "category": "Hero",
+     "family": "spotlight",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 39,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Callout diagram",
+     "category": "Hero",
+     "family": "callout",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 40,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon grid",
+     "category": "Cards",
+     "family": "grid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 34,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning poster",
+     "category": "Hero",
+     "family": "poster",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 31,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    }
+   ],
+   "lookAlikePairs": 0,
+   "pairs": [],
+   "categories": 19,
+   "familyRepeats": 0
+  },
+  "cloud": {
+   "generate": 9,
+   "more": 1,
+   "designs": [
+    {
+     "name": "Device links",
+     "category": "Concept scene",
+     "family": "devicelinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 67,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "lower upfront costs",
+      "scalability",
+      "global availability",
+      "faster innovation",
+      "public",
+      "private",
+      "hybrid"
+     ]
+    },
+    {
+     "name": "Ring and cards",
+     "category": "Concept map",
+     "family": "mirrorlinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 36,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "lower upfront costs",
+      "scalability",
+      "global availability",
+      "faster innovation",
+      "public",
+      "private",
+      "hybrid"
+     ]
+    },
+    {
+     "name": "Split panel",
+     "category": "Hero",
+     "family": "splitpanel",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 28,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "lower upfront costs",
+      "scalability",
+      "global availability",
+      "faster innovation",
+      "public",
+      "private",
+      "hybrid"
+     ]
+    },
+    {
+     "name": "Icon band",
+     "category": "Icon summary",
+     "family": "iconband",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 1,
+     "shapes": 20,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "lower upfront costs",
+      "scalability",
+      "global availability",
+      "faster innovation",
+      "public",
+      "private",
+      "hybrid"
+     ]
+    },
+    {
+     "name": "Folder tabs",
+     "category": "Cards",
+     "family": "tabcards",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 1,
+     "shapes": 21,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "lower upfront costs",
+      "scalability",
+      "global availability",
+      "faster innovation",
+      "public",
+      "private",
+      "hybrid"
+     ]
+    },
+    {
+     "name": "Modular blocks",
+     "category": "Architecture",
+     "family": "modules",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 1,
+     "shapes": 20,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "lower upfront costs",
+      "scalability",
+      "global availability",
+      "faster innovation",
+      "public",
+      "private",
+      "hybrid"
+     ]
+    },
+    {
+     "name": "Concept tiles",
+     "category": "Concept map",
+     "family": "concepttiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 33,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "lower upfront costs",
+      "scalability",
+      "global availability",
+      "faster innovation",
+      "public",
+      "private",
+      "hybrid"
+     ]
+    },
+    {
+     "name": "Icon grid",
+     "category": "Cards",
+     "family": "grid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 1,
+     "shapes": 20,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "lower upfront costs",
+      "scalability",
+      "global availability",
+      "faster innovation",
+      "public",
+      "private",
+      "hybrid"
+     ]
+    },
+    {
+     "name": "Structured list",
+     "category": "Cards",
+     "family": "rows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 1,
+     "shapes": 20,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "lower upfront costs",
+      "scalability",
+      "global availability",
+      "faster innovation",
+      "public",
+      "private",
+      "hybrid"
+     ]
+    },
+    {
+     "name": "Feature columns",
+     "category": "Pillars",
+     "family": "columns",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 1,
+     "shapes": 20,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "lower upfront costs",
+      "scalability",
+      "global availability",
+      "faster innovation",
+      "public",
+      "private",
+      "hybrid"
+     ]
+    }
+   ],
+   "lookAlikePairs": 1,
+   "pairs": [
+    [
+     7,
+     9
+    ]
+   ],
+   "categories": 7,
+   "familyRepeats": 0
+  },
+  "dslife": {
+   "generate": 11,
+   "more": 1,
+   "designs": [
+    {
+     "name": "Illustrated cards",
+     "category": "Cards",
+     "family": "p-cards",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 96,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Pipeline",
+     "category": "Process",
+     "family": "pipeline",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 126,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Topic branches",
+     "category": "Infographic",
+     "family": "branch",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 0,
+     "shapes": 35,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Timeline",
+     "category": "Timeline",
+     "family": "timeline",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 0,
+     "shapes": 34,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Alternating blocks",
+     "category": "Story flow",
+     "family": "zigzag",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 0,
+     "shapes": 41,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Illustrated list",
+     "category": "Cards",
+     "family": "p-list",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 104,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Icon grid",
+     "category": "Cards",
+     "family": "grid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 112,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Hexagons",
+     "category": "Infographic",
+     "family": "hex",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 0,
+     "shapes": 8,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Chevron process",
+     "category": "Process",
+     "family": "chevrons",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 0,
+     "shapes": 8,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Numbered list",
+     "category": "Cards",
+     "family": "rows",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 0,
+     "shapes": 24,
+     "minPt": 26,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Numbered cards",
+     "category": "Cards",
+     "family": "cards",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 0,
+     "shapes": 32,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Object scene",
+     "category": "Process",
+     "family": "p-row",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 87,
+     "minPt": 23,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    }
+   ],
+   "lookAlikePairs": 0,
+   "pairs": [],
+   "categories": 5,
+   "familyRepeats": 0
+  }
+ },
+ "After (this version)": {
+  "genai": {
+   "generate": 24,
+   "more": 3,
+   "designs": [
+    {
+     "name": "Disc and tile grid",
+     "category": "Concept map",
+     "family": "discgrid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 86,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Circuit board",
+     "category": "Concept scene",
+     "family": "chipboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 79,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub with side cards",
+     "category": "Hub and spoke",
+     "family": "hubcorners",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 94,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Zigzag spine",
+     "category": "Story flow",
+     "family": "zigzag",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 10,
+     "shapes": 83,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon band",
+     "category": "Icon summary",
+     "family": "iconband",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 41,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Folder tabs",
+     "category": "Cards",
+     "family": "tabcards",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 45,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Spotlight",
+     "category": "Hero",
+     "family": "spotlight",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 75,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Pillars",
+     "category": "Pillars",
+     "family": "pillars",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 51,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Modular blocks",
+     "category": "Architecture",
+     "family": "modules",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 45,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Device links",
+     "category": "Concept scene",
+     "family": "devicelinks:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 192,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Circuit board",
+     "category": "Concept scene",
+     "family": "chipboard:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 96,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub with side cards",
+     "category": "Hub and spoke",
+     "family": "hubcorners:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 136,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ring and cards",
+     "category": "Concept map",
+     "family": "mirrorlinks:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 129,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon band",
+     "category": "Icon summary",
+     "family": "iconband:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 45,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Folder tabs",
+     "category": "Cards",
+     "family": "tabcards:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 48,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Speech bubbles",
+     "category": "Story flow",
+     "family": "callouts:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 106,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Callout diagram",
+     "category": "Hero",
+     "family": "callout",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 76,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub and spokes",
+     "category": "Hub and spoke",
+     "family": "hub",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 54,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning poster",
+     "category": "Hero",
+     "family": "poster",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 41,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon grid",
+     "category": "Cards",
+     "family": "grid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 45,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Feature columns",
+     "category": "Pillars",
+     "family": "columns",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 45,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Feature columns",
+     "category": "Pillars",
+     "family": "columns:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 48,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Modular blocks",
+     "category": "Architecture",
+     "family": "modules:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 48,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Structured list",
+     "category": "Cards",
+     "family": "rows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 45,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Visual summary cards",
+     "category": "Icon summary",
+     "family": "storyboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 50,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Structured list",
+     "category": "Cards",
+     "family": "rows:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 48,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon grid",
+     "category": "Cards",
+     "family": "grid:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 48,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    }
+   ],
+   "lookAlikePairs": 0,
+   "pairs": [],
+   "categories": 9,
+   "familyRepeats": 0
+  },
+  "ai": {
+   "generate": 24,
+   "more": 7,
+   "designs": [
+    {
+     "name": "Device links",
+     "category": "Concept scene",
+     "family": "devicelinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 67,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Disc and tile grid",
+     "category": "Concept map",
+     "family": "discgrid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 71,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 61,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub with side cards",
+     "category": "Hub and spoke",
+     "family": "hubcorners",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 75,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic tree",
+     "category": "Hierarchy",
+     "family": "treedown",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 76,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Quadrant circle",
+     "category": "Framework",
+     "family": "quadcircle",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 63,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Split panel",
+     "category": "Hero",
+     "family": "splitpanel",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 61,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Zigzag spine",
+     "category": "Story flow",
+     "family": "zigzag",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 55,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ribbon tags",
+     "category": "Ribbons",
+     "family": "ribbontags",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 62,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Focus target",
+     "category": "Focus",
+     "family": "target",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 76,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Mind map",
+     "category": "Mind map",
+     "family": "mindmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 64,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon band",
+     "category": "Icon summary",
+     "family": "iconband",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 28,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Folder tabs",
+     "category": "Cards",
+     "family": "tabcards",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 30,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Layered stack",
+     "category": "Layered",
+     "family": "isostack",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 36,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Pillars",
+     "category": "Pillars",
+     "family": "pillars",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 35,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Modular blocks",
+     "category": "Architecture",
+     "family": "modules",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 30,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Circuit board",
+     "category": "Concept scene",
+     "family": "chipboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 56,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ring and cards",
+     "category": "Concept map",
+     "family": "mirrorlinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 71,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Section rows",
+     "category": "Learning map",
+     "family": "sectionrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 25,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Speech bubbles",
+     "category": "Story flow",
+     "family": "callouts",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 58,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 60,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI"
+     ]
+    },
+    {
+     "name": "Badge cards",
+     "category": "Icon summary",
+     "family": "badges",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 29,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI"
+     ]
+    },
+    {
+     "name": "Colour tiles",
+     "category": "Icon summary",
+     "family": "colortiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 26,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI"
+     ]
+    },
+    {
+     "name": "Spotlight",
+     "category": "Hero",
+     "family": "spotlight",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 63,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Callout diagram",
+     "category": "Hero",
+     "family": "callout",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 63,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Visual summary cards",
+     "category": "Icon summary",
+     "family": "storyboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 33,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon grid",
+     "category": "Cards",
+     "family": "grid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 30,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Feature columns",
+     "category": "Pillars",
+     "family": "columns",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 30,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning poster",
+     "category": "Hero",
+     "family": "poster",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 29,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Structured list",
+     "category": "Cards",
+     "family": "rows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 30,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Statement spotlight",
+     "category": "Hero",
+     "family": "keystatement",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 66,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    }
+   ],
+   "lookAlikePairs": 0,
+   "pairs": [],
+   "categories": 16,
+   "familyRepeats": 0
+  },
+  "claude": {
+   "generate": 24,
+   "more": 11,
+   "designs": [
+    {
+     "name": "Device links",
+     "category": "Concept scene",
+     "family": "devicelinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 113,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 67,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Disc and tile grid",
+     "category": "Concept map",
+     "family": "discgrid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 79,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic tree",
+     "category": "Hierarchy",
+     "family": "treedown",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 87,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub with side cards",
+     "category": "Hub and spoke",
+     "family": "hubcorners",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 85,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Split panel",
+     "category": "Hero",
+     "family": "splitpanel",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 68,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ribbon tags",
+     "category": "Ribbons",
+     "family": "ribbontags",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Quadrant circle",
+     "category": "Framework",
+     "family": "quadcircle",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 69,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Zigzag spine",
+     "category": "Story flow",
+     "family": "zigzag",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 70,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Focus target",
+     "category": "Focus",
+     "family": "target",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 88,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Mind map",
+     "category": "Mind map",
+     "family": "mindmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 71,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon band",
+     "category": "Icon summary",
+     "family": "iconband",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 35,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Folder tabs",
+     "category": "Cards",
+     "family": "tabcards",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Bento grid",
+     "category": "Bento grid",
+     "family": "bento",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hexagon cluster",
+     "category": "Honeycomb",
+     "family": "honeycomb",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 71,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Layered stack",
+     "category": "Layered",
+     "family": "isostack",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 46,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ecosystem orbit",
+     "category": "Orbit",
+     "family": "orbit",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 75,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Pillars",
+     "category": "Pillars",
+     "family": "pillars",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 43,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Modular blocks",
+     "category": "Architecture",
+     "family": "modules",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Circuit board",
+     "category": "Concept scene",
+     "family": "chipboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 68,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Concept tiles",
+     "category": "Concept map",
+     "family": "concepttiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 77,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ring and cards",
+     "category": "Concept map",
+     "family": "mirrorlinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 80,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 66,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Statement spotlight",
+     "category": "Hero",
+     "family": "keystatement",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 75,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Quadrant framework",
+     "category": "Framework",
+     "family": "quadrant",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 39,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Spotlight",
+     "category": "Hero",
+     "family": "spotlight",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 69,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Visual summary cards",
+     "category": "Icon summary",
+     "family": "storyboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 42,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon grid",
+     "category": "Cards",
+     "family": "grid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Feature columns",
+     "category": "Pillars",
+     "family": "columns",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ecosystem",
+     "category": "Hub and spoke",
+     "family": "ecosystem",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 38,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Callout diagram",
+     "category": "Hero",
+     "family": "callout",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 70,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning poster",
+     "category": "Hero",
+     "family": "poster",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 35,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Structured list",
+     "category": "Cards",
+     "family": "rows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Badge cards",
+     "category": "Icon summary",
+     "family": "badges",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 40,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub and spokes",
+     "category": "Hub and spoke",
+     "family": "hub",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 46,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    }
+   ],
+   "lookAlikePairs": 1,
+   "pairs": [
+    [
+     7,
+     24
+    ]
+   ],
+   "categories": 19,
+   "familyRepeats": 0
+  },
+  "aiml": {
+   "generate": 22,
+   "more": 2,
+   "designs": [
+    {
+     "name": "Device links",
+     "category": "Concept scene",
+     "family": "devicelinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 141,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 114,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Concept tiles",
+     "category": "Concept map",
+     "family": "concepttiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 124,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub with side cards",
+     "category": "Hub and spoke",
+     "family": "hubcorners",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 113,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Circle headers",
+     "category": "Section columns",
+     "family": "circleheads",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 96,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Topic tree",
+     "category": "Hierarchy",
+     "family": "treedown",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 111,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Split panel",
+     "category": "Hero",
+     "family": "splitpanel",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 105,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Mind map",
+     "category": "Mind map",
+     "family": "mindmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 119,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ribbon tags",
+     "category": "Ribbons",
+     "family": "ribbontags",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 100,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Layered stack",
+     "category": "Layered",
+     "family": "isostack",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 33,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ecosystem orbit",
+     "category": "Orbit",
+     "family": "orbit",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 107,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Colour tiles",
+     "category": "Icon summary",
+     "family": "colortiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 99,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Capability map",
+     "category": "Framework",
+     "family": "capmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 99,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Disc and tile grid",
+     "category": "Concept map",
+     "family": "discgrid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 109,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Section rows",
+     "category": "Learning map",
+     "family": "sectionrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 92,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Ring and cards",
+     "category": "Concept map",
+     "family": "mirrorlinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 112,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Circuit board",
+     "category": "Concept scene",
+     "family": "chipboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 126,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 112,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic ribbon",
+     "category": "Hero",
+     "family": "ribbon",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 110,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Skills to outcomes",
+     "category": "Learning map",
+     "family": "bridge",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 124,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Grouped columns",
+     "category": "Framework",
+     "family": "capability",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 99,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    },
+    {
+     "name": "Learning poster",
+     "category": "Hero",
+     "family": "poster",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 101,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Folder tabs",
+     "category": "Cards",
+     "family": "tabcards",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 131,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon rows",
+     "category": "Icon summary",
+     "family": "iconrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 85,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "AI & ML|Artificial Intelligence"
+     ]
+    }
+   ],
+   "lookAlikePairs": 2,
+   "pairs": [
+    [
+     5,
+     22
+    ],
+    [
+     14,
+     23
+    ]
+   ],
+   "categories": 14,
+   "familyRepeats": 0
+  },
+  "dm": {
+   "generate": 22,
+   "more": 5,
+   "designs": [
+    {
+     "name": "Device links",
+     "category": "Concept scene",
+     "family": "devicelinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 101,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 74,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Disc and tile grid",
+     "category": "Concept map",
+     "family": "discgrid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub with side cards",
+     "category": "Hub and spoke",
+     "family": "hubcorners",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 73,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Circle headers",
+     "category": "Section columns",
+     "family": "circleheads",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 66,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Topic tree",
+     "category": "Hierarchy",
+     "family": "treedown",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 71,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Mind map",
+     "category": "Mind map",
+     "family": "mindmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 79,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ribbon tags",
+     "category": "Ribbons",
+     "family": "ribbontags",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 70,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 72,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Colour tiles",
+     "category": "Icon summary",
+     "family": "colortiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Bento grid",
+     "category": "Bento grid",
+     "family": "bento:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 87,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Capability map",
+     "category": "Framework",
+     "family": "capmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Modular blocks",
+     "category": "Architecture",
+     "family": "modules:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 76,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Pillars",
+     "category": "Pillars",
+     "family": "pillars:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 87,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Section rows",
+     "category": "Learning map",
+     "family": "sectionrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 62,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Ring and cards",
+     "category": "Concept map",
+     "family": "mirrorlinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 72,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Circuit board",
+     "category": "Concept scene",
+     "family": "chipboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 96,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Skills to outcomes",
+     "category": "Learning map",
+     "family": "bridge",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 84,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic tree",
+     "category": "Hierarchy",
+     "family": "treedown:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 119,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Badge cards",
+     "category": "Icon summary",
+     "family": "badges:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 76,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Grouped columns",
+     "category": "Framework",
+     "family": "capability",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Spotlight",
+     "category": "Hero",
+     "family": "spotlight:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 87,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Split panel",
+     "category": "Hero",
+     "family": "splitpanel",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 65,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Folder tabs",
+     "category": "Cards",
+     "family": "tabcards",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 70,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon rows",
+     "category": "Icon summary",
+     "family": "iconrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 55,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    },
+    {
+     "name": "Disc and tile grid",
+     "category": "Concept map",
+     "family": "discgrid:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 106,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Section panels",
+     "category": "Hero",
+     "family": "splitpanels",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 80,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Digital Marketing"
+     ]
+    }
+   ],
+   "lookAlikePairs": 4,
+   "pairs": [
+    [
+     5,
+     23
+    ],
+    [
+     14,
+     24
+    ],
+    [
+     2,
+     25
+    ],
+    [
+     8,
+     26
+    ]
+   ],
+   "categories": 15,
+   "familyRepeats": 0
+  },
+  "k8s": {
+   "generate": 24,
+   "more": 11,
+   "designs": [
+    {
+     "name": "Device links",
+     "category": "Concept scene",
+     "family": "devicelinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 81,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Quadrant circle",
+     "category": "Framework",
+     "family": "quadcircle",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 41,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 39,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Disc and tile grid",
+     "category": "Concept map",
+     "family": "discgrid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 49,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic tree",
+     "category": "Hierarchy",
+     "family": "treedown",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 54,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub with side cards",
+     "category": "Hub and spoke",
+     "family": "hubcorners",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 53,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Split panel",
+     "category": "Hero",
+     "family": "splitpanel",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 39,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ribbon tags",
+     "category": "Ribbons",
+     "family": "ribbontags",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 40,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Zigzag spine",
+     "category": "Story flow",
+     "family": "zigzag",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 61,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Focus target",
+     "category": "Focus",
+     "family": "target",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 54,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Mind map",
+     "category": "Mind map",
+     "family": "mindmap",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 42,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon band",
+     "category": "Icon summary",
+     "family": "iconband",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 31,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Folder tabs",
+     "category": "Cards",
+     "family": "tabcards",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 33,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Bento grid",
+     "category": "Bento grid",
+     "family": "bento",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 40,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hexagon cluster",
+     "category": "Honeycomb",
+     "family": "honeycomb",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 42,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Layered stack",
+     "category": "Layered",
+     "family": "isostack",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 39,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ecosystem orbit",
+     "category": "Orbit",
+     "family": "orbit",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 45,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Pillars",
+     "category": "Pillars",
+     "family": "pillars",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Modular blocks",
+     "category": "Architecture",
+     "family": "modules",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 34,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Circuit board",
+     "category": "Concept scene",
+     "family": "chipboard",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 59,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Concept tiles",
+     "category": "Concept map",
+     "family": "concepttiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 45,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ring and cards",
+     "category": "Concept map",
+     "family": "mirrorlinks",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 49,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Section rows",
+     "category": "Learning map",
+     "family": "sectionrows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 28,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 38,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Speech bubbles",
+     "category": "Story flow",
+     "family": "callouts",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 36,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Statement spotlight",
+     "category": "Hero",
+     "family": "keystatement",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 43,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Colour tiles",
+     "category": "Icon summary",
+     "family": "colortiles",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 32,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Feature columns",
+     "category": "Pillars",
+     "family": "columns",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 34,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Structured list",
+     "category": "Cards",
+     "family": "rows",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 34,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub and spokes",
+     "category": "Hub and spoke",
+     "family": "hub",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 40,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Spotlight",
+     "category": "Hero",
+     "family": "spotlight",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 39,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Callout diagram",
+     "category": "Hero",
+     "family": "callout",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 40,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Badge cards",
+     "category": "Icon summary",
+     "family": "badges",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 35,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon grid",
+     "category": "Cards",
+     "family": "grid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 34,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning poster",
+     "category": "Hero",
+     "family": "poster",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 31,
+     "minPt": 24,
+     "issues": 0,
+     "missing": []
+    }
+   ],
+   "lookAlikePairs": 0,
+   "pairs": [],
+   "categories": 19,
+   "familyRepeats": 0
+  },
+  "cloud": {
+   "generate": 24,
+   "more": 5,
+   "designs": [
+    {
+     "name": "Topic tree",
+     "category": "Hierarchy",
+     "family": "treedown",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 62,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Device links",
+     "category": "Concept scene",
+     "family": "devicelinks:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 208,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Disc and tile grid",
+     "category": "Concept map",
+     "family": "discgrid:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 110,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Quadrant circle",
+     "category": "Framework",
+     "family": "quadcircle:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 84,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 78,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub with side cards",
+     "category": "Hub and spoke",
+     "family": "hubcorners:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 124,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Split panel",
+     "category": "Hero",
+     "family": "splitpanel:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 79,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ribbon tags",
+     "category": "Ribbons",
+     "family": "ribbontags:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 82,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Layered stack",
+     "category": "Layered",
+     "family": "isostack",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 2,
+     "shapes": 43,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon band",
+     "category": "Icon summary",
+     "family": "iconband:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 79,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Folder tabs",
+     "category": "Cards",
+     "family": "tabcards:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 86,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Mind map",
+     "category": "Mind map",
+     "family": "mindmap:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 88,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Bento grid",
+     "category": "Bento grid",
+     "family": "bento:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 82,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Modular blocks",
+     "category": "Architecture",
+     "family": "modules:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 89,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Pillars",
+     "category": "Pillars",
+     "family": "pillars:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 105,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic tree",
+     "category": "Hierarchy",
+     "family": "treedown:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 128,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Concept tiles",
+     "category": "Concept map",
+     "family": "concepttiles:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 97,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Ring and cards",
+     "category": "Concept map",
+     "family": "mirrorlinks:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 6,
+     "shapes": 111,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Section rows",
+     "category": "Learning map",
+     "family": "sectionrows:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 69,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Topic banner",
+     "category": "Hero",
+     "family": "herobanner:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 75,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Layered stack",
+     "category": "Layered",
+     "family": "isostack:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 106,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Statement spotlight",
+     "category": "Hero",
+     "family": "keystatement:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 89,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Hub and spokes",
+     "category": "Hub and spoke",
+     "family": "hub:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 112,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Icon grid",
+     "category": "Cards",
+     "family": "grid:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 89,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Folder tabs",
+     "category": "Cards",
+     "family": "tabcards",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 7,
+     "shapes": 71,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Callout diagram",
+     "category": "Hero",
+     "family": "callout:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 78,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Badge cards",
+     "category": "Icon summary",
+     "family": "badges:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 86,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Feature columns",
+     "category": "Pillars",
+     "family": "columns:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 89,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Spotlight",
+     "category": "Hero",
+     "family": "spotlight:3",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 3,
+     "shapes": 75,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    }
+   ],
+   "lookAlikePairs": 1,
+   "pairs": [
+    [
+     0,
+     24
+    ]
+   ],
+   "categories": 15,
+   "familyRepeats": 0
+  },
+  "dslife": {
+   "generate": 24,
+   "more": 5,
+   "designs": [
+    {
+     "name": "Device links",
+     "category": "Concept scene",
+     "family": "devicelinks:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 212,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Disc and tile grid",
+     "category": "Concept map",
+     "family": "discgrid:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 144,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Learning map",
+     "category": "Learning map",
+     "family": "learnmap:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 120,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Hub with side cards",
+     "category": "Hub and spoke",
+     "family": "hubcorners:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 156,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Illustrated list",
+     "category": "Cards",
+     "family": "p-list",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 104,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Topic tree",
+     "category": "Hierarchy",
+     "family": "treedown:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 160,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Quadrant circle",
+     "category": "Framework",
+     "family": "quadcircle:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 124,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Split panel",
+     "category": "Hero",
+     "family": "splitpanel:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 122,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Bento grid",
+     "category": "Bento grid",
+     "family": "bento",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 106,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Speech bubbles",
+     "category": "Story flow",
+     "family": "callouts:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 114,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Badge cards",
+     "category": "Icon summary",
+     "family": "badges:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 112,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Layered stack",
+     "category": "Layered",
+     "family": "isostack:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 132,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Pipeline",
+     "category": "Process",
+     "family": "pipeline",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 126,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Learning journey",
+     "category": "Infographic",
+     "family": "journey:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 110,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Roadmap",
+     "category": "Roadmap",
+     "family": "roadmap:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 108,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Circuit board",
+     "category": "Concept scene",
+     "family": "chipboard:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 176,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Concept tiles",
+     "category": "Concept map",
+     "family": "concepttiles:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 138,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Ring and cards",
+     "category": "Concept map",
+     "family": "mirrorlinks:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 9,
+     "shapes": 146,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Illustrated cards",
+     "category": "Cards",
+     "family": "p-cards",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 96,
+     "minPt": 24,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Icon grid",
+     "category": "Cards",
+     "family": "grid",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 112,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Bento grid",
+     "category": "Bento grid",
+     "family": "bento:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 124,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Learning poster",
+     "category": "Hero",
+     "family": "poster:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 108,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Statement spotlight",
+     "category": "Hero",
+     "family": "keystatement:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 5,
+     "shapes": 130,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Hub and spokes",
+     "category": "Hub and spoke",
+     "family": "hub",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 117,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Object scene",
+     "category": "Process",
+     "family": "p-row",
+     "engine": "builtin",
+     "edit": "full",
+     "objects": 8,
+     "shapes": 87,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Colour tiles",
+     "category": "Icon summary",
+     "family": "colortiles:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 104,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Spotlight",
+     "category": "Hero",
+     "family": "spotlight:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 1,
+     "shapes": 50,
+     "minPt": 22,
+     "issues": 0,
+     "missing": []
+    },
+    {
+     "name": "Callout diagram",
+     "category": "Hero",
+     "family": "callout:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 1,
+     "shapes": 50,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    },
+    {
+     "name": "Pipeline",
+     "category": "Process",
+     "family": "pipeline:2",
+     "engine": "designs",
+     "edit": "full",
+     "objects": 4,
+     "shapes": 124,
+     "minPt": 22,
+     "issues": 0,
+     "missing": [
+      "Data Science Lifecycle"
+     ]
+    }
+   ],
+   "lookAlikePairs": 1,
+   "pairs": [
+    [
+     7,
+     26
+    ]
+   ],
+   "categories": 15,
+   "familyRepeats": 0
+  }
+ }
+}

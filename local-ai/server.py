@@ -43,7 +43,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import access as A
 import claude_visual as C
 
-VERSION = '10.18.0'
+VERSION = '10.19.0'
 HERE = os.path.dirname(os.path.abspath(__file__))
 # 10.18: hosted mode (a central HTTPS service for the team, e.g. Azure App Service; deploy/README-PILOT.md). Off unless
 # AIVB_HOSTED=1. Then: plain HTTP on $PORT behind the platform's HTTPS front end, bound to all interfaces; only the

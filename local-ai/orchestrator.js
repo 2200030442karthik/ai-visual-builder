@@ -141,6 +141,7 @@ const paidMark = (hash, engine) => { try { const m = paidSeen(); m[hash] = { eng
 async function orchGenerate(text, o, onStage) {
   o = o || {}; onStage = onStage || (() => {});
   const run = ++ORCH.run, hash = hashText(text), ctx = { text, hash, more: !!o.more, R: Object.assign({}, TEMPLATE.contentArea) };
+  if (typeof brandSource === 'function') brandSource(text);     // 10.19: names the text capitalises keep their capitals (sentence case)
   const memo = ORCH.memo.get(hash) || { cands: [], free: {}, paidTried: false, paidFrom: '' };
   ORCH.memo.set(hash, memo);
   if (!o.more && memo.list && memo.list.length) { orchNote('reused the visuals made for this text', { n: memo.list.length }); return { list: memo.list, note: '', paid: { used: false, from: memo.paidFrom }, reused: true }; }
@@ -167,7 +168,34 @@ async function orchGenerate(text, o, onStage) {
   // infographics and Claude's own compositions in one gallery; otherwise the second service is only the fallback
   let requests = 0, paidOK = false;
   const both = !!(state.svc && state.svc.orchestrate && state.svc.orchestrate.engines === 2);
-  if (!memo.paidChecked) for (const id of order) {
+  // 10.19, AI-first: with both services, Napkin and Claude design for the text at the same time (V10.18: one after the
+  // other, up to 3 minutes); each one's designs join the gallery as soon as they arrive. The same cost rules hold: a kept
+  // result is reused free, a text sent in the last 24 hours is not sent again, one request per service.
+  if (!memo.paidChecked && both) {
+    const seen = !!paidSeen()[hash], avail = order.map(id => ORCH.engines.find(x => x.id === id)).filter(e => e && e.available(ctx));
+    order.filter(id => !avail.some(e => e.id === id)).forEach(id => orchNote(`${id}: not available`));
+    let pending = avail.length;
+    const one = async e => {
+      let got = [];
+      try {
+        const cached = await e.cached(ctx);
+        if (cached && cached.length) { got = cached; orchNote(`${e.id}: reused its kept result for this text (no request)`); }
+        else if (want && !memo.paidTried && !seen) {
+          requests++; paidMark(hash, e.id); paidUsed = true;
+          onStage(`Adding AI-designed options (${pending} AI service${pending > 1 ? 's' : ''} designing)…`, orchRank(memo.cands.slice(), ORCH_MAX));
+          got = await e.run(ctx);
+          orchNote(`${e.id}: requested, ${got.length} usable`);
+        } else if (want && seen) orchNote(`${e.id}: this text was sent in the last 24 hours; not sent again`);
+      } catch (err) { orchNote(`${e.id} failed: ${errText(err)}`); got = []; }
+      pending--;
+      if (run !== ORCH.run) return;
+      if (got.length) { memo.cands.push(...got); memo.paidFrom = memo.paidFrom || e.id; paidOK = true;
+        if (pending) onStage(`Adding AI-designed options (${pending} AI service designing)…`, orchRank(memo.cands.slice(), ORCH_MAX)); }
+    };
+    await Promise.all(avail.map(one));
+    if (run !== ORCH.run) return null;
+    if (requests && !paidOK) note = 'The AI design services gave no usable design this time; these visuals are built in.';
+  } else if (!memo.paidChecked) for (const id of order) {
     const e = ORCH.engines.find(x => x.id === id);
     if (!e || !e.available(ctx)) { orchNote(`${id}: not available`); continue; }
     let got = [];
@@ -240,7 +268,7 @@ registerEngine({ id: 'designs', kind: 'native', order: 20,
 /* 10.16: the facts every design of a text must show (beyond its items, which planRender already requires): a statement's
    subject, verbs and object; labelled sections' names. */
 const orchFacts = P => { const st = P && P.statement;
-  return (st ? [st.subject].concat(st.verbs || [], [st.object]) : P && P.sections ? planGroups(P).map(x => x.g.name) : []).filter(Boolean); };
+  return (st ? [st.subject].concat(st.verbs || [], [st.object]) : P && P.sections ? (P.paragraph ? [P.title] : []).concat(planGroups(P).map(x => x.g.name)) : []).filter(Boolean); };
 const orchMissing = (prims, facts) => { const T = prims.filter(p => p.text).map(p => String(p.text)).join(' ').replace(/\s+/g, ' ').toLowerCase();
   return facts.filter(f => !T.includes(String(f).replace(/\s+/g, ' ').toLowerCase())); };
 async function orchDesigns(ctx, max) {
@@ -261,10 +289,62 @@ async function orchDesigns(ctx, max) {
     const c = planRender(Object.assign({}, m.d.plan, { style: r.style }), 'cap:' + r.key, ctx.R);
     return c.ok && !orchMissing(c.prims, facts).length ? c : r;
   });
-  return list.map(r => ({ id: 'd:' + planDesignKey(r), engine: 'designs', title: r.name + (planStyleName(r.style) ? ' · ' + planStyleName(r.style) : ''), family: r.family, category: orchCategory(r.family + ' ' + r.key),
-    prims: r.prims, edit: 'full', complete: m.d.density === 'full' && !orchMissing(r.prims, orchFacts(m.plan)).length, slides: 1, rich: /modern|pro|showcase|learning|concepts|scenes/.test(PLAN_LAYOUTS[r.key] && PLAN_LAYOUTS[r.key].pack || ''),
-    base: 62 + orchPackBonus(r.key) + orchAppeal(r.key) - (m.d.density === 'names' ? 6 : 0) - (sec && !/learning|concepts|scenes/.test(PLAN_LAYOUTS[r.key] && PLAN_LAYOUTS[r.key].pack || '') ? 8 : 0), why: r.kind,
+  const packOf = r => PLAN_LAYOUTS[r.key] && PLAN_LAYOUTS[r.key].pack || '';
+  const out = list.map(r => ({ id: 'd:' + planDesignKey(r), engine: 'designs', title: r.name + (planStyleName(r.style) ? ' · ' + planStyleName(r.style) : ''), family: r.family, category: orchCategory(r.family + ' ' + r.key),
+    prims: r.prims, edit: 'full', complete: m.d.density === 'full' && !orchMissing(r.prims, orchFacts(m.plan)).length, slides: 1, rich: /modern|pro|showcase|learning|concepts|scenes/.test(packOf(r)),
+    base: 62 + orchPackBonus(r.key) + orchAppeal(r.key) - (m.d.density === 'names' ? 6 : 0) - (sec && !/learning|concepts|scenes/.test(packOf(r)) ? 8 : 0), why: r.kind,
     insert: async () => { ST.designs = [{ r, plan: m.d.plan, full: m.plan, density: m.d.density, from: 'your text' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } }));
+  // 10.19: large content. When every description fits only few compositions on one slide, the gallery still offers 20+:
+  // (1) the same design on two slides (every point and description, split where the content divides: by section, else
+  // in half; the first part on the selected slide, the rest on a new slide after it), (2) condensed designs (the point
+  // names only, said in their name). Neither leaves out a point; the condensed ones leave out the descriptions, visibly.
+  // (target: some candidates are removed as look-alikes when the gallery is ranked)
+  const complete = out.filter(c => c.complete).length, target = ORCH_MIN + 6;
+  if (!ctx.more && complete < target && m.plan.items.length >= 4) {
+    if (!m.split) {
+      const S = planSlides(m.plan, ctx.R, { slides: 'split', density: 'full', overview: false });
+      // a part that is one section is drawn as a list captioned with the section's name (the topic too, on the first)
+      const asList = (q, k) => { const g = (q.groups || []).length === 1 ? q.groups[0] : null;
+        return g ? Object.assign({}, q, { groups: [], items: q.items.map(i => Object.assign({}, i, { group: '' })), sectionName: g.name, relation: 'independent',
+          title: m.plan.title, paragraph: !!m.plan.paragraph && k === 0, statement: null }) : q; };
+      m.split = S.parts && S.parts.length >= 2 && S.parts.length <= 3 ? S.parts.map(asList) : [];
+    }
+    if (m.split.length >= 2) {
+      const n = m.split.length, seen2 = new Set(), first = planMoreDesigns(m.split[0], ctx.R, seen2, ORCH_MIN + 8);
+      // each part: the design itself, or its captioned form when it would leave out the section's name or the topic
+      const need = (q, k) => [q.sectionName, k === 0 && m.plan.paragraph ? m.plan.title : ''].filter(Boolean);
+      const draw = (q, k, key, style) => { const p = Object.assign({}, q, { style }), r = planRender(p, key, ctx.R);
+        if (r.ok && !orchMissing(r.prims, need(q, k)).length) return r;
+        const c = planRender(p, 'cap:' + key, ctx.R); return c.ok && !orchMissing(c.prims, need(q, k)).length ? c : null; };
+      let added = 0;
+      first.forEach(r1x => {
+        if (out.length >= max + ORCH_MIN || added >= target + 2 - complete) return;
+        const r1 = draw(m.split[0], 0, r1x.key, r1x.style);
+        if (!r1) return;
+        const rest = m.split.slice(1).map((q, j) => draw(q, j + 1, r1x.key, r1x.style));
+        if (rest.some(r => !r)) return;
+        const parts = [{ r: r1, plan: m.split[0] }].concat(rest.map((r, k) => ({ r, plan: m.split[k + 1] })));
+        const all = r1.prims.concat(...rest.map(r => r.prims)), ok = !orchMissing(all, orchFacts(m.plan)).length && planCoverage(m.plan, parts.map(p => p.r)).length === 0;
+        if (!ok) return;
+        added++;
+        out.push({ id: `d${n}:` + planDesignKey(r1), engine: 'designs', title: `${r1.name} · ${n} slides`, family: r1.family + ':' + n, category: orchCategory(r1.family + ' ' + r1.key),
+          prims: r1.prims, nextPrims: rest.map(r => r.prims), edit: 'full', complete: true, slides: n, rich: /modern|pro|showcase|learning|concepts|scenes/.test(packOf(r1)),
+          base: 50 + orchPackBonus(r1.key) + orchAppeal(r1.key) - 2 * (n - 2), why: `every point and description, on ${n} slides`,   // one-slide designs first
+          insert: async () => { ST.designs = [{ r: r1, parts, plan: m.split[0], full: m.plan, density: 'full', from: 'your text' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });
+      });
+    }
+    if (m.d.density === 'full' && m.plan.items.some(i => i.detail)) {
+      if (!m.names) { m.names = planNames(m.plan); m.seenN = new Set(); }
+      planMoreDesigns(m.names, ctx.R, m.seenN, Math.max(0, target + 2 - out.filter(c => c.complete).length)).forEach(r => {
+        if (out.some(c => c.slides === 1 && c.family === r.family) || orchMissing(r.prims, orchFacts(m.plan)).length) return;
+        out.push({ id: 'dn:' + planDesignKey(r), engine: 'designs', title: r.name + ' · names only', family: r.family, category: orchCategory(r.family + ' ' + r.key),
+          prims: r.prims, edit: 'full', complete: true, condensed: true, slides: 1, rich: /modern|pro|showcase|learning|concepts|scenes/.test(packOf(r)),
+          base: 54 + orchPackBonus(r.key) + orchAppeal(r.key), why: 'condensed: every point name, without the descriptions',
+          insert: async () => { ST.designs = [{ r, plan: m.names, full: m.plan, density: 'names', from: 'your text' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });
+      });
+    }
+  }
+  return out;
 }
 // the newer packs' compositions are the richer ones (hero-style showcase first)
 // 10.17: learner appeal - the compositions closest to AI infographics (a hero object, connectors, icon tiles) first

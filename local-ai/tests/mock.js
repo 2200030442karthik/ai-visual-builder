@@ -36,7 +36,9 @@ function installMock(W) {
       textFrame: { textRange: { text: text || '', font: new Proxy({ load() {} }, { set(t, k, v) { if (k === 'size' && !(v > 0 && v <= 4000)) bad('ShapeFont.size'); if (k === 'color' && !HEXRE.test(v)) bad('ShapeFont.color');
         if (k === 'name' && M.reject === 'font' ) bad('ShapeFont.name'); t[k] = v; return true; } }), paragraphFormat: {}, load() {} } },
       tags: tagsObj(), get parentGroup() { if (!s._parent) throw new Error('GeneralException: not in a group'); return s._parent; },
-      load() {}, delete() { if (M.failDelete) { bad('Shape.delete'); return; } const i = slide.items.indexOf(s); if (i >= 0) slide.items.splice(i, 1); } };
+      load() {}, delete() { if (M.failDelete) { bad('Shape.delete'); return; } const i = slide.items.indexOf(s); if (i >= 0) slide.items.splice(i, 1); },
+      setZOrder(p) { M.zorders = (M.zorders || 0) + 1; const L = slide.items, i = L.indexOf(s); if (i < 0) return; L.splice(i, 1);   // 10.19: PowerPointApi 1.8
+        if (p === 'BringToFront') L.push(s); else if (p === 'SendToBack') L.unshift(s); else L.splice(i, 0, s); } };
     Object.defineProperty(s, 'rotation', { set(v) { if (!(v >= 0 && v < 360)) bad('Shape.rotation'); s._rot = v; }, get() { return s._rot || 0; } });
     if (!(o.width > 0 && o.height > 0) || ![o.left, o.top].every(Number.isFinite)) bad('ShapeCollection.add (size)');
     return s;
@@ -66,8 +68,11 @@ function installMock(W) {
         b.width = Math.max(...mem.map(x => x.left + x.width)) - b.left; b.height = Math.max(...mem.map(x => x.top + x.height)) - b.top;
         const g = shapeObj(slide, 'group', b);
         g.type = 'Group'; g.group = { shapes: { items: mem, load() {}, getItem(id) { return mem.find(x => x.id === id); } } };
+        // 10.19: as PowerPoint does - the group takes the layer of its top-most member (V10.18's stand-in put it on top)
+        const top = Math.max(...mem.map(x => slide.items.indexOf(x))), next = slide.items[top + 1];
         mem.forEach(x => { slide.items.splice(slide.items.indexOf(x), 1); x._parent = g; });
-        return add(g); },
+        if (next) slide.items.splice(slide.items.indexOf(next), 0, g); else slide.items.push(g);
+        return g; },
       getItem(id) { return slide.items.find(x => x.id === id) || { delete() {}, textFrame: { textRange: {} } }; } };
     return slide;
   };
