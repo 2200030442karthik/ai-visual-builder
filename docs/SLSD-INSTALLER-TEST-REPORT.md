@@ -35,8 +35,27 @@ Roll back undid the wrong step. Now the pointer is written only on success, and 
 
 ## Real PowerPoint
 - **Application:** verified on 13 and 16 Nov 2026 with the development registration. See `PROJECT-STATUS.md`.
-- **The installed package in real PowerPoint: NOT yet verified.** On this PC it would show a second tab beside the
-  development setup, which the installer refuses. A real-PowerPoint check of the package needs either:
-  - this PC after `switch-slsd.ps1 -Action Rollback` (removes the development registration), or
-  - a separate Windows test account or PC, with the licensed SL Smart Design installed.
-- **Microsoft 365 Centralized Deployment, an IT share catalog, a second PC:** pending IT.
+- **The installed package in real PowerPoint: NOT RUN. Blocked (16 Nov 2026)** — no authorized separate test
+  environment:
+  - the other profiles on this PC are colleagues' accounts;
+  - the local accounts are administrator/system;
+  - this account cannot create users;
+  - there is no Windows Sandbox.
+
+  The development setup was not changed.
+- **Prepared:** `docs/SLSD-REAL-PPT-VALIDATION.md` (14-step checklist with pass criteria, for a dedicated test account
+  or, with approval, this PC on port 44318 with only the development tab registration parked).
+  - `deploy/tests/capture-state.ps1`: read-only snapshot and compare, for exact-restore proof. Tested: two snapshots
+    of the live setup compare identical.
+  - `deploy/tests/park-dev-registration.ps1`: parks or restores the one development key. Mechanism proven on a scratch
+    key; not run on the live key.
+- **Pending IT:** Microsoft 365 Centralized Deployment, an IT share catalog, a second PC.
+
+## Readiness for an authorized pilot
+Not yet. The installer is technically complete and passes every isolated test, but a pilot needs, first:
+1. the real-PowerPoint checklist passed (environment A or B);
+2. IT's registration choice;
+3. the owner's approval to distribute the add-in copy;
+4. a security review of the local service.
+
+See `docs/SLSD-IT-DEPLOYMENT.md`.
