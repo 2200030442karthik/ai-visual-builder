@@ -71,7 +71,9 @@ $owner = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction Silent
 if ($owner) {
     $isOurs = @(PilotHosts $P) | Where-Object { $_.ProcessId -eq $owner.OwningProcess }
     $oldPilot = PilotPaths 'AIVisualBuilderPilot'; $isPilot = $T.Real -and (@(PilotHosts $oldPilot) | Where-Object { $_.ProcessId -eq $owner.OwningProcess })
-    if (-not $isOurs -and -not $isPilot) { $pr = Get-Process -Id $owner.OwningProcess -ErrorAction SilentlyContinue; Fail "Port $Port is used by $($pr.ProcessName) (process $($pr.Id)). Close it, then run Install again." }
+    $pr = $(if ($owner.OwningProcess -gt 0) { Get-Process -Id $owner.OwningProcess -ErrorAction SilentlyContinue })   # 0 = "Idle": a socket being released
+    if (-not $isOurs -and -not $isPilot -and $pr) { Fail "Port $Port is used by $($pr.ProcessName) (process $($pr.Id)). Close it, then run Install again." }
+    if (-not $pr -and -not (WaitPortFree $Port)) { Fail "Port $Port is still held by Windows after a stopped program. Wait a minute, then run Install again." }
 }
 $pkg = ReadJson (Join-Path $Src 'package.json')
 Say "Package:     SL Smart Design $($pkg.version) (built $($pkg.built))"
@@ -98,6 +100,7 @@ try {
     # 2. Stop running copies (this product, and the older pilot which used the same port)
     $n = (StopPilot $P) + $(if ($T.Real) { StopPilot $oldPilot } else { 0 })
     if ($n) { Say "Stopped:     $n running panel host process(es) (update)." }
+    if (-not (WaitPortFree $Port)) { throw "Port $Port did not become free after stopping the previous panel host." }
 
     # 3. Program files; the previous version is kept (app.prev / runtime.prev) until this one has started
     foreach ($d in 'app', 'runtime') {
@@ -240,6 +243,7 @@ try {
         Remove-Item $P.Startup -ErrorAction SilentlyContinue
         if (Test-Path $AppsKey) { Remove-Item $AppsKey -Recurse }
     } elseif ($hadApp) {
+        [void](WaitPortFree $Port)
         $s = StartPilot $P $Port
         if ($s) { Say "  the previous version $($s.server) is running again." Green }
         if ($old.autostart -and -not (Test-Path $P.Startup) -and $NoAutostart) { }   # autostart untouched on failure

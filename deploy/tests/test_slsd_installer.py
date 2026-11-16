@@ -43,8 +43,16 @@ def ps(cmd, timeout=300):
     return r.returncode, (r.stdout + r.stderr)
 
 
+LOG = os.environ.get('SLSD_INSTALLER_TEST_LOG')
+
+
 def script(pkgdir, name, args, timeout=600):
+    t0 = time.time()
     r = subprocess.run(['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', os.path.join(pkgdir, name), *args], capture_output=True, text=True, timeout=timeout)
+    if LOG:
+        with open(LOG, 'a', encoding='utf-8') as f:
+            tag = ' '.join(a for a in args if a in ('Catalog', 'Central', 'Developer', 'registration', 'addin'))
+            f.write(f'\n===== {name} {tag} -> exit {r.returncode} in {time.time() - t0:.0f} s\n{r.stdout}{r.stderr}')
     return r.returncode, (r.stdout + r.stderr)
 
 
@@ -172,6 +180,18 @@ def main():
         except Exception as e:
             check('install', 'serves the SL Smart Design tab code (slsd.js)', False, e)
         check('install', 'paid AI off in the installed app (paid_policy never)', (st.get('orchestrate') or {}).get('paid') == 'never', st.get('orchestrate'))
+        check('install', 'Napkin and Claude reported switched off', not (st.get('napkin') or {}).get('enabled') and not (st.get('claude') or {}).get('enabled'), (st.get('napkin'), st.get('claude')))
+        # enforced by the service itself, even with a key in the environment (this test process inherits the user's)
+        for ep in ('/api/claude/visual', '/api/napkin/visual'):
+            try:
+                rq = urllib.request.Request(f'https://localhost:{PORT}{ep}', data=b'{"text": "a b c", "variations": 1}', method='POST',
+                                            headers={'X-AIVB-Client': '1', 'Content-Type': 'application/json'})
+                urllib.request.urlopen(rq, timeout=10, context=ssl.create_default_context()); code_ = 200; body_ = ''
+            except urllib.error.HTTPError as e:
+                code_, body_ = e.code, e.read().decode('utf-8', 'replace')
+            except Exception as e:      # not reachable at all
+                code_, body_ = 0, f'{type(e).__name__}: {e}'
+            check('install', f'{ep} refused by the service (paid_policy never), no request made', code_ == 403 and 'switched off by the administrator' in body_, (code_, body_[:150]))
         man = open(os.path.join(DEST, 'manifest-slsd.xml'), encoding='utf-8').read()
         check('install', 'manifest: product Id, this port, well-formed', f'<Id>{PRODUCT}</Id>' in man and f'https://localhost:{PORT}/v10.html' in man and '__PORT__' not in man)
         reg = reg_snapshot()

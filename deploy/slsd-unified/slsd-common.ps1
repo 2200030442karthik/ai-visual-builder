@@ -102,6 +102,19 @@ function RestoreState([string]$Dir) {
     }
 }
 
+# After a panel host stops, Windows can keep its listening socket for a while with no owning process (seen: 10-60 s).
+# A new host cannot bind the port until it is gone: wait for that (a port used by a live process is reported at once).
+function WaitPortFree([int]$Port, [int]$Seconds = 90) {
+    for ($i = 0; $i -lt $Seconds; $i++) {
+        $l = @(Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue)
+        if (-not $l.Count) { return $true }
+        # process 0 is Windows' "Idle": a released socket, not a live owner
+        if ($l | Where-Object { $_.OwningProcess -gt 0 -and (Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue) }) { return $false }   # a live process
+        Start-Sleep 1
+    }
+    return $false
+}
+
 # Template library: the numbered N-point folders the Alternative Design window lists, and the SL Templates files
 function TemplateReport([string]$Dir) {
     $r = [ordered]@{ dir = $Dir; points = 0; missing = @() }

@@ -772,7 +772,7 @@ class Handler(BaseHTTPRequestHandler):
                 if who['ok']:
                     claude.update({'last': bool(napkin_last(cache=CLAUDE_CACHE).get('id')), 'used_today': cused['requests'], 'max_per_day': clim['per_day'],
                                    'max_per_user_per_day': clim['per_user_per_day'], 'mine_today': cused.get('users', {}).get(who['user'], 0)})
-                if TEST_NO_PAID:     # a test panel host: both paid providers shown as switched off
+                if TEST_NO_PAID or CONFIG['paid_policy'] == 'never':     # test host / administrator: paid providers off
                     napkin['enabled'] = claude['enabled'] = False
                 orchestrate = {'paid': CONFIG['paid_policy'], 'order': CONFIG['paid_order'], 'engines': CONFIG['paid_engines']}
                 return self.send(200, {'server': VERSION, 'access': access, 'napkin': napkin, 'claude': claude, 'orchestrate': orchestrate,
@@ -824,6 +824,10 @@ class Handler(BaseHTTPRequestHandler):
             # a test panel host never makes a paid request (the tests use saved results and stand-ins)
             if TEST_NO_PAID and path in ('/api/napkin/visual', '/api/claude/visual'):
                 return self.fail(403, 'Paid requests are switched off on a test panel host.')
+            # 10.20.1: paid_policy "never" is enforced here too, not only in the panel - a key present on the PC (for
+            # example ANTHROPIC_API_KEY in the user's environment) cannot be used, whatever the panel asks
+            if CONFIG['paid_policy'] == 'never' and path in ('/api/napkin/visual', '/api/claude/visual'):
+                return self.fail(403, 'The AI design services (Napkin, Claude) are switched off by the administrator (paid_policy "never"). The built-in designs work as usual.')
             if path == '/api/napkin/visual':
                 who = self.authorized()
                 return who and self.send(200, napkin_create(b, who))

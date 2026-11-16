@@ -33,6 +33,8 @@ if ($prevState) { WriteJson $P.State $prevState }
 Remove-Item $prev -Recurse -Force
 Remove-Item (Join-Path $P.Dest 'backups\latest.txt') -ErrorAction SilentlyContinue      # a second roll back has nothing to undo
 $pj = ReadJson $P.Pilot
-$s = StartPilot $P $(if ($pj) { $pj.port } else { $st.port })
+$port = $(if ($pj) { $pj.port } else { $st.port })
+[void](WaitPortFree $port)
+$s = StartPilot $P $port
 if ($s) { Say "The previous version is back: panel host $($s.server) running." Green; Say 'Start PowerPoint again.' }
 else { Say "The previous version did not start; see $($st.data_dir)\server.log." Red; exit 1 }
