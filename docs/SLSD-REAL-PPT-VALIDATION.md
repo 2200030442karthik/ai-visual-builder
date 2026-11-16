@@ -1,6 +1,6 @@
 # SL Smart Design installer: real PowerPoint validation checklist (V10.20.1 staging)
 
-**Status: NOT RUN. Blocked: no authorized separate test environment (16 Nov 2026).**
+**Status: RUN on 16 Nov 2026 as option B (owner-approved); results in `docs/SLSD-INSTALLER-TEST-REPORT.md`.**
 
 On the development PC:
 - the other user profiles belong to colleagues (not authorized for testing);
@@ -53,7 +53,7 @@ Use one PowerShell window in `D:\Karthik\ai-visual-builder-starter`, with PowerP
 | 11 | Close PowerPoint; start it again | The tab is there with no Add; the service still answers (`Check SL Smart Design.bat`). |
 | 12 | Sign out of Windows and in again; `Check SL Smart Design.bat` | The service started by itself (autostart). |
 | 13 | Close PowerPoint. `%LOCALAPPDATA%\Programs\SLSmartDesign\Uninstall SL Smart Design.bat` (or Settings > Apps > SL Smart Design), then `capture-state.ps1 -Out C:\SLSDval\2-after.json -Before…` (compare with 1-parked.json) | **Identical** to 1-parked; certificate removed; program folder gone. |
-| 14 | `park-dev-registration.ps1 -Action Restore`; `capture-state.ps1 -Out C:\SLSDval\3-restored.json`; compare with 0-dev.json; start PowerPoint | **Identical** to 0-dev; the development tab is back and works. Delete `D:\Karthik\SLSD_Catalog_Product`. |
+| 14 | `park-dev-registration.ps1 -Action Restore`; `capture-state.ps1 -Out C:\SLSDval\3-restored.json`; compare with 0-dev.json; start PowerPoint | **Identical** to 0-dev. Delete `D:\Karthik\SLSD_Catalog_Product`. Office drops the development add-in's cached commands while it is parked, so do the one-time Add again: Home > Add-ins > Advanced… > SHARED FOLDER > SL Smart Design > Add. The development tab is back. |
 
 Rollback of an update (optional, after step 5): install the same package again (an update), then run `Roll back SL Smart Design.bat`.
 Pass: `capture-state` equals the state after step 5.

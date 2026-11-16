@@ -23,7 +23,9 @@ if ($Action -eq 'Park') {
     Write-Host "Parked. Exported to $Backup" -ForegroundColor Green
 } else {
     if (-not (Test-Path $Backup)) { throw "Nothing parked ($Backup not found)." }
-    & reg.exe import $Backup 2>$null
+    $ErrorActionPreference = 'Continue'            # reg.exe reports success on its error stream
+    $null = & reg.exe import $Backup 2>&1
+    $ErrorActionPreference = 'Stop'
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path $Key)) { throw 'Import failed.' }
     Rename-Item $Backup ($Backup + '.restored-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
     Write-Host 'Restored.' -ForegroundColor Green

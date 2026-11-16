@@ -108,7 +108,9 @@ Fixes made from these tests (all unattended checks pass, 144):
     development setup registered;
   - paid AI is off in the package (`admin-config.json` `paid_policy: never`).
 - **Tests:** `deploy/tests/test_slsd_installer.py`, 52 of 52 in isolation. Report: `docs/SLSD-INSTALLER-TEST-REPORT.md`.
-- **Pending:** the installed package in real PowerPoint, IT approvals (`docs/SLSD-IT-DEPLOYMENT.md`), a second PC.
+- **Real PowerPoint (16 Nov, owner-approved option B on this PC, port 44318):** one tab, Verify 17/17, Alternative Design
+  through the installed service, no paid request; uninstall and restore proven identical by snapshots. Technically ready
+  for an authorized pilot; approvals pending (`docs/SLSD-IT-DEPLOYMENT.md`). Report: `docs/SLSD-INSTALLER-TEST-REPORT.md`.
 
 ## V10.20.1 — real PowerPoint tests, 16 Nov 2026 (disposable deck D:\Karthik\SLSD_TestDecks\LVC_test3.pptx)
 
