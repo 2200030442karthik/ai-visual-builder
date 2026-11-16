@@ -1,6 +1,6 @@
 # AI Visual Builder — project status
 
-## Current version: V10.19 (13 Nov 2026); V10.20.1 (SL Smart Design integration) in progress, see below
+## Current version: V10.20.1 (16 Nov 2026) — SL Smart Design + AI Visual Builder unified; installer validated (staging)
 Authorized employee + Content Slide of the approved template → paste content → analyze → accurate infographic and
 pictorial suggestions → preview → insert editable PowerPoint shapes. JavaScript panel + small Python host; no AI
 models, no GPU. Three ways to generate: native infographics (built in, free), and optionally Napkin AI (single approved
@@ -93,6 +93,40 @@ Fixes made from these tests (all unattended checks pass, 144):
 - `switch-slsd.ps1 -Registration Catalog` (default): registers a trusted catalog of its own; creates missing parent
   keys one by one; rollback removes it.
 
+
+## FINAL STATUS — 16 Nov 2026
+
+**Application (V10.20.1).** One SL Smart Design tab: Design (Alternative Design, AI Visual Builder, Several slides,
+Edit a visual) | SL Templates (6) | Miscellaneous (2) | Shape Rename (2). Nothing on Home. Verified in real PowerPoint
+on 13 and 16 Nov.
+
+**Installer (staging), technically ready for an authorized pilot:**
+- **Package:** `SLSD_Unified_Package\SL-Smart-Design-10.20.1-staging.zip` (checksum in `SHA256.txt`; not committed).
+- **Built with:** `deploy/build-slsd-package.ps1`.
+- **Isolated tests:** 55/55 (`deploy/tests/test_slsd_installer.py`).
+- **Real PowerPoint (owner-approved, on this PC, port 44318):** one tab, Verify 17/17, installed-service commands, no
+  paid request, restart persistence.
+- **Uninstall and restore:** proven identical by snapshots (`docs/SLSD-INSTALLER-TEST-REPORT.md`).
+- **This PC after the test:** the development setup is restored and verified read-only (one SL Smart Design tab,
+  development service 10.20.1, snapshot identical to before). No staging installation is active.
+
+**Pending before any deployment (`docs/SLSD-IT-DEPLOYMENT.md`):**
+1. IT: registration method, Microsoft 365 Centralized Deployment (localhost acceptance untested) or an IT-approved
+   shared catalog with its share.
+2. SL Smart Design owner:
+   - approval to distribute the tab-hidden add-in copy (and the template library, if packaged);
+   - **licence renewal before 31 Dec 2026**.
+3. IT security: the local HTTPS service (pythonw.exe, localhost), COM `Application.Run` of the 11 original macros, the
+   per-user localhost certificate, a Cisco Secure Endpoint review. Pre-existing: Office macro setting "enable all"
+   (VBAWarnings=1) on this PC, and a user-level `ANTHROPIC_API_KEY` (blocked by the service while paid AI is off).
+4. Budget owner: paid AI (package ships `paid_policy: never`).
+5. Not yet tested: autostart after a real Windows sign-in, a second PC (the manager's, after approvals 1–3).
+
+**Known limits:**
+- generic ribbon icons (cosmetic);
+- Ctrl+Z after Edit a visual needs many presses (use the panel's Undo last edit);
+- 29 library templates have misnamed boxes (compensated; the owner may fix the library);
+- one subtitle-reading issue in AI Visual Builder.
 
 ## V10.20.1 — unified installer (16 Nov 2026): STAGING package built and tested in isolation
 
