@@ -1,0 +1,5 @@
+{
+  "_comment": "Administrator: copy to deployment.json next to Install.ps1. registration: Central (IT assigns the add-in in Microsoft 365; nothing registered on the PC) | Catalog (IT-approved shared folder, catalog_url) | Developer (testing only) | None.",
+  "registration": "Catalog",
+  "catalog_url": "\\fileserver\SLSmartDesign-Catalog"
+}

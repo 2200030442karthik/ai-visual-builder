@@ -94,6 +94,22 @@ Fixes made from these tests (all unattended checks pass, 144):
   keys one by one; rollback removes it.
 
 
+## V10.20.1 — unified installer (16 Nov 2026): STAGING package built and tested in isolation
+
+- **Package:** `SLSD_Unified_Package\SL-Smart-Design-10.20.1-staging.zip` (not committed). Build it with
+  `deploy/build-slsd-package.ps1` (`-IncludeTemplates` only with the owner's approval).
+- **Sources:** `deploy/slsd-unified/`: Install, Rollback, Uninstall, Verify, shared helpers, launchers and examples.
+  It reuses the pilot installer (`deploy/manager-pilot`: runtime, certificate, keys, autostart, restart).
+- **Product add-in Id:** `2f01d600-c9ec-4d94-ade9-69b8b6f0bfa7`, separate from development.
+- **Registration:** `deployment.json`: Central (Microsoft 365) | Catalog (IT share) | Developer (testing) | None.
+- **Safety:**
+  - backup before change, exact restore on failure, Roll back of the last update, Uninstall to the original state;
+  - refuses download-marked packages (never unblocks them itself), PCs without the licensed add-in, and PCs with the
+    development setup registered;
+  - paid AI is off in the package (`admin-config.json` `paid_policy: never`).
+- **Tests:** `deploy/tests/test_slsd_installer.py`, 52 of 52 in isolation. Report: `docs/SLSD-INSTALLER-TEST-REPORT.md`.
+- **Pending:** the installed package in real PowerPoint, IT approvals (`docs/SLSD-IT-DEPLOYMENT.md`), a second PC.
+
 ## V10.20.1 — real PowerPoint tests, 16 Nov 2026 (disposable deck D:\Karthik\SLSD_TestDecks\LVC_test3.pptx)
 
 | Area | Result |

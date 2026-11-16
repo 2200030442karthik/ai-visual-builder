@@ -1,6 +1,6 @@
 # SL Smart Design (with AI Visual Builder) — installer architecture
 
-Status: **design, ready for IT review. Not built and not deployed.** The manager's PC has not been touched.
+Status: **built as a STAGING package and tested in isolation** (`docs/SLSD-INSTALLER-TEST-REPORT.md`). It has not been deployed; the manager's PC has not been touched. The IT guide is `docs/SLSD-IT-DEPLOYMENT.md`.
 Version: V10.20.1, 16 Nov 2026.
 
 ## 1. What has to be installed on each PC

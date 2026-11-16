@@ -1,0 +1,5 @@
+{
+  "_comment": "Administrator: copy to admin-config.json next to Install.ps1 to set these app settings at install (no keys here). paid_policy: never (built-in designs only) | when-needed (Napkin/Claude may be used without asking) | always. paid_engines: 1 or 2.",
+  "paid_policy": "never",
+  "paid_engines": 1
+}

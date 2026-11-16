@@ -1,0 +1,47 @@
+SL SMART DESIGN (with AI Visual Builder) - INSTALLATION GUIDE                         STAGING PACKAGE
+==================================================================================================
+
+What you get: one "SL Smart Design" tab in PowerPoint
+  Design         Alternative Design | AI Visual Builder | Several slides | Edit a visual
+  SL Templates   Add Footer Note | Add Blue Codebox | Add Black Codebox | Add Footer Info |
+                 Add Problem Solution | Add Problem Solution Image
+  Miscellaneous  Remove Animations | Delete Empty Boxes
+  Shape Rename   Text | Heading
+SL Animation and SL Design are not changed. AI Visual Builder no longer appears on the Home tab.
+
+BEFORE YOU START
+  - Windows 10/11 64-bit, Microsoft 365 PowerPoint (desktop).
+  - SL Smart Design already installed for your Windows account the usual way (it holds the licence).
+    Without it the installer stops (an administrator can install it with the owner's approval).
+  - Close PowerPoint.
+  - If the zip was downloaded: right-click it > Properties > tick "Unblock" > OK, then extract it.
+    (The installer never removes Windows' download mark itself; it stops and asks for this step.)
+  - Your administrator may have placed deployment.json (how the tab is registered), admin-config.json
+    (AI settings) and AIVB-keys.json (AI keys, imported then deleted) next to Install.ps1. You type nothing.
+
+INSTALL OR UPDATE (no administrator rights)
+  1. Extract the zip. Open the folder "SL Smart Design".
+  2. Double-click "Install SL Smart Design.bat".
+  3. If Windows asks whether to install a certificate for "localhost": choose YES (once; it is only for
+     https://localhost on this PC and is removed by Uninstall).
+  4. Start PowerPoint, then depending on how your IT registered it (the installer says which):
+       Shared folder (Catalog): once only - Home > Add-ins > Advanced... > SHARED FOLDER > SL Smart Design > Add.
+       Microsoft 365 (Central):  nothing to do once IT has assigned the add-in to you.
+  5. Check: "Check SL Smart Design.bat" (all PASS), and PowerPoint shows the one SL Smart Design tab.
+
+  An update keeps the previous version. If anything fails during installation, everything is put back
+  automatically and the installer says so.
+
+AFTER INSTALLATION (in %LOCALAPPDATA%\Programs\SLSmartDesign)
+  Restart SL Smart Design.bat     if the AI Visual Builder panel says the panel host cannot be reached
+  Check SL Smart Design.bat       checks the installation (changes nothing)
+  Roll back SL Smart Design.bat   back to the version before the last update (close PowerPoint first)
+  Uninstall SL Smart Design.bat   removes it and restores the state from before the first installation
+                                  (the original SL Smart Design add-in comes back; templates stay)
+  Set AI keys.bat                 administrator: add or replace the Napkin / Claude keys
+  Uninstall also works from Settings > Apps > SL Smart Design.
+
+KNOWN LIMITS
+  - The SL Smart Design licence in the add-in ends on 31 Dec 2026; the SL Smart Design owner provides the renewal.
+  - The ribbon buttons may show a generic icon (cosmetic).
+  - After clearing Office's add-in cache, the one-time "Add" (shared folder) has to be repeated.

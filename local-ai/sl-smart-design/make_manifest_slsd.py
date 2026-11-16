@@ -5,7 +5,7 @@ add-in. Differences: the "SL Smart Design" custom tab (Design | SL Templates | M
 AI Visual Builder group on the Home tab. AI Visual Builder is a ShowTaskpane button (Office opens it on the first click);
 every other button is a function of the shared runtime (slsd.js, bridge.js).
 Usage: python make_manifest_slsd.py"""
-import os, sys
+import os, re, sys
 from xml.sax.saxutils import escape
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
@@ -134,12 +134,17 @@ def build():
 def main():
     """--base URL  the panel host the manifest points at (default https://localhost:44317; the pilot package uses its
                    own port; a central HTTPS host for Microsoft 365 Centralized Deployment would be named here)
+       --id GUID   the add-in Id (the installed product's own; default: the development Id)
        --out FILE  where to write (default: manifest-slsd.xml in the repository root)"""
-    global BASE, ICONS
+    global BASE, ICONS, ID
     a = sys.argv[1:]
+    if '--id' in a:       # the installed product has its own add-in Id (the development registration keeps 08d15d9d-...)
+        ID = a[a.index('--id') + 1]
+        if not re.fullmatch(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', ID):
+            raise SystemExit('--id must be a GUID in lower case.')
     if '--base' in a:
         BASE = a[a.index('--base') + 1].rstrip('/')
-        if not BASE.startswith('https://'):
+        if not re.fullmatch(r'https://[A-Za-z0-9.-]+(:(\d{2,5}|__PORT__))?', BASE):
             raise SystemExit('--base must be an https:// address (Office loads add-ins only over HTTPS).')
         ICONS = BASE + '/assets/v3'
     out = a[a.index('--out') + 1] if '--out' in a else os.path.join(ROOT, 'manifest-slsd.xml')

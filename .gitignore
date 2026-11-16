@@ -26,3 +26,6 @@ deploy/out/
 # manager pilot package build output (deploy/build-manager-package.ps1) and local AI evaluation outputs: kept on disk, never committed
 Manager_Pilot_Package/
 evaluation/
+
+# unified SL Smart Design package build output (deploy/build-slsd-package.ps1): kept on disk, never committed
+SLSD_Unified_Package/
