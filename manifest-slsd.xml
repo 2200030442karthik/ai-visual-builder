@@ -6,13 +6,13 @@
      in the copy this setup installs. The panel is served on this PC by local-ai\server.py (https://localhost:44317). -->
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
   <Id>08d15d9d-8629-4583-b67d-5f80143dde6d</Id>
-  <Version>10.20.1.0</Version>
+  <Version>10.20.1.2</Version>
   <ProviderName>Simplilearn</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="SL Smart Design"/>
   <Description DefaultValue="SL Smart Design with AI Visual Builder: template redesigns and editable AI infographics in the Simplilearn template."/>
-  <IconUrl DefaultValue="https://localhost:44317/assets/icon-32.png"/>
-  <HighResolutionIconUrl DefaultValue="https://localhost:44317/assets/icon-64.png"/>
+  <IconUrl DefaultValue="https://localhost:44317/assets/v3/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://localhost:44317/assets/v3/icon-64.png"/>
   <SupportUrl DefaultValue="https://2200030442karthik.github.io/ai-visual-builder/"/>
   <AppDomains><AppDomain>https://localhost:44317</AppDomain></AppDomains>
   <Hosts><Host Name="Presentation"/></Hosts>
@@ -286,42 +286,42 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.design.16" DefaultValue="https://localhost:44317/assets/slsd/design-16.png"/>
-        <bt:Image id="Icon.design.32" DefaultValue="https://localhost:44317/assets/slsd/design-32.png"/>
-        <bt:Image id="Icon.design.80" DefaultValue="https://localhost:44317/assets/slsd/design-80.png"/>
-        <bt:Image id="Icon.aivb.16" DefaultValue="https://localhost:44317/assets/icon-16.png"/>
-        <bt:Image id="Icon.aivb.32" DefaultValue="https://localhost:44317/assets/icon-32.png"/>
-        <bt:Image id="Icon.aivb.80" DefaultValue="https://localhost:44317/assets/icon-80.png"/>
-        <bt:Image id="Icon.footer-note.16" DefaultValue="https://localhost:44317/assets/slsd/footer-note-16.png"/>
-        <bt:Image id="Icon.footer-note.32" DefaultValue="https://localhost:44317/assets/slsd/footer-note-32.png"/>
-        <bt:Image id="Icon.footer-note.80" DefaultValue="https://localhost:44317/assets/slsd/footer-note-80.png"/>
-        <bt:Image id="Icon.code-blue.16" DefaultValue="https://localhost:44317/assets/slsd/code-blue-16.png"/>
-        <bt:Image id="Icon.code-blue.32" DefaultValue="https://localhost:44317/assets/slsd/code-blue-32.png"/>
-        <bt:Image id="Icon.code-blue.80" DefaultValue="https://localhost:44317/assets/slsd/code-blue-80.png"/>
-        <bt:Image id="Icon.code-black.16" DefaultValue="https://localhost:44317/assets/slsd/code-black-16.png"/>
-        <bt:Image id="Icon.code-black.32" DefaultValue="https://localhost:44317/assets/slsd/code-black-32.png"/>
-        <bt:Image id="Icon.code-black.80" DefaultValue="https://localhost:44317/assets/slsd/code-black-80.png"/>
-        <bt:Image id="Icon.footer-info.16" DefaultValue="https://localhost:44317/assets/slsd/footer-info-16.png"/>
-        <bt:Image id="Icon.footer-info.32" DefaultValue="https://localhost:44317/assets/slsd/footer-info-32.png"/>
-        <bt:Image id="Icon.footer-info.80" DefaultValue="https://localhost:44317/assets/slsd/footer-info-80.png"/>
-        <bt:Image id="Icon.problem.16" DefaultValue="https://localhost:44317/assets/slsd/problem-16.png"/>
-        <bt:Image id="Icon.problem.32" DefaultValue="https://localhost:44317/assets/slsd/problem-32.png"/>
-        <bt:Image id="Icon.problem.80" DefaultValue="https://localhost:44317/assets/slsd/problem-80.png"/>
-        <bt:Image id="Icon.problem-image.16" DefaultValue="https://localhost:44317/assets/slsd/problem-image-16.png"/>
-        <bt:Image id="Icon.problem-image.32" DefaultValue="https://localhost:44317/assets/slsd/problem-image-32.png"/>
-        <bt:Image id="Icon.problem-image.80" DefaultValue="https://localhost:44317/assets/slsd/problem-image-80.png"/>
-        <bt:Image id="Icon.no-animation.16" DefaultValue="https://localhost:44317/assets/slsd/no-animation-16.png"/>
-        <bt:Image id="Icon.no-animation.32" DefaultValue="https://localhost:44317/assets/slsd/no-animation-32.png"/>
-        <bt:Image id="Icon.no-animation.80" DefaultValue="https://localhost:44317/assets/slsd/no-animation-80.png"/>
-        <bt:Image id="Icon.delete-empty.16" DefaultValue="https://localhost:44317/assets/slsd/delete-empty-16.png"/>
-        <bt:Image id="Icon.delete-empty.32" DefaultValue="https://localhost:44317/assets/slsd/delete-empty-32.png"/>
-        <bt:Image id="Icon.delete-empty.80" DefaultValue="https://localhost:44317/assets/slsd/delete-empty-80.png"/>
-        <bt:Image id="Icon.rename-text.16" DefaultValue="https://localhost:44317/assets/slsd/rename-text-16.png"/>
-        <bt:Image id="Icon.rename-text.32" DefaultValue="https://localhost:44317/assets/slsd/rename-text-32.png"/>
-        <bt:Image id="Icon.rename-text.80" DefaultValue="https://localhost:44317/assets/slsd/rename-text-80.png"/>
-        <bt:Image id="Icon.rename-heading.16" DefaultValue="https://localhost:44317/assets/slsd/rename-heading-16.png"/>
-        <bt:Image id="Icon.rename-heading.32" DefaultValue="https://localhost:44317/assets/slsd/rename-heading-32.png"/>
-        <bt:Image id="Icon.rename-heading.80" DefaultValue="https://localhost:44317/assets/slsd/rename-heading-80.png"/>
+        <bt:Image id="Icon.design.16" DefaultValue="https://localhost:44317/assets/v3/slsd/design-16.png"/>
+        <bt:Image id="Icon.design.32" DefaultValue="https://localhost:44317/assets/v3/slsd/design-32.png"/>
+        <bt:Image id="Icon.design.80" DefaultValue="https://localhost:44317/assets/v3/slsd/design-80.png"/>
+        <bt:Image id="Icon.aivb.16" DefaultValue="https://localhost:44317/assets/v3/icon-16.png"/>
+        <bt:Image id="Icon.aivb.32" DefaultValue="https://localhost:44317/assets/v3/icon-32.png"/>
+        <bt:Image id="Icon.aivb.80" DefaultValue="https://localhost:44317/assets/v3/icon-80.png"/>
+        <bt:Image id="Icon.footer-note.16" DefaultValue="https://localhost:44317/assets/v3/slsd/footer-note-16.png"/>
+        <bt:Image id="Icon.footer-note.32" DefaultValue="https://localhost:44317/assets/v3/slsd/footer-note-32.png"/>
+        <bt:Image id="Icon.footer-note.80" DefaultValue="https://localhost:44317/assets/v3/slsd/footer-note-80.png"/>
+        <bt:Image id="Icon.code-blue.16" DefaultValue="https://localhost:44317/assets/v3/slsd/code-blue-16.png"/>
+        <bt:Image id="Icon.code-blue.32" DefaultValue="https://localhost:44317/assets/v3/slsd/code-blue-32.png"/>
+        <bt:Image id="Icon.code-blue.80" DefaultValue="https://localhost:44317/assets/v3/slsd/code-blue-80.png"/>
+        <bt:Image id="Icon.code-black.16" DefaultValue="https://localhost:44317/assets/v3/slsd/code-black-16.png"/>
+        <bt:Image id="Icon.code-black.32" DefaultValue="https://localhost:44317/assets/v3/slsd/code-black-32.png"/>
+        <bt:Image id="Icon.code-black.80" DefaultValue="https://localhost:44317/assets/v3/slsd/code-black-80.png"/>
+        <bt:Image id="Icon.footer-info.16" DefaultValue="https://localhost:44317/assets/v3/slsd/footer-info-16.png"/>
+        <bt:Image id="Icon.footer-info.32" DefaultValue="https://localhost:44317/assets/v3/slsd/footer-info-32.png"/>
+        <bt:Image id="Icon.footer-info.80" DefaultValue="https://localhost:44317/assets/v3/slsd/footer-info-80.png"/>
+        <bt:Image id="Icon.problem.16" DefaultValue="https://localhost:44317/assets/v3/slsd/problem-16.png"/>
+        <bt:Image id="Icon.problem.32" DefaultValue="https://localhost:44317/assets/v3/slsd/problem-32.png"/>
+        <bt:Image id="Icon.problem.80" DefaultValue="https://localhost:44317/assets/v3/slsd/problem-80.png"/>
+        <bt:Image id="Icon.problem-image.16" DefaultValue="https://localhost:44317/assets/v3/slsd/problem-image-16.png"/>
+        <bt:Image id="Icon.problem-image.32" DefaultValue="https://localhost:44317/assets/v3/slsd/problem-image-32.png"/>
+        <bt:Image id="Icon.problem-image.80" DefaultValue="https://localhost:44317/assets/v3/slsd/problem-image-80.png"/>
+        <bt:Image id="Icon.no-animation.16" DefaultValue="https://localhost:44317/assets/v3/slsd/no-animation-16.png"/>
+        <bt:Image id="Icon.no-animation.32" DefaultValue="https://localhost:44317/assets/v3/slsd/no-animation-32.png"/>
+        <bt:Image id="Icon.no-animation.80" DefaultValue="https://localhost:44317/assets/v3/slsd/no-animation-80.png"/>
+        <bt:Image id="Icon.delete-empty.16" DefaultValue="https://localhost:44317/assets/v3/slsd/delete-empty-16.png"/>
+        <bt:Image id="Icon.delete-empty.32" DefaultValue="https://localhost:44317/assets/v3/slsd/delete-empty-32.png"/>
+        <bt:Image id="Icon.delete-empty.80" DefaultValue="https://localhost:44317/assets/v3/slsd/delete-empty-80.png"/>
+        <bt:Image id="Icon.rename-text.16" DefaultValue="https://localhost:44317/assets/v3/slsd/rename-text-16.png"/>
+        <bt:Image id="Icon.rename-text.32" DefaultValue="https://localhost:44317/assets/v3/slsd/rename-text-32.png"/>
+        <bt:Image id="Icon.rename-text.80" DefaultValue="https://localhost:44317/assets/v3/slsd/rename-text-80.png"/>
+        <bt:Image id="Icon.rename-heading.16" DefaultValue="https://localhost:44317/assets/v3/slsd/rename-heading-16.png"/>
+        <bt:Image id="Icon.rename-heading.32" DefaultValue="https://localhost:44317/assets/v3/slsd/rename-heading-32.png"/>
+        <bt:Image id="Icon.rename-heading.80" DefaultValue="https://localhost:44317/assets/v3/slsd/rename-heading-80.png"/>
       </bt:Images>
       <bt:Urls>
         <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:44317/v10.html"/>

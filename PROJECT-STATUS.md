@@ -94,6 +94,24 @@ Fixes made from these tests (all unattended checks pass, 144):
   keys one by one; rollback removes it.
 
 
+## V10.20.1 — real PowerPoint tests, 16 Nov 2026 (disposable deck D:\Karthik\SLSD_TestDecks\LVC_test3.pptx)
+
+| Area | Result |
+|---|---|
+| Fresh PowerPoint start: one SL Smart Design tab, nothing on Home (catalog registration) | PASS (several restarts) |
+| Misnamed templates (4_point 0003/0004, 5_point 0001/0002, 6_point 0011): points placed, no Lorem ipsum | PASS; the "check the order" notice for 0003 |
+| SL Templates (6), Remove Animations, Delete Empty Boxes, Shape Rename Text / Heading | PASS (all 10) |
+| AI Visual Builder: Generate (24 visuals), gallery, insert (native, editable, own slide when full), Edit a visual (preview, apply), Several slides (3 slides), Undo last insert | PASS |
+| Ctrl+Z after an edit | works, but needs 19 presses (Office.js has no grouped undo); the panel's "Undo last edit" is the one-step path |
+| 12 points, Shift+Enter, two text boxes (content placeholder used), cancel restore | PASS |
+| 1 point | **fixed**: was reported as "2 separate text boxes" (the lead-in placeholder counted); now the 1-point message |
+| Notice dialog | **fixed**: closed only on OK; the command waits for it. It stays open until OK when used by a person (user-confirmed); my automation's focus changes closed it |
+| Ribbon icons | **open (cosmetic)**: generic icons. Images now served without Cache-Control (Microsoft guidance) and at versioned URLs; Office fetches them but still shows generic icons with this self-signed localhost host |
+| Paid AI | one Napkin request was sent without confirmation by Generate visuals (the current `paid_policy: when-needed` setting) |
+
+Installer architecture: `docs/SLSD-INSTALLER-ARCHITECTURE.md` (Centralized Deployment recommended, or an IT-approved
+shared catalog; approvals listed). `make_manifest_slsd.py --base/--out` makes manifests for other hosts.
+
 ## V10.19 — large text, same-slide insertion, icon layering, LVC type, AI-first ready, key-free install (13 Nov)
 
 **Reading.** `sections.js paragraphRead` reads a paragraph of several sentences as:

@@ -5,11 +5,14 @@ add-in. Differences: the "SL Smart Design" custom tab (Design | SL Templates | M
 AI Visual Builder group on the Home tab. AI Visual Builder is a ShowTaskpane button (Office opens it on the first click);
 every other button is a function of the shared runtime (slsd.js, bridge.js).
 Usage: python make_manifest_slsd.py"""
-import os
+import os, sys
 from xml.sax.saxutils import escape
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
-ID, VERSION, BASE = '08d15d9d-8629-4583-b67d-5f80143dde6d', '10.20.1.0', 'https://localhost:44317'
+ID, VERSION, BASE = '08d15d9d-8629-4583-b67d-5f80143dde6d', '10.20.1.2', 'https://localhost:44317'
+# Office caches add-in images by URL (and showed generic icons while the host sent Cache-Control: no-store, 16 Nov):
+# the icons are versioned so Office fetches them afresh. Change ICONS when an icon changes.
+ICONS = BASE + '/assets/v3'
 
 # group id, label, group icon, [(control id, label, tooltip, icon, 'pane' | 'fn', function)]
 GROUPS = [
@@ -46,8 +49,8 @@ HEAD = '''<?xml version="1.0" encoding="UTF-8"?>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="SL Smart Design"/>
   <Description DefaultValue="SL Smart Design with AI Visual Builder: template redesigns and editable AI infographics in the Simplilearn template."/>
-  <IconUrl DefaultValue="@BASE@/assets/icon-32.png"/>
-  <HighResolutionIconUrl DefaultValue="@BASE@/assets/icon-64.png"/>
+  <IconUrl DefaultValue="@ICONS@/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="@ICONS@/icon-64.png"/>
   <SupportUrl DefaultValue="https://2200030442karthik.github.io/ai-visual-builder/"/>
   <AppDomains><AppDomain>@BASE@</AppDomain></AppDomains>
   <Hosts><Host Name="Presentation"/></Hosts>
@@ -81,7 +84,7 @@ TAIL = '''    </Resources>
 
 
 def icon_url(name, n):
-    return f'{BASE}/assets/icon-{n}.png' if name == 'aivb' else f'{BASE}/assets/slsd/{name}-{n}.png'
+    return f'{ICONS}/icon-{n}.png' if name == 'aivb' else f'{ICONS}/slsd/{name}-{n}.png'
 
 
 def rid(cid, kind):
@@ -123,13 +126,23 @@ def build():
     def res(tag, item, d):
         return [f'      <bt:{tag}>'] + [f'        <bt:{item} id="{k}" DefaultValue="{escape(v, {chr(34): "&quot;"})}"/>' for k, v in d.items()] + [f'      </bt:{tag}>']
     urls = {'Taskpane.Url': f'{BASE}/v10.html', 'GetStarted.LearnMoreUrl': f'{BASE}/v10.html'}
-    head = HEAD.replace('@ID@', ID).replace('@VERSION@', VERSION).replace('@BASE@', BASE)
+    head = HEAD.replace('@ID@', ID).replace('@VERSION@', VERSION).replace('@ICONS@', ICONS).replace('@BASE@', BASE)
     body = res('Images', 'Image', images) + res('Urls', 'Url', urls) + res('ShortStrings', 'String', short) + res('LongStrings', 'String', long_)
     return head + '\n'.join(tab) + '\n' + MIDDLE + '\n'.join(body) + '\n' + TAIL
 
 
 def main():
-    out = os.path.join(ROOT, 'manifest-slsd.xml')
+    """--base URL  the panel host the manifest points at (default https://localhost:44317; the pilot package uses its
+                   own port; a central HTTPS host for Microsoft 365 Centralized Deployment would be named here)
+       --out FILE  where to write (default: manifest-slsd.xml in the repository root)"""
+    global BASE, ICONS
+    a = sys.argv[1:]
+    if '--base' in a:
+        BASE = a[a.index('--base') + 1].rstrip('/')
+        if not BASE.startswith('https://'):
+            raise SystemExit('--base must be an https:// address (Office loads add-ins only over HTTPS).')
+        ICONS = BASE + '/assets/v3'
+    out = a[a.index('--out') + 1] if '--out' in a else os.path.join(ROOT, 'manifest-slsd.xml')
     with open(out, 'w', encoding='utf-8', newline='\n') as f:
         f.write(build())
     print('written:', out, f'({sum(len(g[3]) for g in GROUPS)} buttons in {len(GROUPS)} groups)')

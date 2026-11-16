@@ -49,9 +49,10 @@ function Show-State {
     $hidden = $null
     $f = Join-Path $AddInsDir $SlsdFile
     if (Test-Path $f) {
-        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
         try {
-            $z = [IO.Compression.ZipFile]::OpenRead($f)
+            # shared read: PowerPoint keeps its loaded add-ins open
+            $z = New-Object IO.Compression.ZipArchive([IO.File]::Open($f, 'Open', 'Read', 'ReadWrite'), [IO.Compression.ZipArchiveMode]::Read)
             try { $e = $z.GetEntry('customUI/customUI.xml'); if ($e) { $r = New-Object IO.StreamReader($e.Open()); $hidden = $r.ReadToEnd() -match 'id="Template_Selector"[^>]*visible="false"'; $r.Close() } } finally { $z.Dispose() }
         } catch { $hidden = 'file not readable as an add-in' }
     }

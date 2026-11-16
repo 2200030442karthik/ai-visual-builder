@@ -52,6 +52,10 @@ r = S.pickContent([sh('a', { text: 'First\vSecond\vThird' })], []);
 check('points separated by Shift+Enter: says to use Enter', !r.ok && /Shift\+Enter/.test(r.message), r.message);
 r = S.pickContent([sh('a', { text: 'Alpha' }), sh('b', { text: 'Beta' }), sh('c', { text: 'Gamma' })], []);
 check('points in separate one-line text boxes: says to put them in one text box', !r.ok && /3 separate text boxes/.test(r.message), r.message);
+// real PowerPoint, 16 Nov: an LVC slide with one point and its one-line lead-in placeholder
+r = S.pickContent([sh('body', { name: 'Text Placeholder 1', type: 'Placeholder', ph: 'Body', text: 'Only one statement', area: 469000 }),
+  sh('lead', { name: 'Text Placeholder 2', type: 'Placeholder', ph: 'Body', text: 'Course production', area: 76800 }), sh('t', { type: 'Placeholder', ph: 'Title', text: 'Edge: 1 point' })], []);
+check('1 point + one-line lead-in placeholder: the 1-point message (not "separate text boxes")', !r.ok && /only one point/.test(r.message) && r.id === 'body', r.message);
 r = S.pickContent([sh('t', { type: 'Placeholder', ph: 'Title', text: 'Only a title' }), sh('p', { type: 'Image', text: null })], []);
 check('slide without a content text box: clear explanation', !r.ok && /No text was found/.test(r.message), r.message);
 r = S.pickContent([sh('a', { text: lines(3) }), sh('b', { text: lines(4) })], ['a', 'b']);
@@ -96,7 +100,8 @@ function stage(shapes, selected) {
     // as PowerPoint does it: the dialog says "ready", the add-in hands it the text (never in the URL)
     if (url.includes('?') || url.includes('#')) st.notices.push('TEXT IN URL: ' + url);
     let h = null; const d = { addEventHandler(ev, f) { h = f; }, messageChild(s) { st.notices.push(JSON.parse(s).m); }, close() { st.closed = (st.closed || 0) + 1; } };
-    cb({ status: 'succeeded', value: d }); h({ message: 'ready' }); } } } };
+    cb({ status: 'succeeded', value: d }); h({ message: 'ready' }); h({ message: 'unexpected' });   // an extra message must not close it
+    setTimeout(() => { st.closedBeforeOk = st.closed || 0; h({ message: 'ok' }); }, 30); } } } };   // the user reads it, then presses OK
   /* DynamicTemplateSelectorForm as the original does it: RenamePlaceholder (bottom-most -> Content_Text_Box), read
      Shapes("Content_Text_Box") (the first by z-order), on OK delete EVERY Content_Text_Box and paste Text_1..n */
   st.macro = choice => {
@@ -155,6 +160,13 @@ const ev = () => { const e = { n: 0, completed() { e.n++; } }; return e; };
     st = stage([{ id: 'c', name: 'TextBox 1', type: 'TextBox', text: lines(11) }]); serve(st, 'ok'); st.asked = null;
     await S.alternativeDesign(ev());
     check('11 points: explained, the original window not opened', !st.asked && /11 points/.test(st.notices[0] || ''), st.notices[0]);
+    check('notice stays open until the user presses OK (real PowerPoint, 16 Nov: it closed itself)', st.closedBeforeOk === 0, st.closedBeforeOk);
+    check('notice closes on OK', st.closed === 1, st.closed);
+    // the ribbon command is completed only after the notice was closed (PowerPoint closes a dialog of a completed command)
+    { const e2 = ev(); let doneAtClose = null; st = stage([{ id: 'c', name: 'TextBox 1', type: 'TextBox', text: lines(12) }]);
+      const orig = window.Office.context.ui.displayDialogAsync; window.Office.context.ui.displayDialogAsync = (u, o, cb) => orig(u, o, r => { const ad = r.value.addEventHandler; r.value.addEventHandler = (k, f) => ad(k, a => { if (a.message === 'ok') doneAtClose = e2.n; f(a); }); cb(r); });
+      await S.alternativeDesign(e2);
+      check('the command stays open while its notice is shown, completed after OK', doneAtClose === 0 && e2.n === 1, `completed before OK: ${doneAtClose}, after: ${e2.n}`); }
     // D. an error from the panel host (add-in not loaded) is shown in plain words and the slide restored
     st = stage([{ id: 'x', name: 'Rect', type: 'GeometricShape', text: '' }, { id: 'c', name: 'Body', type: 'TextBox', text: lines(3) }]); serve(st, 'error');
     await S.alternativeDesign(ev());

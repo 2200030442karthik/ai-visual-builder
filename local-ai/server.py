@@ -703,8 +703,17 @@ class Handler(BaseHTTPRequestHandler):
         if not isinstance(body, (bytes, bytearray)):
             body = json.dumps(body).encode('utf-8')
         self.send_response(code)
-        for k, v in {'Content-Type': ctype, 'Content-Length': str(len(body)), 'Cache-Control': 'no-store',
-                     'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', **(extra or {})}.items():
+        h = {'Content-Type': ctype, 'Content-Length': str(len(body)), 'Cache-Control': 'no-store',
+             'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', **(extra or {})}
+        if ctype.startswith('image/') and code == 200:
+            # 10.20.1: Office must be able to cache add-in images; any Cache-Control directive on them makes the ribbon
+            # show a generic icon (Microsoft: troubleshoot-development-errors; manifest <Image>). Real PowerPoint, 16 Nov.
+            h.pop('Cache-Control')
+            # and a reason to keep them: an HTTP/1.0 answer with no freshness and no validator was fetched by Office
+            # but not cached (generic icons remained, 16 Nov). Expires + Last-Modified, still no Cache-Control directive.
+            h.setdefault('Expires', time.strftime('%a, %d %b %Y %H:%M:%S GMT', time.gmtime(time.time() + 365 * 86400)))
+            h.setdefault('Last-Modified', 'Mon, 16 Nov 2026 00:00:00 GMT')
+        for k, v in h.items():
             self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
@@ -726,6 +735,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path, _, qs = self.path.partition('?')
+        # 10.20.1: versioned icon URLs (/assets/v2/...): Office caches add-in images by URL, so new icons need new URLs
+        path = re.sub(r'^/assets/v\d{1,4}/', '/assets/', path)
         if path in STATIC:
             if self.guard(False):
                 name, ctype = STATIC[path]

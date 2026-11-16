@@ -164,6 +164,14 @@ def t_server_http():
             time.sleep(0.25)
         # a test host never acts on a real PowerPoint (even when one is running): a plain error, nothing else happens
         check('http', 'test host: PowerPoint commands switched off, plain error', st.get('state') == 'error' and 'switched off on a test panel host' in st.get('message', ''), st)
+        # icons: no Cache-Control at all (Office shows a generic icon otherwise); versioned URLs resolve; the rest no-store
+        def head_of(path):
+            with urllib.request.urlopen(f'http://localhost:{PORT}{path}', timeout=5) as r:
+                return r.status, r.headers.get('Cache-Control'), r.headers.get('Content-Type')
+        st_, cc, ct = head_of('/assets/v3/slsd/design-32.png')
+        check('http', 'ribbon icon (versioned URL): served as PNG, no Cache-Control', st_ == 200 and cc is None and ct == 'image/png', (st_, cc, ct))
+        check('http', 'add-in icon (versioned URL): no Cache-Control', head_of('/assets/v3/icon-32.png')[1] is None)
+        check('http', 'pages and scripts keep Cache-Control: no-store', head_of('/slsd.js')[1] == 'no-store' and head_of('/v10.html')[1] == 'no-store')
         for path in ('/slsd.js', '/slsd-notice.html', '/assets/slsd/design-32.png', '/tests/slsd.html'):
             try:
                 with urllib.request.urlopen(f'http://localhost:{PORT}{path}', timeout=5) as r:

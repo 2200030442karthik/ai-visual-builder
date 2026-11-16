@@ -57,8 +57,11 @@
     const singles = body.filter(s => s.n === 1);
     const soft = singles.find(s => s.soft > 0);
     if (soft) return { ok: false, id: soft.id, count: 1, message: outOfRange(soft) };
-    if (singles.length >= MIN) return { ok: false, message: `The points are in ${singles.length} separate text boxes. Alternative Design redesigns one text box with one point per line: put the points in one text box (press Enter after each), then click Alternative Design.` };
-    if (singles.length === 1) return { ok: false, id: singles[0].id, count: 1, message: outOfRange(singles[0]) };
+    // points split over loose text boxes; a layout's own one-line placeholders (lead-in, heading) are not points
+    // (real PowerPoint, 16 Nov: a 1-point slide was reported as "2 separate text boxes" because of its lead-in line)
+    const loose = singles.filter(s => !s.ph);
+    if (loose.length >= MIN) return { ok: false, message: `The points are in ${loose.length} separate text boxes. Alternative Design redesigns one text box with one point per line: put the points in one text box (press Enter after each), then click Alternative Design.` };
+    if (singles.length) { const s = singles.slice().sort((a, b) => (b.area || 0) - (a.area || 0))[0]; return { ok: false, id: s.id, count: 1, message: outOfRange(s) }; }
     return { ok: false, message: 'No text was found on this slide. Type or paste 2 to 10 points in a text box, one per line, then click Alternative Design.' };
   }
 
@@ -181,18 +184,26 @@
   }
 
   /* A short message in a small Office dialog (a function command has no window of its own). The text is handed to the
-     dialog with messageChild once it says "ready" - never in its URL, which PowerPoint shows in the dialog's title. */
+     dialog with messageChild once it says "ready" - never in its URL, which PowerPoint shows in the dialog's title.
+     Resolves when the user closes it (OK or the window's X), or after 4 minutes. Real PowerPoint, 16 Nov: a notice was
+     closed by PowerPoint about 1.5 s after the ribbon command completed, so commands wait for it (see waitNotice). */
   function notice(title, message) {
-    try {
-      Office.context.ui.displayDialogAsync(`${location.origin}/slsd-notice.html`, { height: 30, width: 34, displayInIframe: true }, res => {
-        if (res.status !== Office.AsyncResultStatus.Succeeded) return;
-        const d = res.value;
-        d.addEventHandler(Office.EventType.DialogMessageReceived, a => {
-          if (a && a.message === 'ready' && typeof d.messageChild === 'function') d.messageChild(JSON.stringify({ t: title, m: message }));
-          else d.close();
+    return new Promise(resolve => {
+      let over = false; const end = () => { if (!over) { over = true; resolve(); } };
+      try {
+        Office.context.ui.displayDialogAsync(`${location.origin}/slsd-notice.html`, { height: 30, width: 34, displayInIframe: true }, res => {
+          if (res.status !== Office.AsyncResultStatus.Succeeded) return end();
+          const d = res.value;
+          d.addEventHandler(Office.EventType.DialogMessageReceived, a => {
+            const m = a && a.message;
+            if (m === 'ready' && typeof d.messageChild === 'function') d.messageChild(JSON.stringify({ t: title, m: message }));
+            else if (m === 'ok') { try { d.close(); } catch (e) { /* already closed */ } end(); }
+          });
+          if (Office.EventType.DialogEventReceived) d.addEventHandler(Office.EventType.DialogEventReceived, end);   // closed with its X
+          setTimeout(end, 4 * 60 * 1000);
         });
-      });
-    } catch (e) { console.warn('SL Smart Design:', title, message); }
+      } catch (e) { console.warn('SL Smart Design:', title, message); end(); }
+    });
   }
 
   function done(event) { if (event && !event.__done) { event.__done = true; try { event.completed(); } catch (e) { /* not a command event */ } } }
@@ -201,20 +212,20 @@
     let prep = null;
     try {
       prep = await prepareAlternative();
-      if (!prep.ok) { notice('Alternative Design', prep.message); return; }
+      if (!prep.ok) { await notice('Alternative Design', prep.message); return; }      // the command stays open while it is read
       const id = await ask('alternative');
       done(event);                                          // the ribbon is free while the Select Template window is open
       const j = await finished(id);
-      if (j.state === 'error') notice('Alternative Design', j.message);
+      if (j.state === 'error') await notice('Alternative Design', j.message);
     } catch (e) {
-      notice('Alternative Design', e && e.message ? e.message : 'Alternative Design could not start.');
+      await notice('Alternative Design', e && e.message ? e.message : 'Alternative Design could not start.');
     } finally {
       done(event);
       if (prep && prep.ok) {
         try {
           const r = await restoreAlternative(prep);
-          if (r.unplaced.length) notice('Alternative Design', `This template has no place for point${r.unplaced.length > 1 ? 's' : ''} ${r.unplaced.join(', ')} of your ${prep.lines.length}. Press Ctrl+Z to undo, then choose another template.`);
-          else if (r.guessed) notice('Alternative Design', `This template's text boxes are not numbered, so your ${prep.lines.length} points were placed in the template's own order. Check that the order reads right.`);
+          if (r.unplaced.length) await notice('Alternative Design', `This template has no place for point${r.unplaced.length > 1 ? 's' : ''} ${r.unplaced.join(', ')} of your ${prep.lines.length}. Press Ctrl+Z to undo, then choose another template.`);
+          else if (r.guessed) await notice('Alternative Design', `This template's text boxes are not numbered, so your ${prep.lines.length} points were placed in the template's own order. Check that the order reads right.`);
         } catch (e) { /* the slide changed meanwhile */ }
       }
     }
@@ -234,8 +245,8 @@
         const id = await ask(cmd);
         done(event);
         const j = await finished(id);
-        if (j.state === 'error') notice(LABELS[cmd], j.message);
-      } catch (e) { notice(LABELS[cmd], e && e.message ? e.message : 'The command could not start.'); }
+        if (j.state === 'error') await notice(LABELS[cmd], j.message);
+      } catch (e) { await notice(LABELS[cmd], e && e.message ? e.message : 'The command could not start.'); }
       finally { done(event); }
     };
   }
