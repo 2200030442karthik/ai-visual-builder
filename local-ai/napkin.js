@@ -74,7 +74,11 @@ function planFromPrep(prep) {
   const sc = t => typeof sentenceCase === 'function' && !prep.record ? sentenceCase(t) : t;   // 10.19: LVC sentence case (brand.js); exact records as written
   const items = (prep.points || []).map((p, i) => ({ id: 'p' + i, label: sc(planClean(p.label)), detail: planClean(p.exact || p.detail || ''), group: '' })).filter(i => i.label);
   planIcons(items);
-  return planSemantics({ title: prep.title || '', relation: prep.ordered ? 'sequence' : 'independent', items, groups: [], flow: prep.ordered ? items.map(i => i.id) : [], layouts: [], from: 'text' });
+  // 10.21: a relation the text states (cycle, funnel, levels) opens the layouts made for it; the order is kept as the flow
+  const said = typeof planTextRelation === 'function' ? planTextRelation([prep.full, prep.title].concat(items.map(i => i.label + ' ' + i.detail)).join('\n'), items.length, []) : '';
+  const relation = said && said !== 'comparison' ? said : prep.ordered ? 'sequence' : 'independent';
+  const flow = prep.ordered || said === 'cycle' || said === 'funnel' ? items.map(i => i.id) : [];
+  return planSemantics({ title: prep.title || '', relation, items, groups: [], flow, layouts: [], from: 'text' });
 }
 /* A plan layout drawn again for the free part of the slide it goes on (the same measuring and checks as the preview). */
 function planBuildFor(it, rect) {

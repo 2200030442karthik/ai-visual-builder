@@ -27,6 +27,11 @@
   .card { background: var(--card); border: 2px solid transparent; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.12); padding: 8px; cursor: pointer; text-align: left; font: inherit; color: inherit; }
   .card:hover { box-shadow: 0 3px 10px rgba(0,0,0,.18); }
   .card.sel { border-color: var(--sel); }
+  .card { position: relative; }
+  .card .no { position: absolute; top: 12px; left: 12px; z-index: 1; min-width: 24px; height: 24px; padding: 0 6px; box-sizing: border-box; border-radius: 12px; background: #5c6670; color: #fff; font-weight: 600; font-size: 13px; line-height: 24px; text-align: center; }
+  .card.sel .no { background: var(--sel); }
+  .card.sel::after { content: "\2713  Selected"; position: absolute; top: 12px; right: 12px; padding: 0 8px; height: 24px; border-radius: 12px; background: var(--sel); color: #fff; font-size: 12px; font-weight: 600; line-height: 24px; }
+  .card:focus-visible { outline: 2px solid var(--sel); outline-offset: 2px; }
   .card .t { aspect-ratio: 1103 / 459; background: #fff; border: 1px solid #eee; border-radius: 4px; overflow: hidden; }
   .card .t svg { width: 100%; height: 100%; display: block; }
   .card .n { font-weight: 600; font-size: 14px; margin: 7px 2px 1px; }
@@ -86,8 +91,8 @@
     $('chips').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { G.filter = b.dataset.k; render(); }));
     const shown = L.filter(c => G.filter === 'All' || c.category === G.filter);
     $('empty').hidden = !!L.length; if (!L.length) $('empty').textContent = 'No designs yet. Press Generate visuals in the panel.';
-    $('grid').innerHTML = shown.map(c => `<button type="button" class="card${c.i === G.sel ? ' sel' : ''}" data-i="${c.i}" aria-pressed="${c.i === G.sel}">` +
-      `<div class="t">${c.svg}</div><div class="n">${esc(c.name)}</div><div class="m">${esc(c.category)}${c.slides > 1 ? ` · ${c.slides} slides` : ''}` +
+    $('grid').innerHTML = shown.map(c => `<button type="button" class="card${c.i === G.sel ? ' sel' : ''}" data-i="${c.i}" aria-pressed="${c.i === G.sel}" aria-label="Design ${c.i + 1} of ${L.length}: ${esc(c.name)}">` +
+      `<span class="no">${c.i + 1}</span><div class="t">${c.svg}</div><div class="n">${esc(c.name)}</div><div class="m">${esc(c.category)}${c.slides > 1 ? ` · ${c.slides} slides` : ''}` +
       ` <span class="tag${c.edit === 'full' ? '' : ' part'}">${c.edit === 'full' ? 'Editable' : 'Partly editable'}</span>${c.ai ? '<span class="tag ai">AI-designed</span>' : ''}</div></button>`).join('');
     $('grid').querySelectorAll('.card').forEach(b => {
       b.addEventListener('click', () => pick(+b.dataset.i));
@@ -107,7 +112,7 @@
     big.classList.add('on'); }, G.open ? 0 : 160); }
   function unhover() { clearTimeout(G.hoverT); $('big').classList.remove('on'); }
   function buttons() { const c = G.d && G.d.items.find(x => x.i === G.sel), busy = !!(G.d && G.d.busy);
-    $('insert').disabled = !c || busy; $('insert').textContent = c ? `Insert “${c.name}”` : 'Insert'; $('more').disabled = busy || !(G.d && G.d.items.length); }
+    $('insert').disabled = !c || busy; $('insert').textContent = c ? `Insert design ${c.i + 1}: “${c.name}”` : 'Insert'; $('more').disabled = busy || !(G.d && G.d.items.length); }
   function status() { const d = G.d; if (!d) return; $('note').innerHTML = (d.busy ? '<span class="spin"></span>' : '') + esc(d.note || (d.items.length ? 'Rest the pointer on a design to see it large. Double-click to insert it.' : ''));
     $('note').classList.toggle('err', !!d.err); buttons(); }
   $('insert').addEventListener('click', insert);
@@ -115,7 +120,21 @@
   $('slides').addEventListener('click', () => send({ action: 'slides' }));
   $('edit').addEventListener('click', () => send({ action: 'edit' }));
   $('close').addEventListener('click', () => send({ action: 'close' }));
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') unhover(); if (e.key === 'Enter' && G.sel >= 0) insert(); });
+  // 10.21: arrow keys move the selection through the numbered designs shown (Home / End: first / last); Enter inserts it
+  function arrow(e) {
+    const cards = [...document.querySelectorAll('.card')]; if (!cards.length) return false;
+    let at = cards.findIndex(b => +b.dataset.i === G.sel); if (at < 0) at = cards.indexOf(document.activeElement);
+    const row = Math.max(1, cards.filter(b => b.offsetTop === cards[0].offsetTop).length);
+    const to = e.key === 'Home' ? 0 : e.key === 'End' ? cards.length - 1 : at < 0 ? 0
+      : Math.min(cards.length - 1, Math.max(0, at + ({ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -row, ArrowDown: row })[e.key]));
+    cards[to].focus(); cards[to].scrollIntoView({ block: 'nearest' }); unhover(); if (+cards[to].dataset.i !== G.sel) pick(+cards[to].dataset.i);
+    return true;
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') unhover();
+    if (/^(Arrow(Left|Right|Up|Down)|Home|End)$/.test(e.key) && !(e.target && e.target.closest && e.target.closest('.chips, .acts, footer')) && arrow(e)) { e.preventDefault(); return; }
+    if (e.key === 'Enter' && G.sel >= 0 && !(e.target && e.target.tagName === 'BUTTON' && !e.target.classList.contains('card'))) { e.preventDefault(); insert(); }
+  });
   addEventListener('scroll', unhover, true);
   load(); setInterval(load, 1000);
 })();

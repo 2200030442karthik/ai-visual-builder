@@ -206,10 +206,22 @@
     });
   }
 
+  /* 10.21: Office on a Mac. The original SL Smart Design commands are VBA macros run through Windows COM by the panel
+     host; on a Mac they stay in the SL Smart Design add-in's own tab (its VBA works there). AI Visual Builder is the same. */
+  const MAC_MSG = "On a Mac, use the SL Smart Design add-in's own tab for this command (its VBA works on Mac). AI Visual Builder works here as on Windows.";
+  function onMac() {
+    try {   // 'Mac' is the value of Office.PlatformType.Mac; compare to the string so a missing enum never reads as a Mac
+      if (typeof Office === 'undefined' || !Office.context) return false;
+      return Office.context.platform === 'Mac' || (Office.context.diagnostics || {}).platform === 'Mac';
+    }
+    catch (e) { return false; }
+  }
+
   function done(event) { if (event && !event.__done) { event.__done = true; try { event.completed(); } catch (e) { /* not a command event */ } } }
 
   async function alternativeDesign(event) {
     let prep = null;
+    if (onMac()) { await notice('Alternative Design', MAC_MSG); done(event); return; }
     try {
       prep = await prepareAlternative();
       if (!prep.ok) { await notice('Alternative Design', prep.message); return; }      // the command stays open while it is read
@@ -241,6 +253,7 @@
 
   function command(cmd) {
     return async event => {
+      if (onMac()) { await notice(LABELS[cmd], MAC_MSG); done(event); return; }
       try {
         const id = await ask(cmd);
         done(event);
@@ -251,7 +264,7 @@
     };
   }
 
-  root.SLSD = { points, pickContent, placeMissing, outOfRange, COMMANDS, LABELS, MIN, MAX, prepareAlternative, restoreAlternative, alternativeDesign, command };
+  root.SLSD = { onMac, MAC_MSG, points, pickContent, placeMissing, outOfRange, COMMANDS, LABELS, MIN, MAX, prepareAlternative, restoreAlternative, alternativeDesign, command };
 
   if (typeof Office === 'undefined') return;
   Office.onReady(info => {

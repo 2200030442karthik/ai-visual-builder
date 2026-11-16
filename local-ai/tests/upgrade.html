@@ -1,0 +1,78 @@
+<!doctype html><html><head><meta charset="utf-8"><title>10.21 upgrade checks</title>
+<!-- 10.21: text analysis (relations the text states), the "vivid" design pack, variety and icon paint order, run in the
+     real panel (v10.html in a frame, test host). No PowerPoint, no network beyond the test host, no paid request. -->
+<style>body{font:12px Segoe UI,Arial} iframe{width:420px;height:600px}</style></head>
+<body><iframe id="f" src="/v10.html"></iframe><pre id="out">running</pre>
+<script>
+const acc = [], check = (name, ok, evidence) => acc.push({ name, ok: !!ok, evidence: String(evidence).slice(0, 400) });
+const F = document.getElementById('f');
+F.onload = async () => {
+  const W = F.contentWindow;
+  for (let i = 0; i < 100 && !(W.planRender && W.planTextRelation && W.planFromPrep && W.sectionsPlan); i++) await new Promise(r => setTimeout(r, 100));
+  try {
+    const R = Object.assign({}, W.eval('TEMPLATE').contentArea);
+    const prep = (title, pts, ordered, full) => W.planFromPrep({ title, full: full || [title].concat(pts).join('\n'), points: pts.map(p => ({ label: p })), ordered: !!ordered });
+    const cand = P => W.planCandidates(P);
+    const render = (P, k) => W.planRender(P, k, Object.assign({}, R));
+
+    // 1. relations the text states (and none it does not)
+    const T = W.planTextRelation;
+    check('cycle cue: "continuous cycle"', T('The DevOps lifecycle is a continuous cycle: plan, code, build, test', 4, []) === 'cycle', T('The DevOps lifecycle is a continuous cycle: plan, code, build, test', 4, []));
+    check('funnel cue: "narrows down"', T('The hiring funnel narrows down applicants to hires', 4, []) === 'funnel', T('The hiring funnel narrows down applicants to hires', 4, []));
+    check('funnel cue: AIDA stages', T('Awareness\nInterest\nDecision\nAction', 4, []) === 'funnel', T('Awareness\nInterest\nDecision\nAction', 4, []));
+    check('layers cue: "levels of"', T('Maslow describes five levels of needs', 5, []) === 'layers', T('Maslow describes five levels of needs', 5, []));
+    check('comparison: Pros / Cons sides', T('Remote work', 4, ['Pros', 'Cons']) === 'comparison');
+    check('comparison: "vs" with two sides', T('SQL vs NoSQL', 4, ['SQL', 'NoSQL']) === 'comparison');
+    check('comparison: Traditional / Modern sides', T('Teaching', 4, ['Traditional classroom', 'Modern classroom']) === 'comparison');
+    check('no cue: a plain list gets no relation (none invented)', T('Benefits of cloud computing\nScalability\nCost savings\nFlexibility', 3, []) === '');
+    check('no cue: two unrelated sections are not a comparison', T('Course', 4, ['What you learn', 'Best for']) === '');
+    check('no cue: "cycle" needs 3+ points', T('A cycle of two', 2, []) === '');
+
+    // 2. into the plan, and the layouts made for it
+    const cyc = prep('Machine learning lifecycle', ['Collect data', 'Train the model', 'Evaluate it', 'Deploy the model'], true, 'The machine learning lifecycle is iterative: collect data, train the model, evaluate it, deploy the model, then repeat.');
+    check('cycle text -> relation cycle, flow kept, cycle layout offered', cyc.relation === 'cycle' && cyc.flow.length === 4 && cand(cyc).includes('cycle'), cyc.relation + ' flow ' + cyc.flow.length + ' roles ' + JSON.stringify(cyc.items.map(i => i.role)) + ' cand ' + cand(cyc).join(','));
+    const cr = render(cyc, 'cycle'); check('cycle layout renders and passes the checks', cr.ok, cr.why || '');
+    check('cycle text still offers sequence layouts (the order is stated)', W.eval('planSeq')(cyc) && cand(cyc).some(k => ['pipeline', 'timeline', 'chevrons'].includes(k)), cand(cyc).join(','));
+    const fun = prep('Sales funnel', ['Leads', 'Prospects', 'Opportunities', 'Customers'], true, 'Our sales funnel narrows down leads to prospects, opportunities and customers.');
+    const fr = render(fun, 'funnel'); check('funnel text -> relation funnel, funnel layout renders', fun.relation === 'funnel' && cand(fun).includes('funnel') && fr.ok, fun.relation + ' ' + (fr.why || ''));
+    const lay = prep('Maslow’s hierarchy', ['Physiological needs', 'Safety', 'Belonging', 'Esteem', 'Self-actualisation'], false, 'Maslow’s hierarchy of needs has five levels.');
+    const lr = render(lay, 'pyramid'); check('levels text -> relation layers, pyramid renders', lay.relation === 'layers' && cand(lay).includes('pyramid') && lr.ok, lay.relation + ' ' + (lr.why || ''));
+    const plain = prep('Cloud benefits', ['Scalability', 'Cost savings', 'Flexibility', 'Global reach'], false);
+    check('plain list: no relation invented (no cycle / funnel / pyramid / comparison layouts)', !/cycle|funnel|layers|comparison/.test(plain.relation) && !cand(plain).some(k => ['cycle', 'funnel', 'pyramid', 'versus', 'contrast'].includes(k)), plain.relation + ' ' + cand(plain).join(','));
+    const cmp = W.sectionsPlan({ title: 'Remote work', full: 'Remote work\nPros: no commute, flexible hours\nCons: isolation, blurred boundaries',
+      sections: [{ name: 'Pros', items: [{ label: 'No commute' }, { label: 'Flexible hours' }] }, { name: 'Cons', items: [{ label: 'Isolation' }, { label: 'Blurred boundaries' }] }] });
+    check('Pros / Cons sections -> comparison; versus and two-column contrast offered', cmp.relation === 'comparison' && cand(cmp).includes('versus') && cand(cmp).includes('contrast'), cmp.relation + ' ' + cand(cmp).join(','));
+    const cr2 = render(cmp, 'contrast'), vr = render(cmp, 'versus');
+    check('two-column contrast renders and passes the checks', cr2.ok, cr2.why || ''); check('side-by-side versus renders', vr.ok, vr.why || '');
+    check('a comparison is never drawn as a sequence', !W.eval('planSeq')(cmp));
+    const sec = W.sectionsPlan({ title: 'Course', full: 'Course\nWhat you learn: Python, SQL\nBest for: analysts, engineers',
+      sections: [{ name: 'What you learn', items: [{ label: 'Python' }, { label: 'SQL' }] }, { name: 'Best for', items: [{ label: 'Analysts' }, { label: 'Engineers' }] }] });
+    check('labelled sections without a comparison cue stay categories', sec.relation === 'categories' && !cand(sec).includes('contrast'), sec.relation);
+
+    // 3. the new families
+    const ord4 = prep('Onboarding', ['Sign the offer', 'Set up accounts', 'Meet the team', 'Start the first project'], true);
+    const ord5 = prep('Publishing a course', ['Plan', 'Write', 'Record', 'Review', 'Publish'], true);
+    const ind6 = prep('Soft skills', ['Communication', 'Teamwork', 'Adaptability', 'Problem solving', 'Time management', 'Leadership'], false);
+    const ind4 = prep('Cloud benefits', ['Scalability', 'Cost savings', 'Flexibility', 'Security'], false);
+    for (const [P, k, what] of [[ord4, 'chevrons', '4 steps'], [ord5, 'zigzag', '5 steps'], [ind6, 'numcards', '6 independent points'], [ind4, 'numcards', '4 independent points'], [ord4, 'numcards', '4 steps']]) {
+      const r = render(P, k); check(`${k} renders for ${what} and passes the checks`, r.ok && r.prims.length > 4, r.why || r.prims.length);
+    }
+    check('new families offered only where they suit (chevrons not for independent points)', !cand(ind4).includes('chevrons') && cand(ord4).includes('chevrons') && cand(ind4).includes('numcards'), cand(ind4).join(','));
+    const nInd = render(ind4, 'numcards').prims.filter(p => /^\d+$/.test(String(p.text || ''))).length, nSeq = render(ord4, 'numcards').prims.filter(p => /^\d+$/.test(String(p.text || ''))).length;
+    check('numbered cards: numbers only for a stated order (none for independent points)', nInd === 0 && nSeq === 4, `independent ${nInd}, ordered ${nSeq}`);
+
+    // 4. icons drawn after the card they sit on (never behind it)
+    const ic = render(ind4, 'numcards').prims, groups = [...new Set(ic.map(p => p.grp).filter(Boolean))];
+    const behind = groups.filter(g => { const idx = ic.map((p, i) => [p, i]).filter(([p]) => p.grp === g), card = idx.find(([p]) => p.t === 'shape' && p.fill === W.eval('PANEL')), disc = idx.find(([p]) => p.t === 'shape' && p.shape === 'ellipse');
+      return card && disc && disc[1] < card[1]; });
+    check('icons are drawn after (in front of) their cards', !behind.length, behind.join(','));
+
+    // 5. variety: the design set for a process now includes the new compositions
+    const V = W.planVariations(ord5, Object.assign({}, R), 30), fams = [...new Set(V.list.map(x => (W.eval('PLAN_LAYOUTS')[x.key] || {}).family || x.key))];
+    check('design set for a 5-step process: many distinct families incl. the new ones', fams.length >= 8 && fams.some(f => ['chevrons', 'zigzag', 'numcards'].includes(f)), `${fams.length} families: ${fams.join(',')}`);
+    const t0 = performance.now(); for (let i = 0; i < 5; i++) W.planVariations(ord5, Object.assign({}, R), 30);
+    const ms = (performance.now() - t0) / 5; check('generation time for a design set stays fast (< 1.5 s each)', ms < 1500, Math.round(ms) + ' ms');
+  } catch (e) { check('no exception', false, e && e.stack); }
+  document.getElementById('out').textContent = JSON.stringify({ acceptance: acc });
+};
+</script></body></html>

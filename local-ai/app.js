@@ -55,6 +55,9 @@ const appSay = (msg, err) => { setStatus0(msg, err); if (typeof galPublish === '
     .appgrid .gcard { position:relative; padding:5px; border-radius:10px; transition:box-shadow .15s, border-color .15s; }
     .appgrid .gcard:hover { border-color:#aab3dc; }
     .appgrid .gcard.sel { border-color:#3645A9; box-shadow:0 0 0 2px #c9cff0; }
+    .appgrid .gcard .gnum { position:absolute; top:7px; left:7px; z-index:1; min-width:18px; height:18px; padding:0 4px; box-sizing:border-box; border-radius:9px; background:#5c6670; color:#fff; font:600 11px/18px Segoe UI,Arial; text-align:center; }
+    .appgrid .gcard.sel .gnum { background:#3645A9; }
+    .appgrid .gcard:focus-visible { outline:2px solid #3645A9; outline-offset:1px; }
     .appgrid .gcard.sel::after { content:'✓'; position:absolute; top:6px; right:6px; width:18px; height:18px; border-radius:50%; background:#3645A9; color:#fff; font-size:11px; line-height:18px; text-align:center; }
     .appgrid .cat { color:var(--muted); font-size:10.5px; }
     .appbig { margin-top:10px; }
@@ -144,7 +147,7 @@ function appButtons() {
   const review = c && c.engine === 'builtin' && typeof needsReview === 'function' && needsReview(state.sec);
   $('appInsert').disabled = !c || APP.busy || APP.stale || !state.inOffice || !gateOK() || (review && !$('appReviewed').checked);
   $('appInsert').textContent = !c ? 'Select a visual to insert' : !state.inOffice ? 'Open in PowerPoint to insert' : !gateOK() ? 'Select a Content Slide to insert' : review && !$('appReviewed').checked ? 'Confirm the checked points first'
-    : APP_DEV ? `Insert selected visual${c.slides > 1 ? ` (${c.slides} slides)` : ''}` : `Insert “${appName(c)}”${c.slides > 1 ? ` (${c.slides} slides)` : ''}`;
+    : APP_DEV ? `Insert selected visual${c.slides > 1 ? ` (${c.slides} slides)` : ''}` : `Insert design ${APP.sel + 1}: “${appName(c)}”${c.slides > 1 ? ` (${c.slides} slides)` : ''}`;
   $('appMore').disabled = APP.busy || !APP.list.length || APP.stale;
   $('appActs').hidden = !APP.list.length && !$('content').value.trim();
   $('appEmpty').hidden = !!APP.list.length || APP.busy || !$('appErr').hidden;
@@ -209,7 +212,7 @@ function appRender() {
   $('appChips').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { APP.filter = b.dataset.k; appRender(); }));
   const run = APP.shown = (APP.shown || 0) + 1;
   $('appGrid').innerHTML = shown.map(([c, i]) => { const [cls, txt] = BADGE(c);
-    return `<button type="button" class="gcard${i === APP.sel ? ' sel' : ''}" data-i="${i}" aria-pressed="${i === APP.sel}" aria-label="${esc(c.title)}"><div class="gthumb"></div>` +
+    return `<button type="button" class="gcard${i === APP.sel ? ' sel' : ''}" data-i="${i}" aria-pressed="${i === APP.sel}" aria-label="Design ${i + 1} of ${L.length}: ${esc(appName(c))}"><span class="gnum">${i + 1}</span><div class="gthumb"></div>` +
       `<div class="gname">${esc(appName(c))}</div><div class="cat">${esc(c.category)}${c.slides > 1 ? ` · ${c.slides} slides` : ''}</div><span class="badge ${cls}">${txt}</span></button>`; }).join('');
   $('appGrid').querySelectorAll('.gcard').forEach(b => {
     b.addEventListener('click', () => { hoverHide(); appSelect(+b.dataset.i); });
@@ -253,6 +256,17 @@ function hoverHide() { clearTimeout(HOVER.t); HOVER.card = null; const el = $('a
   clearTimeout(HOVER.off); HOVER.off = setTimeout(() => { HOVER.on = false; }, 120); }
 window.addEventListener('scroll', hoverHide, true);
 document.addEventListener('keydown', e => { if (e.key === 'Escape') hoverHide(); });
+// 10.21: arrow keys move through the numbered designs and choose the one reached (Home / End: first / last shown)
+function appArrow(e) {
+  const cards = [...$('appGrid').querySelectorAll('.gcard')], at = cards.indexOf(document.activeElement);
+  if (at < 0 || !/^(Arrow(Left|Right|Up|Down)|Home|End)$/.test(e.key)) return;
+  const row = Math.max(1, cards.filter(b => b.offsetTop === cards[at].offsetTop).length);
+  const to = e.key === 'Home' ? 0 : e.key === 'End' ? cards.length - 1
+    : Math.min(cards.length - 1, Math.max(0, at + ({ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -row, ArrowDown: row })[e.key]));
+  e.preventDefault();
+  if (to === at) return;
+  cards[to].focus(); cards[to].scrollIntoView({ block: 'nearest' }); appSelect(+cards[to].dataset.i);
+}
 function appSelect(i) {
   APP.sel = i; APP.dupOk = '';
   $('appGrid').querySelectorAll('.gcard').forEach(b => { const on = +b.dataset.i === i; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on); });
@@ -396,6 +410,7 @@ $('appReviewed').addEventListener('change', appButtons);
 $('appSecPrev').addEventListener('click', () => appSection(-1));
 $('appSecNext').addEventListener('click', () => appSection(1));
 $('stAppClose').addEventListener('click', () => $('stPanel').classList.remove('open'));
+$('appGrid').addEventListener('keydown', appArrow);   // 10.21
 $('content').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !APP_DEV) { e.preventDefault(); e.stopImmediatePropagation(); appGenerate(); } }, true);
 if (QS.get('open') === 'edit' || QS.get('open') === 'slides') setTimeout(() => appStudio(QS.get('open')), 0);
 appButtons();

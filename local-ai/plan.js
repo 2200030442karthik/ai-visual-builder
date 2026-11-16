@@ -45,7 +45,7 @@ const planItem = (P, id) => P.items.find(i => i.id === id);
 const planFlow = P => (P.flow || []).map(id => planItem(P, id)).filter(Boolean);
 const planSupport = it => /^support/.test(it.role || '');
 // a sequence only when nothing in it applies across the others: cross-cutting functions never go on a timeline
-const planSeq = P => !P.items.some(planSupport) && (P.relation === 'sequence' || (planFlow(P).length === P.items.length && P.items.length >= 3 && !/independent|categories|hub/.test(P.relation)));
+const planSeq = P => !P.items.some(planSupport) && (P.relation === 'sequence' || (planFlow(P).length === P.items.length && P.items.length >= 3 && !/independent|categories|hub|comparison/.test(P.relation)));
 const planOrder = P => { const f = planFlow(P); return f.length === P.items.length ? f : P.items; };
 const planGroups = P => (P.groups || []).map(g => ({ g, items: P.items.filter(i => i.group === g.id) })).filter(x => x.items.length);
 const planAllGrouped = P => P.items.every(i => i.group && (P.groups || []).some(g => g.id === i.group));
@@ -559,7 +559,7 @@ function planCandidates(P) {
   const all = [...new Set((P.custom ? ['custom'] : []).concat((P.layouts || []).map(up).filter(k => PLAN_LAYOUTS[k] && base.includes(k)), base))].filter(k => k === 'custom' || PLAN_LAYOUTS[k]);
   // 10.15: named sections ("What you learn" / "Best for") only in layouts that show each section under its name; never
   // as levels, lanes or a flow they do not have
-  return grouped && P.sections ? all.filter(k => k === 'custom' || PLAN_LAYOUTS[k].groups || ['capmap', 'tree', 'capability'].includes(k)) : all;
+  return grouped && P.sections ? all.filter(k => k === 'custom' || PLAN_LAYOUTS[k].groups || ['capmap', 'tree', 'capability'].includes(k) || (k === 'versus' && rel === 'comparison')) : all;
 }
 /* V10.12: a plan's style applies while it is drawn: P.style.accent = the approved colour the palette starts at (a colour
    variant), P.style.spacing 'open' = more white space around the layout; P.start = the first step number. */
@@ -864,6 +864,24 @@ function planSlides(P, R, o) {
 function planCoverage(P, rendered) {
   const texts = new Set(rendered.filter(x => !x.overview).flatMap(x => x.prims.filter(p => p.text).map(p => String(p.text))));
   return P.items.flatMap(i => [i.label].concat(i.detail ? [i.detail] : [])).filter(t => !texts.has(t));
+}
+/* 10.21: the relation a text STATES, for the built-in path (Claude's plans state theirs): only explicit cues, never
+   inferred from the number or shape of the points. -> 'comparison' | 'funnel' | 'cycle' | 'layers' | '' (keep the default)
+   text: the whole content; n: number of points; groupNames: the names of named sections (comparison needs exactly 2). */
+const REL_PAIRS = [[/^pros?\b/i, /^cons?\b/i], [/^advantages?/i, /^disadvantages?/i], [/^benefits?/i, /^(risks?|drawbacks?|challenges?|limitations?|costs?)\b/i],
+  [/^before\b/i, /^after\b/i], [/^do'?s?\b/i, /^(don'?t|do not)/i], [/^strengths?/i, /^weaknesses?/i], [/^myths?/i, /^facts?/i],
+  [/^(traditional|legacy|old|manual|conventional)\b/i, /^(modern|new|automated|ai|digital)\b/i], [/^(on-?prem\w*|on premises?)\b/i, /^cloud\b/i]];
+function planTextRelation(text, n, groupNames) {
+  const t = String(text || ''), G = (groupNames || []).map(g => String(g || '').trim());
+  if (G.length === 2) {
+    const pair = REL_PAIRS.some(([a, b]) => (a.test(G[0]) && b.test(G[1])) || (a.test(G[1]) && b.test(G[0])));
+    if (pair || /\b(vs\.?|versus|compared (?:to|with)|comparison of|differences? between|contrast(?:ed|ing)? with)\b/i.test(t)) return 'comparison';
+  }
+  if (n >= 3 && n <= 6 && (/\b(funnel|narrows? down|narrowing|shortlist(?:ed|ing)?|conversion (?:funnel|stages?)|filters? down)\b/i.test(t) ||
+      /\bawareness\b[\s\S]*\binterest\b[\s\S]*\b(desire|decision)\b[\s\S]*\baction\b/i.test(t))) return 'funnel';
+  if (n >= 3 && n <= 8 && /\b(cycle|cyclical|life ?cycle|loop|iterative(?:ly)?|iterations?|repeats?|repeated|repeating|continuous(?:ly)?|back to (?:the )?(?:start|beginning|first step))\b/i.test(t)) return 'cycle';
+  if (n >= 3 && n <= 6 && /\b(hierarch(?:y|ies|ical)|pyramid|levels? of|layers? of|tiers?|tiered|foundation(?:al)? (?:layer|level)|from the (?:base|bottom) to the top)\b/i.test(t)) return 'layers';
+  return '';
 }
 /* A plan from a list of points (built-in suggestions, edits): the same semantics as every other plan. */
 function planFromItems(title, points, ordered) {

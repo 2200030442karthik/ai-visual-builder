@@ -1358,7 +1358,9 @@ function renderGallery() {
     (A.length < 10 && !oneNote ? `Only ${A.length} infographic arrangement${A.length === 1 ? ' is' : 's are'} valid for this content` + (sc && sc.mode === 'fixed' ? ' (formulas, conditions, exact values and long lists keep their exact structure).' : sc && sc.mode === 'graph' ? ' (its links must be drawn as stated, which rules out free arrangements).' : '.') : '') +
     noPict + ` Built in ${Math.round(G.ms)} ms without any extra AI call.`) +
     (G.dropped && G.dropped.length ? `<details><summary>Why not more suggestions? (${G.dropped.length})</summary><ul>${G.dropped.map(d => `<li>${esc(d)}</li>`).join('')}</ul></details>` : '');
-  const t0 = performance.now(), cardsHTML = c => `<button type="button" class="gcard${isChosen(s, c) ? ' sel' : ''}" data-key="${esc(c.key)}" title="${esc(c.why + (c.objects.length ? ' Objects: ' + c.objects.join(', ') + '.' : ''))}"><div class="gthumb"></div>` +
+  // 10.21: every design carries its number in the whole set (stable when "More variants" pages), the chosen one says so
+  const num = c => G.list.indexOf(c) + 1;
+  const t0 = performance.now(), cardsHTML = c => `<button type="button" class="gcard${isChosen(s, c) ? ' sel' : ''}" data-key="${esc(c.key)}" data-n="${num(c)}" aria-pressed="${isChosen(s, c)}" aria-label="Design ${num(c)} of ${G.list.length}: ${esc(c.name)}" title="${esc(c.why + (c.objects.length ? ' Objects: ' + c.objects.join(', ') + '.' : ''))}"><span class="gnum">${num(c)}</span><div class="gthumb"></div>` +
     `<div class="gname">${esc(c.name)}</div><div class="gwhy">${esc(c.engine === 'B' && c.objects.length ? c.objects.join(' · ') : c.why)}</div>` +
     `<span class="badge ${c.edit}">${EDIT_LABEL[c.edit]}</span>${c.hidden ? ' <span class="badge partial" title="Descriptions go on detail slides">+ detail slides</span>' : ''}</button>`;
   $('gridA').innerHTML = showA.map(cardsHTML).join('');
@@ -1388,8 +1390,19 @@ function chooseSuggestion(key) {
   if (c.base) { s.choice = null; s.want = key; } else { s.choice = key; s.want = ''; }
   s.userPicked = true; s.page = 0; s.view = 'diagram';
   buildPreview(); renderResult(); renderSections();
-  document.querySelectorAll('#gallery .gcard').forEach(b => b.classList.toggle('sel', b.dataset.key === key));
-  setStatus(`Selected: ${c.name} (${EDIT_LABEL[c.edit].toLowerCase()}). Check the large preview, click a slide, then press Insert visual.`);
+  document.querySelectorAll('#gallery .gcard').forEach(b => { const on = b.dataset.key === key; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on); });
+  setStatus(`Selected design ${s.gallery.list.indexOf(c) + 1} of ${s.gallery.list.length}: ${c.name} (${EDIT_LABEL[c.edit].toLowerCase()}). Check the large preview, click a slide, then press Insert visual.`);
+}
+// 10.21: arrow keys move through the designs (and choose the one reached), Home / End jump to the first / last shown
+function galleryKey(e) {
+  const cards = [...document.querySelectorAll('#gallery .gcard')], at = cards.indexOf(document.activeElement);
+  if (at < 0 || !/^(Arrow(Left|Right|Up|Down)|Home|End)$/.test(e.key)) return;
+  const row = Math.max(1, cards.filter(b => b.offsetTop === cards[at].offsetTop && b.parentNode === cards[at].parentNode).length);
+  const to = e.key === 'Home' ? 0 : e.key === 'End' ? cards.length - 1
+    : Math.min(cards.length - 1, Math.max(0, at + ({ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -row, ArrowDown: row })[e.key]));
+  e.preventDefault();
+  if (to === at) return;
+  cards[to].focus(); cards[to].scrollIntoView({ block: 'nearest' }); chooseSuggestion(cards[to].dataset.key);
 }
 
 /* ===================== PowerPoint drawing self-test (Setup) =====================

@@ -1,6 +1,7 @@
 # AI Visual Builder — project status
 
-## Current version: V10.20.1 (16 Nov 2026) — SL Smart Design + AI Visual Builder unified; installer validated (staging)
+## Current version: V10.21 (16 Nov 2026, local, not pushed) on V10.20.1 (16 Nov 2026) — SL Smart Design + AI Visual Builder unified; installer validated (staging)
+
 Authorized employee + Content Slide of the approved template → paste content → analyze → accurate infographic and
 pictorial suggestions → preview → insert editable PowerPoint shapes. JavaScript panel + small Python host; no AI
 models, no GPU. Three ways to generate: native infographics (built in, free), and optionally Napkin AI (single approved
@@ -33,6 +34,26 @@ Simplilearn brand style) or Claude AI (Anthropic API), both paid, confirmed per 
 | Panel host | `local-ai/server.py` | 10.19.0 (large gallery: /api/gallery); `paid_order` "auto"; `orchestrate` in /api/status; ribbon icons; `--test` hosts refuse paid requests; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
 | Manifest | `manifest-v10.xml` | 10.19.0.0: group "AI Visual Builder" at the end of PowerPoint's Home tab (the button the SL Smart Design "AI Visuals" button presses), buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
 | Diagnosis | `local-ai/tests/run_diag.py`, `diag.html`, `diag_cases.py` | every layout considered with its reason; every Napkin variation with arrangement, status and preview |
+
+## V10.21 — usability, visual quality, text analysis, same-slide fit, numbered designs, Mac (16 Nov 2026)
+Validated in headless Edge with the test host. That host refuses paid requests and COM. **No V10.21 change has been
+tried in real PowerPoint yet, and none has been tried on a Mac.**
+| # | Asked | Done | Files |
+|---|---|---|---|
+| 1 | Text analysis | `planTextRelation`: a cycle, funnel, hierarchy/levels or comparison is used only when the text states it (cue words, Pros/Cons, Before/After, Traditional/Modern, vs, AIDA). Nothing is inferred; a plain list stays a list | `plan.js`, `napkin.js` (`planFromPrep`), `sections.js` |
+| 2 | Infographic library | Design pack `vivid@10.21.0`: numbered cards (numbers only for a stated order), chevron process, zigzag path, two-column contrast. A 5-step process now gets 30 distinct families | `packs/vivid-10.21.js`, `v10.html`, `claude_visual.py` (PLAN_LAYOUTS) |
+| 3 | Visual quality | The new families follow the pack rules: 22 pt minimum, brand palette, native shapes, icons drawn after cards | as 2 |
+| 4 | Same slide first | Reflows into free areas as small as 360 × 180 pt (was 520 × 260), scales down to 50 % (was 70 %). A new slide is used only when nothing readable fits | `v10.html` (`FIT_MIN`, `REFLOW_MIN`) |
+| 5 | Alternative design UI | Each card has a number badge (1..N) and a check mark when selected. Screen readers hear "Design n of N"; the insert button says "Insert design n: …". Arrow keys, Home and End move the selection in the panel and in the large gallery. The company VBA form (Alternative Design) is not changed; owner patch proposal: `sl-smart-design/ALT-DESIGN-NUMBERING-PROPOSAL.txt` | `app.js`, `gallery.js`, `gallery-dialog.html`, `v10.html` |
+| 6 | More visuals, faster | Built-in design set about 9 ms. Paid AI speed is the provider's | — |
+| 7 | Icons | Paint order stays icon above card (A31, V10.19); new families draw icons last. No 3D icons: no licensed offline 3D set | — |
+| 8 | Mac | Office.js part unchanged. The SL Smart Design commands show "use the SL Smart Design add-in's own tab" on a Mac (no COM). The host refuses them on macOS. Data and policy paths are Mac-aware. `mac/setup-mac.sh` (certificate with visible approval, LaunchAgent, sideload) and `mac/README-MAC.md`: syntax-checked only | `slsd.js`, `server.py`, `access.py`, `mac/` |
+
+Tests (16 Nov): `run_tests.py`: V10.11 29/29, V10.12 14/14, V10.12.1 13/13, V10.12.2 11/11, V10.20 35/35 (new A33 same slide first,
+A34 numbered designs and keys), server / claude / hosted / v10.20: all passed, SL Smart Design 155 passed / 1 skipped
+(the COM test is skipped while PowerPoint is running), `test_upgrade.py` 31/31 (new). Fixed on the way: `onMac()` read a
+missing `Office.PlatformType` as a Mac.
+Still to check in real PowerPoint: same-slide insertion on a real LVC slide, the gallery number badges, and the new families as inserted shapes.
 
 ## V10.20.1 — one SL Smart Design tab owned by the web add-in; Alternative Design blank gallery fixed (13 Nov, in progress)
 

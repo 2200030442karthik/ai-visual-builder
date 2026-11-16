@@ -50,7 +50,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # public host names in AIVB_PUBLIC_HOST are served; data (usage, kept results, log) in AIVB_DATA_DIR; API keys only from
 # the environment (App Service settings, filled from Key Vault); access must be "entra" (Office single sign-on).
 HOSTED = os.environ.get('AIVB_HOSTED') == '1'
-DATA_DIR = os.environ.get('AIVB_DATA_DIR') or os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'AIVisualBuilder')
+DATA_DIR = os.environ.get('AIVB_DATA_DIR') or os.path.join(os.environ.get('LOCALAPPDATA') or (os.path.expanduser('~/Library/Application Support') if sys.platform == 'darwin' else os.path.expanduser('~')), 'AIVisualBuilder')   # 10.21: macOS
 STATIC = {'/': ('v10.html', 'text/html; charset=utf-8'), '/v10.html': ('v10.html', 'text/html; charset=utf-8'),
           '/gallery-dialog.html': ('gallery-dialog.html', 'text/html; charset=utf-8'),
           '/slsd-notice.html': ('slsd-notice.html', 'text/html; charset=utf-8'),
@@ -97,6 +97,7 @@ if '--test' in sys.argv:    # tests only: also serve the test harness and its in
                    '/tests/faithful.html': ('tests/faithful.html', 'text/html; charset=utf-8'),
                    '/tests/app.html': ('tests/app.html', 'text/html; charset=utf-8'),
                    '/tests/slsd.html': ('tests/slsd.html', 'text/html; charset=utf-8'),
+                   '/tests/upgrade.html': ('tests/upgrade.html', 'text/html; charset=utf-8'),
                    '/tests/samples.js': ('tests/samples.js', 'text/javascript; charset=utf-8'),
                    '/tests/mock.js': ('tests/mock.js', 'text/javascript; charset=utf-8')})
     for _n in os.listdir(os.path.join(HERE, 'tests', 'fixtures')):   # saved real Napkin outputs (regression fixtures)
@@ -599,7 +600,16 @@ SLSD = {'jobs': {}, 'busy': None}
 SLSD_LOCK = threading.Lock()
 
 
+class SlsdUnavailable(Exception):
+    pass
+
+
+SlsdUnavailable.__name__ = 'MacroError'      # shown to the user in plain words (slsd_run)
+
+
 def _slsd_runner(macro):
+    if sys.platform != 'win32':     # 10.21: on a Mac the VBA add-in runs its commands from its own tab (no COM there)
+        raise SlsdUnavailable("On a Mac, use the SL Smart Design add-in's own tab for this command (its VBA works on Mac). AI Visual Builder works here as on Windows.")
     import slsd_com      # Windows only; imported when a command is first asked for
     if TEST_NO_PAID:     # a test panel host never acts on the PowerPoint the user is working in
         raise slsd_com.MacroError('PowerPoint commands are switched off on a test panel host.')

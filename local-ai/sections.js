@@ -138,8 +138,10 @@ function sectionsPlan(SX) {
   SX.sections.forEach((s, i) => s.items.forEach(it => items.push({ id: 'p' + items.length, label: sc(planClean(it.label)), detail: planClean(it.detail || ''), group: 's' + i })));
   planIcons(items);
   const st = SX.statement || null;
+  // 10.21: two named sides the text compares (Pros / Cons, Before / After, X vs Y) -> a comparison (side by side)
+  const cmp = groups.length === 2 && typeof planTextRelation === 'function' && planTextRelation(SX.full || SX.title, items.length, groups.map(g => g.name)) === 'comparison';
   return planSemantics({ title: SX.title, headline: SX.title, takeaway: SX.paragraph && SX.lead && SX.lead.length <= 140 ? SX.lead.replace(/[.!]\s*$/, '') : '', hero: heroFor(SX.short, SX.full || SX.title), short: SX.short, statement: st, verbs: st ? st.verbs : [],
-    relation: groups.length >= 2 ? 'categories' : 'independent', items, groups: groups.length >= 2 ? groups : [], flow: [], layouts: [], from: 'text', sections: true, paragraph: !!SX.paragraph,
+    relation: cmp ? 'comparison' : groups.length >= 2 ? 'categories' : 'independent', items, groups: groups.length >= 2 ? groups : [], flow: [], layouts: [], from: 'text', sections: true, paragraph: !!SX.paragraph,
     sectionName: groups.length === 1 ? groups[0].name : '' });
 }
 /* The object for a whole topic: its short name first ("AI & ML" -> the brain, "Digital Marketing" -> the megaphone),

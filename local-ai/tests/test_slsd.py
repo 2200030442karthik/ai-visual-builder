@@ -138,6 +138,16 @@ def t_server_inprocess():
     finally:
         slsd_com.run_macro, S.TEST_NO_PAID = orig, test
     check('host', 'macro name sent to PowerPoint', sent == ['SL_Smart_Design_v2_Key_Dec_25.ppam!Module1.ShowTemplateSelectorForm'], sent)
+    # 10.21: on a Mac the panel host does not run the VBA commands (no COM) - a plain message instead
+    real = S.sys.platform
+    try:
+        S.sys.platform = 'darwin'
+        try:
+            S._slsd_runner('RenameText'); check('host', 'Mac: commands answered with a plain message', False)
+        except Exception as e:
+            check('host', 'Mac: commands answered with a plain message', type(e).__name__ == 'MacroError' and 'Mac' in str(e), e)
+    finally:
+        S.sys.platform = real
     try:
         S.slsd_status('nope'); check('host', 'unknown job: 404', False)
     except S.NapkinError as e:

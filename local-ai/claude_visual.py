@@ -80,7 +80,8 @@ PLAN_LAYOUTS = ['platform', 'stack3d', 'scene', 'capmap', 'swimlanes', 'planes',
                 'architecture', 'layers', 'capability', 'tree', 'pipeline', 'timeline', 'stair', 'hub', 'grid', 'columns', 'rows',
                 'roadmap', 'pillars', 'quadrant', 'spotlight', 'storyboard', 'callout', 'journey',
                 'learnmap', 'herobanner', 'bridge', 'iconrows', 'badges', 'splitpanels', 'poster', 'ribbon', 'colortiles',
-                'concepttiles', 'orbit', 'honeycomb', 'isostack', 'bento', 'keystatement']
+                'concepttiles', 'orbit', 'honeycomb', 'isostack', 'bento', 'keystatement',
+                'numcards', 'chevrons', 'zigzag', 'contrast']
 PICTORIALS = ['collect', 'evaluate', 'clean', 'features', 'train', 'mlcore', 'predict', 'deploy', 'problem', 'database', 'dataset', 'folder', 'document',
               'server', 'cloud', 'gateway', 'app', 'window', 'code', 'gear', 'monitor', 'chartUp', 'shield', 'lock', 'checklist', 'magnifier', 'filter',
               'warning', 'calendar', 'team', 'person', 'org', 'chat', 'sheet', 'pages', 'image', 'text', 'video', 'music', 'cyber', 'fraud', 'bank', 'cart',

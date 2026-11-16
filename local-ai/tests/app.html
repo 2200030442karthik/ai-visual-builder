@@ -69,6 +69,14 @@ async function run() {
     const pickName = d.querySelectorAll('#appGrid .gcard')[3].querySelector('.gname').textContent;
     res.gen.pick = { sel: A.APP.sel, pressed: d.querySelectorAll('#appGrid .gcard[aria-pressed="true"]').length, name: pickName, insertNames: d.getElementById('appInsert').textContent.includes(pickName) || /Content Slide|PowerPoint/.test(d.getElementById('appInsert').textContent),
       noPreviewArea: !vis('appPv'), noVariantSuffix: ![...d.querySelectorAll('#appGrid .gname')].some(e => / · /.test(e.textContent)) };
+    // 10.21: numbered designs; arrow keys move the choice; the insert button names the number
+    { const cs = [...d.querySelectorAll('#appGrid .gcard')], nums = cs.map(c => (c.querySelector('.gnum') || {}).textContent);
+      cs[3].focus(); cs[3].dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); const right = A.APP.sel;
+      d.activeElement.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Home', bubbles: true })); const home = A.APP.sel;
+      res.v21nav = { nums: nums.slice(0, 6).join(','), seq: nums.every((t, k) => t === String(+cs[k].dataset.i + 1)), label: cs[0].getAttribute('aria-label'), right, home,
+        focus: d.activeElement === d.querySelectorAll('#appGrid .gcard')[0], insert: d.getElementById('appInsert').textContent };
+      cs[3].click(); }
+    await wait(250);   // the keyboard scroll settles (a scroll closes hover previews)
     // 10.14: resting the pointer on a card shows it large, without a click; it never covers the card; leaving closes it
     const card = d.querySelectorAll('#appGrid .gcard')[5], cr = card.getBoundingClientRect();
     card.dispatchEvent(new W.PointerEvent('pointerenter', { pointerType: 'mouse' })); await wait(300);
@@ -177,6 +185,10 @@ async function run() {
     const cards = dw.document.querySelectorAll('.card');
     res.v16.gallery.cards = cards.length; res.v16.gallery.n = L.length;
     res.v16.gallery.thumbs = [...cards].filter(c => c.querySelector('svg')).length;
+    { const kd = k => dw.document.dispatchEvent(new dw.KeyboardEvent('keydown', { key: k, bubbles: true }));   // 10.21: numbers, arrow keys
+      kd('Home'); kd('ArrowRight'); await new Promise(r => setTimeout(r, 300));
+      res.v21dlg = { nums: [...cards].slice(0, 4).map(c => (c.querySelector('.no') || {}).textContent).join(','), sel: dw.document.querySelector('.card.sel') && dw.document.querySelector('.card.sel').dataset.i,
+        panelSel: A.APP.sel, insert: dw.document.getElementById('insert').textContent }; }
     cards[1].click(); await new Promise(r => setTimeout(r, 400)); res.v16.gallery.selected = A.APP.sel === 1;
     const before = W.eval('state.lastInsert');
     dw.document.getElementById('insert').click();
@@ -291,6 +303,9 @@ async function run() {
     const di = L.findIndex(c => c.engine === 'designs');
     res.v19.same = await sameSlide(kT, di);
     res.v19.same.textBottom = Math.round(205 + ev('textUsedHeight')(kT, 1079, 24));
+    // 10.21: a slide whose text leaves room for the visual only below 70 % (5 lines): kept on this slide now
+    res.v21tight = await sameSlide(Array.from({ length: 5 }, (_, k) => 'Line ' + (k + 1) + ' of the text that fills part of the content placeholder').join('\n'), di);
+    res.v21tight.textBottom = Math.round(205 + ev('textUsedHeight')(Array.from({ length: 5 }, (_, k) => 'Line ' + (k + 1) + ' of the text that fills part of the content placeholder').join('\n'), 1079, 24));
     res.v19.full = await sameSlide(Array.from({ length: 14 }, (_, k) => 'Line ' + (k + 1) + ' of the text that fills the whole content placeholder of this slide').join('\n'), di);
     await W.eval('removeLast()');
     // the large gallery closes after Insert (back to PowerPoint); "Open large gallery" opens it again
@@ -494,6 +509,13 @@ async function run() {
     ['A30 The large gallery closes after Insert (the visual goes in, back to PowerPoint)', res.v19.gallery.inserted && res.v19.gallery.closed, JSON.stringify(res.v19.gallery)],
     ['A31 Icons stay in front: a card drawn before its icon stays behind it after grouping (restacked in the designed order); a container drawn after its contents is moved behind them',
       res.v19.layers.iconAboveCard && res.v19.layers.restacked && res.v19.paint === 'roundRect,ellipse,text', JSON.stringify({ layers: res.v19.layers, paint: res.v19.paint })],
+    ['A33 Same slide first (10.21): a slide whose text leaves less than 70 % of the content area keeps the visual (reflowed or scaled to 50 % or more), below the text, no new slide',
+      res.v21tight.newSlides === 0 && res.v21tight.onThisSlide > 0 && res.v21tight.top >= res.v21tight.textBottom && res.v21tight.bottom <= 720 && /on this slide/.test(res.v21tight.note) && (res.v21tight.fit || 1) >= 0.5,
+      JSON.stringify(res.v21tight)],
+    ['A34 Numbered designs (10.21): every card shows its number (1..N, in order), the selected one is named by number; arrow keys / Home move the choice, in the panel and in the large gallery',
+      res.v21nav && res.v21nav.nums.startsWith('1,2,3') && res.v21nav.seq && /^Design 1 of \d+: /.test(res.v21nav.label) && res.v21nav.right === 4 && res.v21nav.home === 0 && res.v21nav.focus
+        && res.v21dlg && res.v21dlg.nums === '1,2,3,4' && res.v21dlg.sel === '1' && res.v21dlg.panelSel === 1 && /^Insert design 2: /.test(res.v21dlg.insert),
+      JSON.stringify({ panel: res.v21nav, dialog: res.v21dlg })],
     ['A32 LVC type: every text 22 pt (24 pt headings), Open Sans; labels in sentence case, acronyms and the names the text capitalises kept',
       res.v19.type.sizes.every(s => s === 22 || s === 24) && res.v19.type.sentence.join('|') === 'What you learn|Hands-On projects with Python|Working with ChatGPT|Neural networks|AI tools for Kubernetes', JSON.stringify(res.v19.type)],
     ['No script errors in the panel', !errors.length, errors.join(' | ') || 'none'],

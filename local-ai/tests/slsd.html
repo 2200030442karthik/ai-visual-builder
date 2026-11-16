@@ -182,6 +182,16 @@ const ev = () => { const e = { n: 0, completed() { e.n++; } }; return e; };
     window.fetch = async () => ({ ok: false, json: async () => ({ error: 'SL Smart Design is still running a command. Close its window (for example Select Template) first.' }) });
     await S.alternativeDesign(ev());
     check('busy panel host: the reason is shown', /still running/.test(st.notices[0] || ''), st.notices[0]);
+    // G. 10.21: Office on a Mac - the SL Smart Design commands say where they are; the panel host is not asked
+    st = stage([{ id: 'c', name: 'B', type: 'TextBox', text: lines(4) }]);
+    window.Office.PlatformType = { Mac: 'Mac', PC: 'PC' }; window.Office.context.platform = 'Mac';
+    let asked2 = 0; window.fetch = async () => { asked2++; return { ok: true, json: async () => ({ id: 'x', state: 'done' }) }; };
+    const e3 = ev(); await S.alternativeDesign(e3); await S.command('footer-note')(ev());
+    check('Mac: Alternative Design and the other commands show where to find them; the panel host is not asked',
+      asked2 === 0 && st.notices.length === 2 && st.notices.every(n => n === S.MAC_MSG) && e3.n === 1, `asked ${asked2}, notices ${JSON.stringify(st.notices)}`);
+    check('Mac: detected from Office.context.platform', S.onMac() === true);
+    window.Office.context.platform = 'PC';
+    check('Windows: not treated as a Mac', S.onMac() === false);
   } catch (err) { check('no exception', false, err && err.stack); }
   document.getElementById('list').innerHTML = acc.map(a => `<li class="${a.ok ? '' : 'f'}">${a.ok ? 'PASS' : 'FAIL'} ${a.name}</li>`).join('');
   document.getElementById('out').textContent = JSON.stringify({ acceptance: acc });
