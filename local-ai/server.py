@@ -43,7 +43,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import access as A
 import claude_visual as C
 
-VERSION = '10.20.1'
+VERSION = '10.21.1'
 HERE = os.path.dirname(os.path.abspath(__file__))
 # 10.18: hosted mode (a central HTTPS service for the team, e.g. Azure App Service; deploy/README-PILOT.md). Off unless
 # AIVB_HOSTED=1. Then: plain HTTP on $PORT behind the platform's HTTPS front end, bound to all interfaces; only the
@@ -70,8 +70,10 @@ MAX_TEXT = 10000
 # ["napkin", "claude"] (the next is the fallback). Set by the administrator; the app shows neither.
 CONFIG = {'port': 44317, 'napkin_base': 'https://api.napkin.ai', 'napkin_max_per_day': 0, 'napkin_timeout_s': 60, 'claude_max_per_day': 0, 'claude_timeout_s': 300,
           'paid_policy': 'when-needed', 'paid_order': 'auto', 'soft_tints': False, 'paid_engines': 1,
-          'slsd_addin': 'SL_Smart_Design_v2_Key_Dec_25.ppam'}
+          'slsd_addin': 'SL_Smart_Design_v2_Key_Dec_25.ppam', 'mac_vba_bridge': False}
 # slsd_addin (10.20.1): the file name of the SL Smart Design VBA add-in whose macros the SL Smart Design tab runs
+# mac_vba_bridge (10.21.1, macOS only, off by default, NOT YET TESTED ON A MAC): run the same allow-listed macros through
+# PowerPoint for Mac's AppleScript command "run VB macro" (macOS asks the user once to allow the automation)
 # paid_engines (10.18): 1 = one AI service per new text (the other only as fallback); 2 = both Napkin (its original
 # infographics) and Claude (its own compositions) for a new text, so the gallery has both kinds of AI design (2x cost)
 # soft_tints (10.17): allow one light tint of each palette colour for card fills (brand.js softTints); off by default
@@ -607,8 +609,31 @@ class SlsdUnavailable(Exception):
 SlsdUnavailable.__name__ = 'MacroError'      # shown to the user in plain words (slsd_run)
 
 
+def mac_bridge_on():
+    return sys.platform == 'darwin' and CONFIG.get('mac_vba_bridge') is True and not TEST_NO_PAID
+
+
+def mac_script(macro):
+    # the AppleScript for one allow-listed macro of the configured add-in (both checked: no quote can get in)
+    if macro not in SLSD_MACROS.values() or not re.fullmatch(r'[A-Za-z0-9_. -]{1,100}\.ppam', CONFIG['slsd_addin']):
+        raise SlsdUnavailable('This command is not available.')
+    return f'tell application "Microsoft PowerPoint" to run VB macro macro name "{CONFIG["slsd_addin"]}!Module1.{macro}"'
+
+
+def _mac_runner(macro):
+    # 10.21.1, opt-in (mac_vba_bridge): PowerPoint for Mac runs the original macro itself (licence check included)
+    import subprocess
+    r = subprocess.run(['osascript', '-e', mac_script(macro)], capture_output=True, text=True, timeout=3600)
+    if r.returncode != 0:
+        why = (r.stderr or '').strip().splitlines()[-1:] or ['']
+        raise SlsdUnavailable('PowerPoint for Mac could not run the command' + (f' ({why[0][:160]})' if why[0] else '') +
+                              ". Allow the automation in System Settings > Privacy & Security > Automation, or use the SL Smart Design add-in's own tab.")
+
+
 def _slsd_runner(macro):
     if sys.platform != 'win32':     # 10.21: on a Mac the VBA add-in runs its commands from its own tab (no COM there)
+        if mac_bridge_on():
+            return _mac_runner(macro)
         raise SlsdUnavailable("On a Mac, use the SL Smart Design add-in's own tab for this command (its VBA works on Mac). AI Visual Builder works here as on Windows.")
     import slsd_com      # Windows only; imported when a command is first asked for
     if TEST_NO_PAID:     # a test panel host never acts on the PowerPoint the user is working in
@@ -786,7 +811,7 @@ class Handler(BaseHTTPRequestHandler):
                     napkin['enabled'] = claude['enabled'] = False
                 orchestrate = {'paid': CONFIG['paid_policy'], 'order': CONFIG['paid_order'], 'engines': CONFIG['paid_engines']}
                 return self.send(200, {'server': VERSION, 'access': access, 'napkin': napkin, 'claude': claude, 'orchestrate': orchestrate,
-                                       'brand': {'soft_tints': CONFIG['soft_tints'] is True}})
+                                       'brand': {'soft_tints': CONFIG['soft_tints'] is True}, 'slsd': {'mac_bridge': mac_bridge_on()}})
             if path == '/api/gallery':
                 return self.send(200, gallery_get(arg('k')))
             if path == '/api/bridge/next':

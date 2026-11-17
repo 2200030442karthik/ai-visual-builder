@@ -28,9 +28,18 @@ function planText(it, x, y, w, s, o) {
   if (it.detail) out.push(label(x, y + h1 - 6, w, planTH(it.detail, w, PLAN_DS), it.detail, { size: PLAN_DS, color: col, align: al, valign: 'top', grp: o.grp }));
   return out;
 }
-/* The item's object on a disc (white on pale cards, pale on white). */
+/* The item's object on a disc (white on pale cards, pale on white).
+   10.21.1: P.style.icons 'iso' - 2.5D: the object on the front face of a tile (a native cube: PowerPoint shades its top
+   and side faces from the fill), a soft shadow under it. Every part stays an editable shape of the icon's group. */
+let PLAN_ICONSTYLE = '';
 function planIcon(key, x, y, D, col, bg, grp) {
   if (!D) return [];
+  if (PLAN_ICONSTYLE === 'iso') {
+    const d = D * 0.25, f = !bg || /^#?F{6}$/i.test(bg) ? '#EEF1F6' : bg, s = (D - d) * 0.72;
+    return [box('ellipse', x - D * 0.02, y + D * 0.86, D * 1.04, D * 0.18, { fill: '#E2E5EC', grp, decor: true }),
+      box('cube', x, y, D, D, { fill: f, line: col, lineW: 0.75, grp })]
+      .concat(comp(key || 'none', x + (D - d - s) / 2, y + d + (D - d - s) / 2, s, col).map(q => Object.assign(q, { grp })));
+  }
   return [box('ellipse', x, y, D, D, { fill: bg, grp })].concat(comp(key || 'none', x + D * 0.19, y + D * 0.19, D * 0.62, col).map(q => Object.assign(q, { grp })));
 }
 /* A step number on a rounded square (22 pt needs at least 40 pt of width). */
@@ -73,8 +82,10 @@ function planSemantics(P) {
   const sup = P.items.filter(planSupport), stages = P.items.filter(i => i.role === 'stage'), outs = P.items.filter(i => i.role === 'output');
   // a flow with functions across it: the stages in their order, then what they serve; otherwise the roles are dropped
   // (a list of independent ideas has no stages)
-  if (sup.length && stages.length >= 2) {
-    if (P.relation === 'sequence' || !P.relation || P.relation === 'independent') P.relation = 'pipeline_with_support';
+  // 10.21.1: only a flow the content gives (a sequence, or a plan that says so) - an unordered list of principles that
+  // happens to include "Monitoring" or "Encryption" stays a list of equals
+  if (sup.length && stages.length >= 2 && (P.relation === 'sequence' || !P.relation || P.relation === 'pipeline_with_support')) {
+    if (P.relation === 'sequence' || !P.relation) P.relation = 'pipeline_with_support';
     const f = planFlow(P).filter(i => i.role === 'stage' || i.role === 'output');
     P.flow = (f.length >= 2 ? f : stages.concat(outs)).map(i => i.id);
   } else if (!(P.relation === 'pipeline_with_support' && stages.length >= 2)) P.items.forEach(i => { if (i.role !== 'component' && i.role !== 'source') i.role = sup.length ? i.role : 'concept'; });
@@ -574,7 +585,7 @@ function planRender(P, key, R) {
   ACCENT_SHIFT = (((st.accent | 0) % n) + n) % n; PLAN_NUM0 = P.start | 0;
   try {
     const r = planRender0(P, key, planArea(P, R));
-    r.style = { accent: ACCENT_SHIFT, spacing: st.spacing === 'open' ? 'open' : 'fill' };
+    r.style = Object.assign({ accent: ACCENT_SHIFT, spacing: st.spacing === 'open' ? 'open' : 'fill' }, st.icons ? { icons: st.icons } : {});   // 10.21.1: the icon style goes with the design (insertion draws it again)
     return r;
   } finally { ACCENT_SHIFT = 0; PLAN_NUM0 = 0; }
 }
@@ -588,8 +599,8 @@ function planRender0(P, key, R) {
   let why = 'does not fit the content area at 22 pt', first = '';
   for (const o of L.opts) {
     let prims;
-    PLAN_WHY = '';
-    try { prims = L.build(P, R, o); } catch (e) { why = 'could not be drawn (' + e.message + ')'; continue; }
+    PLAN_WHY = ''; PLAN_ICONSTYLE = (P.style && P.style.icons) || '';
+    try { prims = L.build(P, R, o); } catch (e) { why = 'could not be drawn (' + e.message + ')'; continue; } finally { PLAN_ICONSTYLE = ''; }
     if (!prims) { why = PLAN_WHY ? `${PLAN_WHY} at ${o.s} pt` : `too much text for this layout at ${o.s} pt`; continue; }
     prims = roundCorners(brandPrims(prims));
     const q = visualQuality(qualityItems(prims), R), texts = new Set(prims.filter(p => p.text).map(p => String(p.text)));
@@ -761,8 +772,15 @@ function planZoneFamily(spec) {
      with an optional overview of all point names first. Every label and description stays on a slide (planCoverage). */
 const PLAN_STYLES = [{ accent: 0, spacing: 'fill' }, { accent: 3, spacing: 'fill' }, { accent: 0, spacing: 'open' }, { accent: 6, spacing: 'fill' }, { accent: 3, spacing: 'open' }, { accent: 6, spacing: 'open' }];
 const PLAN_COLOUR_NAMES = ['blue', 'orange', 'green', 'violet', 'coral', 'gold', 'steel blue', 'pink', 'brown', 'lilac'];
-const planDesignKey = r => `${r.family}|${r.style ? r.style.accent : 0}|${r.style ? r.style.spacing : 'fill'}`;
-const planStyleName = st => [st && st.accent ? `colours from ${PLAN_COLOUR_NAMES[st.accent % 10]}` : '', st && st.spacing === 'open' ? 'more white space' : ''].filter(Boolean).join(', ');
+const planDesignKey = r => `${r.family}|${r.style ? r.style.accent : 0}|${r.style ? r.style.spacing : 'fill'}${r.style && r.style.icons ? '|' + r.style.icons : ''}`;
+const planStyleName = st => [st && st.accent ? `colours from ${PLAN_COLOUR_NAMES[st.accent % 10]}` : '', st && st.spacing === 'open' ? 'more white space' : ''].filter(Boolean).join(', ');   // 2.5D icons: said in the design's own name
+/* 10.21.1: the 2.5D-icon version of designs that show objects on discs (drawn by planIcon); null when it looks the same */
+function planIsoVariant(P, r, R) {
+  if (!r || !r.prims || !r.prims.some(p => p.cmp && p.cmp !== 'none')) return null;
+  const x = planRender(Object.assign({}, P, { style: Object.assign({}, r.style, { icons: 'iso' }) }), r.key, R);
+  if (!x.ok || !x.prims.some(p => p.g === 'cube' && p.grp)) return null;
+  return Object.assign(x, { name: x.name + ' with 2.5D icons', family: x.family + '-25d' });   // its own design in the gallery (not a duplicate of the flat one)
+}
 function planMoreDesigns(P, R, seen, max) {
   max = max || 4;
   const out = [], fams = new Set(), kinds = new Set(), cands = planCandidates(P), failed = {}, a0 = (P.style && P.style.accent) | 0;
@@ -865,23 +883,108 @@ function planCoverage(P, rendered) {
   const texts = new Set(rendered.filter(x => !x.overview).flatMap(x => x.prims.filter(p => p.text).map(p => String(p.text))));
   return P.items.flatMap(i => [i.label].concat(i.detail ? [i.detail] : [])).filter(t => !texts.has(t));
 }
-/* 10.21: the relation a text STATES, for the built-in path (Claude's plans state theirs): only explicit cues, never
-   inferred from the number or shape of the points. -> 'comparison' | 'funnel' | 'cycle' | 'layers' | '' (keep the default)
-   text: the whole content; n: number of points; groupNames: the names of named sections (comparison needs exactly 2). */
+/* 10.21.1: the relation a text STATES between its points - read from its structure first, then from wording that is
+   about the whole set (title, introduction, closing line: never a point's own description), with technical phrases that
+   only look like cues left out ("for loop", "continuous integration", "high levels of"). Nothing is inferred from the
+   number or the look of the points.
+   doc = { title, full, items: [{ label, detail }], groups: [names], groupItems: [[labels], [labels]], ordered }
+   -> { relation: 'comparison' | 'funnel' | 'cycle' | 'layers' | 'timeline' | 'sequence' | '', ordered, why, evidence: [] } */
 const REL_PAIRS = [[/^pros?\b/i, /^cons?\b/i], [/^advantages?/i, /^disadvantages?/i], [/^benefits?/i, /^(risks?|drawbacks?|challenges?|limitations?|costs?)\b/i],
   [/^before\b/i, /^after\b/i], [/^do'?s?\b/i, /^(don'?t|do not)/i], [/^strengths?/i, /^weaknesses?/i], [/^myths?/i, /^facts?/i],
   [/^(traditional|legacy|old|manual|conventional)\b/i, /^(modern|new|automated|ai|digital)\b/i], [/^(on-?prem\w*|on premises?)\b/i, /^cloud\b/i]];
-function planTextRelation(text, n, groupNames) {
-  const t = String(text || ''), G = (groupNames || []).map(g => String(g || '').trim());
+// phrases that contain a cue word but name a thing, not the relation between the points
+const REL_NOT = new RegExp([
+  String.raw`\b(?:for|while|do[- ]while|event|nested|infinite|render|game|main|inner|outer|training)[- ]loops?\b`,
+  String.raw`\bloop (?:statements?|variables?|counters?|body)\b`,
+  String.raw`\bcontinuous (?:integration|delivery|deployment|testing|monitoring|learning|improvement|variables?|data|values?|distribution)\b`,
+  String.raw`\biterations? (?:of training|per epoch)\b`,
+  String.raw`\b(?:high|low|higher|lower|greater|increased|reduced|significant|varying|different|various|several|multiple|access|logging|log|privilege|skill|experience|confidence|noise|stress)\s+levels?\b`,
+  String.raw`\blevels? of (?:accuracy|security|risk|detail|service|confidence|access|abstraction|support|performance|quality|protection|automation|experience)\b`,
+  String.raw`\b(?:pricing|service|support|subscription|storage|free|premium) tiers?\b`,
+  String.raw`\bcycle time\b`, String.raw`\bclock cycles?\b`].join('|'), 'gi');
+const REL_ORDINAL = /^(?:step|phase|stage)\s*\d+\b|^(?:first(?:ly)?|second(?:ly)?|third(?:ly)?|then|next|finally|lastly|afterwards?)\b/i;
+const REL_LEVEL = /^(?:level|tier|layer)\s*\d+\b/i;
+const REL_DATE = /\b(?:(?:19|20)\d{2}|q[1-4]\s*(?:19|20)\d{2})\b/i;
+const relNum = t => { const m = /(?:^|\s)(\d[\d,]*(?:\.\d+)?)\s*(%|k\b|m\b|million\b)?/i.exec(String(t || '')); if (!m) return null;
+  let v = parseFloat(m[1].replace(/,/g, '')); if (/^k$/i.test(m[2] || '')) v *= 1e3; if (/^(m|million)$/i.test(m[2] || '')) v *= 1e6; return v; };
+const relWords = t => String(t || '').toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').split(/\s+/)
+  .filter(w => w.length > 3 && !/^(with|from|that|this|their|they|into|more|less|than|have|each|over|uses?|used|using|data)$/.test(w));
+function planRelation(doc) {
+  doc = doc || {};
+  const items = (doc.items || []).filter(i => i && i.label), n = items.length, G = (doc.groups || []).map(g => String(g || '').trim()).filter(Boolean);
+  const lab = items.map(i => String(i.label).trim()), det = items.map(i => String(i.detail || '').trim());
+  // the scope: what the text says about the whole set - its title and the sentences that are not one of its points
+  const keyOf = t => String(t).toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 40);
+  const keys = lab.map(keyOf).filter(k => k.length >= 3);
+  const sentences = String(doc.full || '').split(/\n+|(?<=[.!?])\s+/).map(x => x.trim()).filter(Boolean);
+  const norm = s => s.toLowerCase().replace(/^[\s\-*•\d.)]+/, '').replace(/\s+/g, ' ').trim();
+  const dets = det.map(norm).filter(d => d.length > 8);
+  // a sentence that is one point (it starts with the point, or is its description) is the point's own text, not about the
+  // set; a sentence that lists several points ("collect, train, evaluate, then repeat") keeps its words around the list
+  const scopeParts = [String(doc.title || '')], listParts = [];
+  sentences.forEach(s => {
+    const t = norm(s), at = keys.map(k => t.indexOf(k)).filter(i => i >= 0);
+    if (keys.some(k => t.startsWith(k)) && at.length < Math.min(3, n)) return;
+    if (dets.some(d => d.includes(t) || t.includes(d))) return;
+    if (at.length >= 3 && n >= 3) { const last = keys.filter(k => t.includes(k)).map(k => t.lastIndexOf(k) + k.length), part = t.slice(0, Math.min(...at)) + ' … ' + t.slice(Math.max(...last)); scopeParts.push(part); listParts.push(part); }
+    else scopeParts.push(s);
+  });
+  const scope = scopeParts.join('\n').replace(REL_NOT, ' ');
+  const head = (String(doc.title || '') + '\n' + (scopeParts[1] || '')).replace(REL_NOT, ' ');
+  const ev = { comparison: [], funnel: [], cycle: [], layers: [], timeline: [], sequence: [] }, add = (k, w, why) => ev[k].push({ w, why });
+  // comparison: two named sides that are a known pair, or say "vs", or describe the same attributes side by side
   if (G.length === 2) {
-    const pair = REL_PAIRS.some(([a, b]) => (a.test(G[0]) && b.test(G[1])) || (a.test(G[1]) && b.test(G[0])));
-    if (pair || /\b(vs\.?|versus|compared (?:to|with)|comparison of|differences? between|contrast(?:ed|ing)? with)\b/i.test(t)) return 'comparison';
+    if (REL_PAIRS.some(([a, b]) => (a.test(G[0]) && b.test(G[1])) || (a.test(G[1]) && b.test(G[0])))) add('comparison', 3, `the two sections are “${G[0]}” and “${G[1]}”`);
+    const vs = /\b(vs\.?|versus|compared (?:to|with)|comparison of|differences? between|contrast(?:ed|ing)? with)(?=\s|$)/i.exec(scope + '\n' + G.join(' '));
+    if (vs) add('comparison', 2, `the text says “${vs[0]}”`);
+    if (doc.groupItems && doc.groupItems.length === 2) {
+      const [A, B] = doc.groupItems.map(L => L.map(relWords)), shared = A.filter(a => B.some(b => b.some(w => a.includes(w)))).length;
+      if (A.length >= 2 && B.length >= 2 && shared >= Math.ceil(Math.min(A.length, B.length) * 0.6)) add('comparison', 2, `both sections describe the same ${shared} attributes`);
+    }
   }
-  if (n >= 3 && n <= 6 && (/\b(funnel|narrows? down|narrowing|shortlist(?:ed|ing)?|conversion (?:funnel|stages?)|filters? down)\b/i.test(t) ||
-      /\bawareness\b[\s\S]*\binterest\b[\s\S]*\b(desire|decision)\b[\s\S]*\baction\b/i.test(t))) return 'funnel';
-  if (n >= 3 && n <= 8 && /\b(cycle|cyclical|life ?cycle|loop|iterative(?:ly)?|iterations?|repeats?|repeated|repeating|continuous(?:ly)?|back to (?:the )?(?:start|beginning|first step))\b/i.test(t)) return 'cycle';
-  if (n >= 3 && n <= 6 && /\b(hierarch(?:y|ies|ical)|pyramid|levels? of|layers? of|tiers?|tiered|foundation(?:al)? (?:layer|level)|from the (?:base|bottom) to the top)\b/i.test(t)) return 'layers';
-  return '';
+  if (n >= 3) {
+    // order: numbered or ordinal points, dates in order, "steps / process" said about the set
+    if (doc.ordered) add('sequence', 2, 'the points are numbered or written as a chain');
+    if (lab.filter(t => REL_ORDINAL.test(t)).length >= Math.ceil(n * 0.6)) add('sequence', 2, 'the points start with step words (first, then, step 1…)');
+    const dates = lab.map((t, i) => REL_DATE.exec(t) || REL_DATE.exec(det[i])).map(m => m ? parseInt(String(m[0]).replace(/\D/g, '').slice(-4), 10) : null), dd = dates.filter(x => x);
+    if (dd.length >= Math.ceil(n * 0.6) && dd.every((x, i) => !i || x >= dd[i - 1])) add('timeline', 3, 'the points carry dates in order');
+    const proc = /\b(steps?|stages?|phases?|process|workflow|procedure|pipeline|how to|lifecycle|life cycle)\b/i.exec(head);
+    if (proc) add('sequence', 1, `the title says “${proc[0]}”`);
+    // cycle: said about the set, or the last point leads back to the first
+    // "iterative" / "then repeat" only where the sentence lists the points themselves ("is iterative: collect, train, …")
+    // every cue found, the strongest first ("lifecycle" alone names stages; it does not say they return)
+    const allOf = (re, t) => [...t.matchAll(re)];
+    const cues = allOf(/\b(cycle|cyclical|cyclic|life ?cycle|loops? back|feedback loop|iterative (?:process|cycle|loop)|repeats? (?:the|this|these|from)|repeated (?:until|for)|back to (?:the )?(?:start|beginning|first (?:step|stage|phase))|starts? (?:over|again)|pdca|plan[, ]+do[, ]+check[, ]+act)\b/gi, scope)
+      .concat(allOf(/\b(iterative|(?:then|and) repeat(?:s|ed)?)\b/gi, listParts.join('\n').replace(REL_NOT, ' ')));
+    const cyc = cues.find(m => !/life ?cycle/i.test(m[0])) || cues[0] || null;
+    if (cyc && n <= 8) add('cycle', /life ?cycle/i.test(cyc[0]) ? 1 : 3, `the text says “${cyc[0].trim()}”`);
+    const lastT = (lab[n - 1] + ' ' + det[n - 1]).toLowerCase(), firstW = relWords(lab[0])[0];
+    if (n <= 8 && /\b(repeat|again|back to|loop back|restart|next cycle|next iteration)\b/.test(lastT) && (!firstW || lastT.includes(firstW) || /\b(repeat|next cycle|next iteration)\b/.test(lastT)))
+      add('cycle', 3, 'the last point leads back to the start');
+    // funnel: said about the set, the AIDA stages, or counts that narrow stage by stage
+    const fun = /\b(funnel|narrows? (?:down|to)|narrowing|shortlist(?:ed|ing)?|conversion (?:funnel|stages?)|filters? down)\b/i.exec(scope);
+    if (fun && n <= 6) add('funnel', 3, `the text says “${fun[0]}”`);
+    if (n <= 6 && /\bawareness\b[\s\S]*\binterest\b[\s\S]*\b(desire|decision|consideration)\b[\s\S]*\b(action|purchase|conversion)\b/i.test(lab.join('\n'))) add('funnel', 3, 'the points are the AIDA stages');
+    const nums = lab.map((t, i) => relNum(t) != null ? relNum(t) : relNum(det[i]));
+    if (n <= 6 && fun && nums.every(x => x != null) && nums.every((x, i) => !i || x < nums[i - 1])) add('funnel', 1, 'the counts get smaller stage by stage');
+    // layers: levels or tiers said about the set, or points named Level 1 / Tier 2…
+    const lay = /\b(hierarch(?:y|ies|ical)|pyramid|maslow|(?:\d+|two|three|four|five|six) (?:levels|layers|tiers)\b|levels? of (?:the |a )?(?:hierarchy|pyramid|needs|maturity)|tiered|from the (?:base|bottom) (?:to|up to) the top|foundation(?:al)? (?:layer|level))/i.exec(scope);
+    if (lay && n <= 6) add('layers', 3, `the text says “${lay[0]}”`);
+    if (n <= 6 && lab.filter(t => REL_LEVEL.test(t)).length >= n - 1) add('layers', 3, 'the points are named by level');
+  }
+  const score = k => ev[k].reduce((a, x) => a + x.w, 0);
+  // a stated shape (comparison, cycle, funnel, levels, timeline) wins over a plain sequence: a cycle is ordered as well
+  const pick = ['comparison', 'cycle', 'funnel', 'layers', 'timeline'].filter(k => score(k) >= 2).sort((a, b) => score(b) - score(a))[0] || (score('sequence') >= 2 ? 'sequence' : '');
+  // a cycle, a funnel or a timeline keeps the order; levels keep it only when it was given
+  const ordered = (!!pick && !/^(comparison|layers)$/.test(pick)) || score('sequence') >= 2;
+  return { relation: pick, ordered, why: pick ? ev[pick].map(x => x.why).join('; ') : '',
+    evidence: Object.entries(ev).filter(([, v]) => v.length).map(([k, v]) => `${k}: ${v.map(x => x.why).join('; ')}`) };
+}
+/* 10.21 interface (kept): the relation only, from the whole text (first line its title) and the section names. */
+function planTextRelation(text, n, groupNames) {
+  const lines = String(text || '').split(/\n+/).map(t => t.trim()).filter(Boolean);
+  const r = planRelation({ title: lines[0] || '', full: lines.slice(1).join('\n'), items: lines.slice(1).slice(-Math.max(0, n)).map(t => ({ label: t.replace(/^[-*•\d.)\s]+/, '') })), groups: groupNames || [] });
+  return /^(comparison|funnel|cycle|layers)$/.test(r.relation) ? r.relation : '';
 }
 /* A plan from a list of points (built-in suggestions, edits): the same semantics as every other plan. */
 function planFromItems(title, points, ordered) {

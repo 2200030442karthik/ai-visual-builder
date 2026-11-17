@@ -185,10 +185,13 @@ const ev = () => { const e = { n: 0, completed() { e.n++; } }; return e; };
     // G. 10.21: Office on a Mac - the SL Smart Design commands say where they are; the panel host is not asked
     st = stage([{ id: 'c', name: 'B', type: 'TextBox', text: lines(4) }]);
     window.Office.PlatformType = { Mac: 'Mac', PC: 'PC' }; window.Office.context.platform = 'Mac';
-    let asked2 = 0; window.fetch = async () => { asked2++; return { ok: true, json: async () => ({ id: 'x', state: 'done' }) }; };
+    let asked2 = 0, bridge = false; window.fetch = async url => { if (url === '/api/status') return { ok: true, json: async () => ({ slsd: { mac_bridge: bridge } }) }; if (url === '/api/slsd/run') asked2++; return { ok: true, json: async () => ({ id: 'x', state: 'done' }) }; };
     const e3 = ev(); await S.alternativeDesign(e3); await S.command('footer-note')(ev());
-    check('Mac: Alternative Design and the other commands show where to find them; the panel host is not asked',
+    check('Mac: Alternative Design and the other commands show where to find them; the panel host is not asked to run them',
       asked2 === 0 && st.notices.length === 2 && st.notices.every(n => n === S.MAC_MSG) && e3.n === 1, `asked ${asked2}, notices ${JSON.stringify(st.notices)}`);
+    // 10.21.1: with the opt-in Mac bridge switched on in the panel host, the commands are run as on Windows
+    bridge = true; st.notices.length = 0; await S.command('footer-note')(ev());
+    check('Mac with the opt-in AppleScript bridge: the command is sent to the panel host, no Mac notice', asked2 === 1 && !st.notices.includes(S.MAC_MSG), `asked ${asked2}, notices ${JSON.stringify(st.notices)}`);
     check('Mac: detected from Office.context.platform', S.onMac() === true);
     window.Office.context.platform = 'PC';
     check('Windows: not treated as a Mac', S.onMac() === false);

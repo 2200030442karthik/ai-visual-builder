@@ -71,6 +71,9 @@ const appSay = (msg, err) => { setStatus0(msg, err); if (typeof galPublish === '
     #appFoot .btn-row { margin-top:6px; }
     #appInsert { width:100%; background:var(--accent); border:0; color:#fff; border-radius:9px; padding:11px; font-weight:600; font-size:13.5px; }
     #appInsert:disabled { background:#a9b0d8; cursor:default; }
+    #appFit { margin-top:8px; padding:8px 9px; border:1px solid #f0c36d; background:#fff8e6; border-radius:9px; font-size:12px; line-height:1.4; }
+    #appFit button { display:block; width:100%; margin:6px 0 0; padding:7px 8px; border:1px solid #3645A9; border-radius:8px; background:#fff; color:#3645A9; font-weight:600; font-size:12px; text-align:left; }
+    #appFit button.alt { background:#3645A9; color:#fff; }
     #appHover { position:fixed; z-index:50; left:6px; right:6px; background:#fff; border-radius:12px; padding:6px 6px 8px; pointer-events:none;
       box-shadow:0 12px 34px rgba(20,30,60,.26), 0 0 0 1px #dfe4ef; opacity:0; transform:translateY(4px) scale(.98); transition:opacity .12s, transform .12s, top .08s; }
     body.simple #appPv, body.simple #appPvT, body.simple #appPvD { display:none !important; }
@@ -108,7 +111,7 @@ const appSay = (msg, err) => { setStatus0(msg, err); if (typeof galPublish === '
   // the insert bar (the footer keeps V10.12.2's own controls for the developer mode)
   const foot = document.querySelector('footer'), af = document.createElement('div');
   af.id = 'appFoot';
-  af.innerHTML = `<button id="appInsert" type="button" disabled>Insert selected visual</button>`;
+  af.innerHTML = `<button id="appInsert" type="button" disabled>Insert selected visual</button><div id="appFit" role="alert" hidden></div>`;
   foot.insertBefore(af, foot.firstChild);
   const ns = $('newSlide').parentNode.querySelector('span'); if (!APP_DEV && ns) ns.textContent = 'On a new slide after the selected one';
   if (!APP_DEV) $('removeLast').textContent = 'Undo last insert';
@@ -268,6 +271,7 @@ function appArrow(e) {
   cards[to].focus(); cards[to].scrollIntoView({ block: 'nearest' }); appSelect(+cards[to].dataset.i);
 }
 function appSelect(i) {
+  if (i !== APP.sel && $('appFit')) $('appFit').hidden = true;
   APP.sel = i; APP.dupOk = '';
   $('appGrid').querySelectorAll('.gcard').forEach(b => { const on = +b.dataset.i === i; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on); });
   appBig(); appButtons();
@@ -303,7 +307,8 @@ async function appSection(d) {
 }
 
 /* ---------- insert ---------- */
-async function appInsert() {
+async function appInsert(opts) {
+  opts = opts && !(opts instanceof Event) ? opts : {};
   const c = APP.list[APP.sel];
   if (!c || APP.busy || APP.stale) return;
   // the same visual, just inserted and still there: a second press for another copy
@@ -315,25 +320,47 @@ async function appInsert() {
   APP.busy = true; appButtons();
   if (c.engine === 'builtin') $('reviewed').checked = $('appReviewed').checked;
   appSay('Inserting…');
-  let ok = false, moved = false;
+  $('appFit').hidden = true;
+  let ok = false, moved = !!opts.newSlide;
   try {
-    state.lastFull = false; state.lastFit = 1;
-    ok = await c.insert();
-    // 10.19: the visual goes on the selected slide (its free part, scaled when needed); only when the slide has no room
-    // at all does it go on a new slide right after it - automatically, said in the message, undone like any insert
-    if (!ok && state.lastFull && !$('newSlide').checked) {
-      state.forceNew = true;
-      try { ok = await c.insert(); moved = ok; } finally { state.forceNew = false; }
-    }
+    state.lastFull = false; state.lastFit = 1; state.lastFree = null;
+    // 10.21.1: the selected slide by default (laid out again in its free part, text kept at the template minimum); a new
+    // slide only when the user asks for it (opts.newSlide, from the offer below)
+    if (opts.newSlide) state.forceNew = true;
+    try { ok = await c.insert(); } finally { state.forceNew = false; }
+    if (!ok && state.lastFull && !$('newSlide').checked && !opts.newSlide) { appFitOffer(c); return false; }
     if (ok) {
       APP.lastIns = { ref: state.lastInsert, id: c.id }; APP.dupOk = '';
+      if (c.family) ORCH.recent = [c.family].concat((ORCH.recent || []).filter(f => f !== c.family)).slice(0, 4);   // 10.21.1: deck variety
       const extra = state.lastInsert && (state.lastInsert.extraSlides || []).length, k = state.lastFit || 1;
-      appSay(`Inserted “${appName(c)}”${moved ? ' on a new slide after this one (this slide had no free space for it)' : state.lastInsert && state.lastInsert.newSlide ? ' on a new slide' : ' on this slide'}` +
+      appSay(`Inserted “${appName(c)}”${moved ? ' on a new slide after this one, as you chose' : state.lastInsert && state.lastInsert.newSlide ? ' on a new slide' : ' on this slide'}` +
         `${extra ? ` and ${extra} more slide${extra > 1 ? 's' : ''}` : ''}${k < 0.995 ? `, scaled to ${Math.round(k * 100)} % to fit beside the text` : ''}. Every text and shape is editable in PowerPoint. Undo last insert takes it out.`);
     } else appSay('Nothing was inserted. ' + friendly($('status').textContent), true);
   } catch (e) { appSay('Nothing was inserted: ' + friendly(errText(e)), true); }
   finally { APP.busy = false; appButtons(); updateButtons(); }
   return ok;
+}
+
+/* 10.21.1: the chosen design does not fit the selected slide's free part. Nothing was inserted; say so, and offer the
+   best-ranked designs that do fit there (same content, laid out for that space) and a new slide - each only on a click. */
+function appFitOffer(c) {
+  const R = state.lastFree, box = $('appFit'), cur = APP.list.indexOf(c), alts = [];
+  if (R) for (const [x, i] of APP.list.map((x, i) => [x, i])) {
+    if (alts.length >= 2) break;
+    if (x !== c && x.fit && x.slides === 1 && x.complete !== false) { let ok = false; try { ok = x.fit(R); } catch (e) { ok = false; } if (ok) alts.push(i); }
+  }
+  const room = R ? `${Math.round(R.w)} × ${Math.round(R.h)} pt` : '';
+  const msg = R ? `Design ${cur + 1} (“${appName(c)}”) needs more room than this slide has free (${room} beside or below its text) to keep every text at ${TEMPLATE.minBody} pt or larger, so nothing was inserted.`
+    : 'This slide has no free space beside or below its text, so nothing was inserted and nothing on the slide was covered.';
+  box.innerHTML = `<div>${esc(msg)}${alts.length ? ' These designs show the same content and fit this space:' : R ? ' No other design fits this space at a readable size.' : ''}</div>` +
+    alts.map(i => `<button type="button" class="alt" data-i="${i}">Insert design ${i + 1} here: “${esc(appName(APP.list[i]))}”</button>`).join('') +
+    `<button type="button" data-new="1">Insert design ${cur + 1} on a new slide after this one</button>`;
+  box.hidden = false;
+  box.querySelectorAll('button').forEach(b => b.addEventListener('click', async () => {
+    if (b.dataset.new) { appSelect(cur); await appInsert({ newSlide: true }); } else { appSelect(+b.dataset.i); await appInsert(); }
+  }));
+  appSay(msg + (alts.length ? ` Design${alts.length > 1 ? 's' : ''} ${alts.map(i => i + 1).join(' and ')} fit${alts.length > 1 ? '' : 's'} here.` : ''), true);
+  APP.fitOffer = { cur, alts, room };
 }
 
 /* ---------- several slides and editing (step 5's panel) ---------- */

@@ -1980,7 +1980,9 @@
       if (!best) return null;
       const cue = /\b(process|processes|phases?|steps?|stages?|workflow|lifecycle|life cycle|pipeline|sequence|moves? through|then)\b/i;
       best.ordered = cue.test(best.sentence) || cue.test(String(text).split('\n')[0]);
-      best.cycle = /\b(cycle|cyclical|repeats?|loop)\b/i.test(text);
+      // 10.21.1: a cycle only when the text says so about the list (not "for loop", not one point's description)
+      best.cycle = typeof planRelation === 'function' ? planRelation({ title: String(text).split('\n')[0], full: String(text), items: best.items.map(label => ({ label })) }).relation === 'cycle'
+        : /\b(cycle|cyclical|repeats?|loop)\b/i.test(text);
       return best;
     }
 
@@ -1996,6 +1998,8 @@
           edges: L.ordered ? nodes.slice(1).map((n, i) => ({ from: nodes[i].id, to: n.id, label: '' })) : [],
           brief: { subject: '', objects: [], setting: '', composition: '' }, source: 'rules' };
       }
+      // 10.21.1: a cycle only when the text states it about its points (planRelation), not when a cue word appears anywhere
+      if (s.cycle && typeof planRelation === 'function') s.cycle = planRelation({ title: a.title || '', full: text, items: items.map(it => ({ label: it.text, detail: (it.children || []).join('; ') })), ordered: !!a.numbered }).relation === 'cycle';
       const type = s.cycle ? 'cycle_diagram' : s.time ? 'timeline' : s.compare && items.length === 2 && items.some(it => it.children.length) ? 'comparison'
         : s.sequence ? 'process_diagram' : items.some(it => it.children.length) ? 'hierarchy' : 'process_diagram';
       let nodes, groups = [], edges = [];
@@ -2360,10 +2364,24 @@
        whose free part is smaller it is laid out again there at full size when it fits, else scaled down as a whole -
        every shape and text by one factor, never below FIT_MIN - placed at the top of the free part; when even that does
        not fit, the caller puts it on a new slide after the selected one.
-       10.21: same slide first. The design is laid out again natively in any reasonably sized free part (reflow, not only
-       near-full size), then scaled as a whole down to 50 % (was 70 %); a new slide only when the slide has no usable
-       free part at all. */
-    const FIT_MIN = 0.5, REFLOW_MIN = { w: 360, h: 180 };
+       10.21.1: same slide first, readable always. The design is laid out again natively in the free part (any size the
+       layout accepts at the template's text sizes); scaled as a whole only while its smallest text stays at the
+       template minimum (TEMPLATE.minBody, 22 pt) - in practice only designs with larger text. When neither works,
+       nothing is inserted: the error says how much room is free (e.free) so the panel can offer a design that fits
+       there, or a new slide - only when the user asks for it. */
+    const FIT_MIN = 0.7, REFLOW_MIN = { w: 200, h: 120 };
+    const minText = prims => prims.reduce((m, p) => (p.text && p.size ? Math.min(m, p.size) : Array.isArray(p.cells) ? Math.min(m, minText(p.cells)) : m), Infinity);
+    /* 10.21.1: does build(R) give a design that fits R (nothing outside, text at the template minimum)? */
+    function fitsIn(build, R, floor) {
+      if (!R || R.w < REFLOW_MIN.w || R.h < REFLOW_MIN.h) return null;
+      let d = null; try { d = build(R); } catch (e) { d = null; }
+      return d && d.prims && !checkLayout(d.prims, R).some(i => /outside/.test(i)) && minText(d.prims) >= Math.min(TEMPLATE.minBody, floor || TEMPLATE.minBody) - 0.01 ? d : null;
+    }
+    /* the design's own smallest text at the template's full content area (a few built-in labels are 20 pt by design) */
+    function nativeFloor(build) {
+      let d0 = null; try { d0 = build(Object.assign({}, TEMPLATE.contentArea)); } catch (e) { d0 = null; }
+      return d0 && d0.prims ? Math.min(TEMPLATE.minBody, minText(d0.prims)) : TEMPLATE.minBody;
+    }
     function scalePrims(prims, from, to) {
       const k = Math.min(to.w / from.w, to.h / from.h, 1), ox = to.x + (to.w - from.w * k) / 2, oy = to.y;
       const X = v => ox + (v - from.x) * k, Y = v => oy + (v - from.y) * k;
@@ -2386,15 +2404,17 @@
     }
     /* Prims for the slide: build(r) lays the design out in r ({prims} or null when it does not fit there). */
     function fitBuild(fit, build) {
-      if (!fit.rect) throw Object.assign(new Error('full'), { full: true });
-      if (fit.rect.w >= REFLOW_MIN.w && fit.rect.h >= REFLOW_MIN.h) {
-        const d = build(fit.rect);
-        if (d && d.prims && !checkLayout(d.prims, fit.rect).some(i => /outside/.test(i))) return Object.assign({}, d, { k: 1, rect: fit.rect });
-      }
-      if (fit.k < FIT_MIN) throw Object.assign(new Error('full'), { full: true });
-      const d0 = build(fit.base);
-      if (!d0 || !d0.prims) throw Object.assign(new Error('full'), { full: true });
+      const full = () => Object.assign(new Error('full'), { full: true, free: fit.rect ? Object.assign({}, fit.rect) : null });
+      state.lastFree = fit.rect ? Object.assign({}, fit.rect) : null;
+      if (!fit.rect) throw full();
+      let d0 = null; try { d0 = build(fit.base); } catch (e) { d0 = null; }
+      const floor = d0 && d0.prims ? Math.min(TEMPLATE.minBody, minText(d0.prims)) : TEMPLATE.minBody;
+      const d = fitsIn(build, fit.rect, floor);
+      if (d) return Object.assign({}, d, { k: 1, rect: fit.rect });
+      // scaled as a whole only while every text stays at the template minimum
+      if (fit.k < FIT_MIN || !d0 || !d0.prims) throw full();
       const s = scalePrims(d0.prims, fit.base, fit.rect);
+      if (minText(s.prims) < floor - 0.01) throw full();
       return Object.assign({}, d0, { prims: s.prims, k: s.k, rect: { x: fit.rect.x, y: fit.rect.y, w: fit.base.w * s.k, h: fit.base.h * s.k } });
     }
     const fitNote = k => k < 0.995 ? ` It was scaled to ${Math.round(k * 100)} % to fit beside the slide's text.` : '';
@@ -2415,7 +2435,8 @@
       await context.sync();
       return { placed, removed: empties.length, k: d.k };
     }
-    const insertError = e => e.full ? 'This slide has no free space for the visual without covering existing content. Add a new slide with the Content_Slide layout (or make room), select it and press Insert again.'
+    const insertError = e => e.full ? (e.free ? `This design does not fit the free part of this slide (${Math.round(e.free.w)} × ${Math.round(e.free.h)} pt below or beside its text) with text at ${TEMPLATE.minBody} pt or larger, so nothing was inserted.`
+        : 'This slide has no free space for the visual without covering existing content, so nothing was inserted.') + ' Choose a design that fits this space, make room on the slide, or insert it on a new slide.'
       : /Click (a|the) slide/.test(errText(e)) ? 'PowerPoint insertion failed. Click once on a slide in the slide list on the left, then press Insert again.\n(Details: ' + errText(e) + ')'
       : 'PowerPoint could not insert this visual, so nothing was added (the slide is unchanged). Try another suggestion and please report this one.\n(Details: ' + errText(e) + ')';
 
@@ -2814,7 +2835,9 @@
     $('insertAll').addEventListener('click', insertAll);
     $('removeLast').addEventListener('click', removeLast);
     $('gMore').addEventListener('click', () => { const s = state.sec; if (s) { s.galleryOffset = (s.galleryOffset || 0) + 20; renderGallery(); } });
-    $('gallery').addEventListener('keydown', galleryKey);   // 10.21: arrow keys through the numbered designs
+    // 10.21.1: galleryKey is in gallery.js, loaded after this script: referenced when a key is pressed, not now (a direct
+    // reference here threw, stopped this script and left the panel at "Loading…" in PowerPoint)
+    $('gallery').addEventListener('keydown', e => galleryKey(e));   // 10.21: arrow keys through the numbered designs
     $('reviewed').addEventListener('change', e => { if (state.sec) state.sec.reviewed = e.target.checked; updateButtons(); });
     $('useSlide').addEventListener('click', useSlideText);
     $('recheck').addEventListener('click', refreshStatus);

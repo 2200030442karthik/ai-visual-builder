@@ -74,11 +74,24 @@ function planFromPrep(prep) {
   const sc = t => typeof sentenceCase === 'function' && !prep.record ? sentenceCase(t) : t;   // 10.19: LVC sentence case (brand.js); exact records as written
   const items = (prep.points || []).map((p, i) => ({ id: 'p' + i, label: sc(planClean(p.label)), detail: planClean(p.exact || p.detail || ''), group: '' })).filter(i => i.label);
   planIcons(items);
-  // 10.21: a relation the text states (cycle, funnel, levels) opens the layouts made for it; the order is kept as the flow
-  const said = typeof planTextRelation === 'function' ? planTextRelation([prep.full, prep.title].concat(items.map(i => i.label + ' ' + i.detail)).join('\n'), items.length, []) : '';
-  const relation = said && said !== 'comparison' ? said : prep.ordered ? 'sequence' : 'independent';
-  const flow = prep.ordered || said === 'cycle' || said === 'funnel' ? items.map(i => i.id) : [];
-  return planSemantics({ title: prep.title || '', relation, items, groups: [], flow, layouts: [], from: 'text' });
+  // 10.21.1: two points whose descriptions are short lists ("SQL: fixed schema, vertical scaling" / "NoSQL: flexible schema,
+  // horizontal scaling") are two sides with their attributes: compared side by side when the text compares them (a known
+  // pair, "vs", or the same attributes on both sides), each attribute its own point, worded as written
+  if (items.length === 2 && typeof sectionsPlan === 'function' && typeof planRelation === 'function') {
+    const parts = items.map(i => String(i.detail || '').replace(/[.]\s*$/, '').split(/\s*[,;]\s*(?:and\s+)?|\s+and\s+/).map(t => t.trim()).filter(Boolean));
+    if (parts.every(p => p.length >= 2 && p.length <= 6 && p.every(t => t.split(/\s+/).length <= 6))) {
+      const r = planRelation({ title: prep.title, full: prep.full, items, groups: items.map(i => i.label), groupItems: parts });
+      if (r.relation === 'comparison')
+        return sectionsPlan({ title: prep.title, full: prep.full || prep.title, short: prep.short, sections: items.map((it, k) => ({ name: it.label, items: parts[k].map(t => ({ label: t.charAt(0).toUpperCase() + t.slice(1) })) })) });
+    }
+  }
+  // 10.21.1: the relation the text states (planRelation: its structure first, then wording about the whole set) opens the
+  // layouts made for it; the order is kept as the flow; the reason goes with the plan (relationWhy)
+  const rel = typeof planRelation === 'function' ? planRelation({ title: prep.title, full: prep.full, items, ordered: !!prep.ordered }) : { relation: '', why: '' };
+  const said = rel.relation;
+  const relation = /^(cycle|funnel|layers)$/.test(said) ? said : prep.ordered || /^(sequence|timeline)$/.test(said) ? 'sequence' : 'independent';
+  const flow = prep.ordered || /^(cycle|funnel|sequence|timeline)$/.test(said) ? items.map(i => i.id) : [];
+  return planSemantics({ title: prep.title || '', relation, relationWhy: rel.why || '', items, groups: [], flow, layouts: [], from: 'text' });
 }
 /* A plan layout drawn again for the free part of the slide it goes on (the same measuring and checks as the preview). */
 function planBuildFor(it, rect) {

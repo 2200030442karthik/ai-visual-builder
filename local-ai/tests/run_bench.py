@@ -17,7 +17,10 @@ sys.path.insert(0, HERE)
 from edge_cdp import EDGE  # noqa: E402
 
 NAMES = {'genai': 'Generative AI (one sentence, list between dashes)', 'ai': 'Artificial Intelligence slide (title, subtitle, one sentence)', 'claude': 'Claude AI (one statement)', 'aiml': 'AI & ML (What you learn / Best for)', 'dm': 'Digital Marketing (topics and outcomes)',
-         'cloud': 'Cloud computing (a paragraph of four sentences)', 'dslife': 'Data science lifecycle (eight labelled points)', 'k8s': 'Kubernetes (one statement)'}
+         'cloud': 'Cloud computing (a paragraph of four sentences)', 'dslife': 'Data science lifecycle (eight labelled points)', 'k8s': 'Kubernetes (one statement)',
+         'lvcShort': 'LVC short: three benefits', 'lvcLong': 'LVC long: a paragraph on three kinds of ML', 'lvcStructured': 'LVC structured: course sections',
+         'lvcCompare': 'LVC comparison: SQL vs NoSQL', 'lvcDense': 'LVC dense: ten numbered points with descriptions', 'lvcCycle': 'LVC cycle: the sprint cycle',
+         'lvcLoops': 'LVC loops: kinds of Python loops (not a cycle)'}
 
 
 def run(probe_py, svg_dir):
@@ -63,15 +66,16 @@ def sheet(out_dir, key, runs):
 
 
 def summary(runs):
-    lines = ['| Example | Version | Designs (Generate + More) | Categories | Look-alike pairs | Repeated families | Text-only designs | Designs missing a fact | Layout issues |',
-             '|---|---|---|---|---|---|---|---|---|']
+    lines = ['| Example | Version | Designs (Generate + More) | Generate (ms) | Categories | Look-alike pairs | Repeated families | Text-only designs | Designs missing a fact | Layout issues | Smallest text (pt) | Cycle designs in top 3 | Top 3 |',
+             '|---|---|---|---|---|---|---|---|---|---|---|---|---|']
     for key in NAMES:
         for label, (res, _) in runs.items():
             if key not in res:
                 continue
             ex, D = res[key], res[key]['designs']
-            lines.append(f'| {NAMES[key]} | {label} | {ex["generate"]} + {ex["more"]} | {ex["categories"]} | {ex["lookAlikePairs"]} | {ex["familyRepeats"]} | '
-                         f'{sum(1 for x in D if not x["objects"])} | {sum(1 for x in D if x["missing"])} | {sum(1 for x in D if x["issues"] > 0)} |')
+            lines.append(f'| {NAMES[key]} | {label} | {ex["generate"]} + {ex["more"]} | {ex.get("genMs", "")} | {ex["categories"]} | {ex["lookAlikePairs"]} | {ex["familyRepeats"]} | '
+                         f'{sum(1 for x in D if not x["objects"])} | {sum(1 for x in D if x["missing"])} | {sum(1 for x in D if x["issues"] > 0)} | '
+                         f'{min([x["minPt"] for x in D] or [0])} | {ex.get("cycleTop3", "")} | {", ".join(ex.get("top3", []))} |')
     return '\n'.join(lines) + '\n'
 
 

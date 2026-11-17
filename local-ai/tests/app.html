@@ -294,11 +294,24 @@ async function run() {
     const kT = 'Kubernetes automates deployment, scaling, and management of containerized applications.';
     fresh(); L = await gen(kT);
     const ph = () => M.slides[0].items.find(x => x.name === 'Content Placeholder 2');
+    const flatG = L => L.flatMap(x => x.group ? flatG(x.group.shapes.items) : [x]);   // members of the inserted groups
     const sameSlide = async (text, i) => {
       M.reset(); await gate(); A.APP.lastIns = null; ph().textFrame.textRange.text = text; const n0 = M.slides.length, before = new Set(M.slides[0].items.map(x => x.id));
       A.appSelect(i); await A.appInsert();
       const mine = M.slides[0].items.filter(x => !before.has(x.id)), boxes = mine.map(x => [x.top, x.top + x.height]);
-      return { newSlides: M.slides.length - n0, onThisSlide: mine.length, top: Math.round(Math.min(...boxes.map(b => b[0]))), bottom: Math.round(Math.max(...boxes.map(b => b[1]))), note: d.getElementById('status').textContent.slice(0, 200), fit: W.eval('state.lastFit') };
+      const sizes = flatG(M.slides.flatMap(sl => sl.items).filter(x => !before.has(x.id))).filter(x => x.textFrame && String(x.textFrame.textRange.text || '').trim()).map(x => x.textFrame.textRange.font.size).filter(v => v > 0);
+      const box = d.getElementById('appFit');
+      return { newSlides: M.slides.length - n0, onThisSlide: mine.length, top: mine.length ? Math.round(Math.min(...boxes.map(b => b[0]))) : null, bottom: mine.length ? Math.round(Math.max(...boxes.map(b => b[1]))) : null,
+        note: d.getElementById('status').textContent.slice(0, 260), fit: W.eval('state.lastFit'), minPt: sizes.length ? Math.min(...sizes) : null, offer: !box.hidden, offerButtons: box.hidden ? [] : [...box.querySelectorAll('button')].map(b => b.textContent) };
+    };
+    // 10.21.1: after an offer, a click on one of its buttons (a design that fits here, or a new slide) - only then is anything inserted
+    const takeOffer = async which => {
+      const n0 = M.slides.length, before = new Set(M.slides.flatMap(sl => sl.items).map(x => x.id)), b = [...d.querySelectorAll('#appFit button')].find(x => which === 'new' ? x.dataset.new : !x.dataset.new);
+      if (!b) return { clicked: false };
+      b.click(); await new Promise(r => setTimeout(r, 300)); for (let k = 0; k < 60 && A.APP.busy; k++) await new Promise(r => setTimeout(r, 100)); await new Promise(r => setTimeout(r, 300));
+      const mine = M.slides[0].items.filter(x => !before.has(x.id)), sizes = flatG(M.slides.flatMap(sl => sl.items).filter(x => !before.has(x.id))).filter(x => x.textFrame && String(x.textFrame.textRange.text || '').trim()).map(x => x.textFrame.textRange.font.size).filter(v => v > 0);
+      return { clicked: true, newSlides: M.slides.length - n0, onThisSlide: mine.length, top: mine.length ? Math.round(Math.min(...mine.map(x => x.top))) : null, bottom: mine.length ? Math.round(Math.max(...mine.map(x => x.top + x.height))) : null,
+        minPt: sizes.length ? Math.min(...sizes) : null, note: d.getElementById('status').textContent.slice(0, 200) };
     };
     const di = L.findIndex(c => c.engine === 'designs');
     res.v19.same = await sameSlide(kT, di);
@@ -306,7 +319,9 @@ async function run() {
     // 10.21: a slide whose text leaves room for the visual only below 70 % (5 lines): kept on this slide now
     res.v21tight = await sameSlide(Array.from({ length: 5 }, (_, k) => 'Line ' + (k + 1) + ' of the text that fills part of the content placeholder').join('\n'), di);
     res.v21tight.textBottom = Math.round(205 + ev('textUsedHeight')(Array.from({ length: 5 }, (_, k) => 'Line ' + (k + 1) + ' of the text that fills part of the content placeholder').join('\n'), 1079, 24));
+    if (res.v21tight.offer) res.v21tight.alt = await takeOffer('alt');
     res.v19.full = await sameSlide(Array.from({ length: 14 }, (_, k) => 'Line ' + (k + 1) + ' of the text that fills the whole content placeholder of this slide').join('\n'), di);
+    if (res.v19.full.offer) res.v19.full.asked = await takeOffer('new');
     await W.eval('removeLast()');
     // the large gallery closes after Insert (back to PowerPoint); "Open large gallery" opens it again
     M.reset(); await gate(); fresh(); L = await gen(kT);
@@ -501,16 +516,20 @@ async function run() {
     ['A27 A paragraph of several sentences (cloud computing) is read as its topic and one section per list - service models, key benefits, cloud deployments - with every item',
       res.v19.read && res.v19.read.title === 'Cloud computing' && res.v19.read.sections.length === 3 && /IaaS, PaaS, SaaS/.test(res.v19.read.sections[0]) && /Public, Private, Hybrid/.test(res.v19.read.sections[2]), JSON.stringify(res.v19.read)],
     ['A28 Large text: one Generate gives 20+ designs with every point (one-slide designs first, then the same design on 2-3 slides, condensed names-only versions said in their name); a multi-slide design inserts here and on new slides, Undo removes all',
-      res.v19.cloud.n >= 20 && !res.v19.cloud.incomplete.length && res.v19.cloud.firstOneSlide && res.v19.cloud.multi > 0 && res.v19.lifecycle.n >= 20 && !res.v19.lifecycle.incomplete.length &&
+      res.v19.cloud.n >= 20 && !res.v19.cloud.incomplete.length && res.v19.cloud.firstOneSlide && res.v19.cloud.multi > 0 && res.v19.lifecycle.n >= 18 /* 10.21.1: relevance and quality over quantity (text-only designs left out) */ && !res.v19.lifecycle.incomplete.length &&
       res.v19.multiInsert.offered && res.v19.multiInsert.slidesAdded === 2 && res.v19.multiInsert.undone, JSON.stringify({ cloud: res.v19.cloud, lifecycle: res.v19.lifecycle, multi: res.v19.multiInsert })],
-    ['A29 Same slide by default: a slide with text gets the visual below its text (scaled when needed, never over it, said); a slide without room gets it on a new slide after it, automatically and said',
-      res.v19.same.newSlides === 0 && res.v19.same.onThisSlide > 0 && res.v19.same.top >= res.v19.same.textBottom && res.v19.same.bottom <= 720 && /on this slide/.test(res.v19.same.note) &&
-      res.v19.full.newSlides === 1 && /new slide after this one/.test(res.v19.full.note), JSON.stringify({ same: res.v19.same, full: res.v19.full })],
+    ['A29 Same slide by default: a slide with text gets the visual below its text (never over it, said); a slide without room: nothing inserted, explained, a new slide only when the user clicks for it (10.21.1)',
+      res.v19.same.newSlides === 0 && res.v19.same.onThisSlide > 0 && res.v19.same.top >= res.v19.same.textBottom && res.v19.same.bottom <= 720 && /on this slide/.test(res.v19.same.note) && res.v19.same.minPt >= 20 &&
+      res.v19.full.newSlides === 0 && res.v19.full.onThisSlide === 0 && res.v19.full.offer && /nothing was inserted/.test(res.v19.full.note) &&
+      res.v19.full.asked && res.v19.full.asked.newSlides === 1 && /new slide after this one, as you chose/.test(res.v19.full.asked.note), JSON.stringify({ same: res.v19.same, full: res.v19.full })],
     ['A30 The large gallery closes after Insert (the visual goes in, back to PowerPoint)', res.v19.gallery.inserted && res.v19.gallery.closed, JSON.stringify(res.v19.gallery)],
     ['A31 Icons stay in front: a card drawn before its icon stays behind it after grouping (restacked in the designed order); a container drawn after its contents is moved behind them',
       res.v19.layers.iconAboveCard && res.v19.layers.restacked && res.v19.paint === 'roundRect,ellipse,text', JSON.stringify({ layers: res.v19.layers, paint: res.v19.paint })],
-    ['A33 Same slide first (10.21): a slide whose text leaves less than 70 % of the content area keeps the visual (reflowed or scaled to 50 % or more), below the text, no new slide',
-      res.v21tight.newSlides === 0 && res.v21tight.onThisSlide > 0 && res.v21tight.top >= res.v21tight.textBottom && res.v21tight.bottom <= 720 && /on this slide/.test(res.v21tight.note) && (res.v21tight.fit || 1) >= 0.5,
+    ['A33 Same slide first, readable (10.21.1): little room left by the text - the design laid out again there, or (when it cannot fit at the template text size) designs that fit offered and inserted on this slide on a click; never below 20 pt, never a new slide unasked',
+      res.v21tight.newSlides === 0 && (res.v21tight.onThisSlide > 0
+        ? res.v21tight.top >= res.v21tight.textBottom && res.v21tight.bottom <= 720 && /on this slide/.test(res.v21tight.note) && res.v21tight.minPt >= 20
+        : res.v21tight.offer && /nothing was inserted/.test(res.v21tight.note) && res.v21tight.alt && res.v21tight.alt.clicked && res.v21tight.alt.newSlides === 0 && res.v21tight.alt.onThisSlide > 0
+          && res.v21tight.alt.top >= res.v21tight.textBottom && res.v21tight.alt.bottom <= 720 && res.v21tight.alt.minPt >= 20),
       JSON.stringify(res.v21tight)],
     ['A34 Numbered designs (10.21): every card shows its number (1..N, in order), the selected one is named by number; arrow keys / Home move the choice, in the panel and in the large gallery',
       res.v21nav && res.v21nav.nums.startsWith('1,2,3') && res.v21nav.seq && /^Design 1 of \d+: /.test(res.v21nav.label) && res.v21nav.right === 4 && res.v21nav.home === 0 && res.v21nav.focus

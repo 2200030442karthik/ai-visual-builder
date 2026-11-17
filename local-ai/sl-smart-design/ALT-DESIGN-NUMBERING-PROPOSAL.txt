@@ -1,3 +1,8 @@
+SUPERSEDED (V10.21.1, 17 Nov 2026): patch_altdesign.py now builds this change into a COPY of the add-in automatically
+(form code + class ThumbClick; Module1 with the licence check and LicenseForm verified identical). The package uses it
+only with build-slsd-package.ps1 -NumberedGallery until it passes the real-PowerPoint check (docs/V10.21.1-POWERPOINT-CHECKS.md, B).
+The text below is kept as the design record.
+
 SL SMART DESIGN - ALTERNATIVE DESIGN: NUMBERED, CLEARER SELECTION (V10.21 PROPOSAL, NOT APPLIED)
 ==============================================================================================
 

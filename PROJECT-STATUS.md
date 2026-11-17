@@ -1,6 +1,6 @@
 # AI Visual Builder — project status
 
-## Current version: V10.21 (16 Nov 2026, local, not pushed) on V10.20.1 (16 Nov 2026) — SL Smart Design + AI Visual Builder unified; installer validated (staging)
+## Current version: V10.21.1 (17 Nov 2026, local, not pushed) on V10.20.1 (16 Nov 2026) — SL Smart Design + AI Visual Builder unified; installer validated (staging)
 
 Authorized employee + Content Slide of the approved template → paste content → analyze → accurate infographic and
 pictorial suggestions → preview → insert editable PowerPoint shapes. JavaScript panel + small Python host; no AI
@@ -34,6 +34,53 @@ Simplilearn brand style) or Claude AI (Anthropic API), both paid, confirmed per 
 | Panel host | `local-ai/server.py` | 10.19.0 (large gallery: /api/gallery); `paid_order` "auto"; `orchestrate` in /api/status; ribbon icons; `--test` hosts refuse paid requests; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
 | Manifest | `manifest-v10.xml` | 10.19.0.0: group "AI Visual Builder" at the end of PowerPoint's Home tab (the button the SL Smart Design "AI Visuals" button presses), buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
 | Diagnosis | `local-ai/tests/run_diag.py`, `diag.html`, `diag_cases.py` | every layout considered with its reason; every Napkin variation with arrangement, status and preview |
+
+## V10.21.1 — reviewer gaps: Alternative Design gallery, relevance, text accuracy, readable same-slide fit (17 Nov 2026)
+Validated in headless Edge with the test host (no paid requests, no COM), with isolated installer tests, and **in real
+PowerPoint for the panel (check A, owner-approved, 17 Nov)**. Still open: check B (the numbered Select Template gallery in
+real PowerPoint) and anything on a Mac. Checklist: `docs/V10.21.1-POWERPOINT-CHECKS.md`.
+
+Real PowerPoint, 17 Nov (disposable deck `D:\Karthik\SLSD_TestDecks\LVC_v10211_test.pptx`): the panel was driven through
+WebView2 DevTools, with PowerPoint started with a session-only debug setting (no registry change), and the shapes were
+read through COM. Paid AI was blocked three ways: the policy override, a fetch guard, and the usage files' checksums,
+which were unchanged. No paid attempt was made.
+- A1: Generate in 156 ms, 24 designs, three cycle compositions first. The cycle wheel was inserted on the slide below
+  its text (text ends ~295 pt, visual 305–637 pt), as native groups, every text 22 pt, every point and description word
+  for word, topic "The Agile sprint cycle".
+- A3: on a slide with 6 lines, the wide design was refused with the free room named (1079 × 219 pt) and 2 designs that
+  fit were offered. A click put one on the same slide below the text (421–640 pt, 24 pt minimum); no new slide.
+- A4: on a full slide nothing was inserted or covered; a new slide (Content_Slide) appeared only after the click.
+- A5/A6: Python loops not drawn as a cycle; SQL vs NoSQL: three comparison layouts first.
+- A7: "Pillars with 2.5D icons": a native cube in every icon group, behind the icon and in front of the card. Undo
+  removed exactly what was inserted.
+- A8: badges 1..N, "Design 1 of 21: …", ArrowRight moves the choice, the insert button names the number.
+- **Found and fixed only by this check:** V10.21's arrow-key line referred to `galleryKey` before gallery.js was
+  loaded. That stopped the panel's start-up in PowerPoint (stuck at "Loading…"). The browser tests did not see it, so a
+  start-up test was added, and it fails on the old code. Also found here: the 2.5D style was lost when a design was
+  drawn again for insertion (fixed, tested).
+
+| # | Gap | Done | Files |
+|---|---|---|---|
+| 1 | Alternative Design | `sl-smart-design/patch_altdesign.py` builds a copy of the add-in whose Select Template form numbers every design ("Design n", count in the title bar), outlines the chosen one, selects on a thumbnail click and inserts on a double-click (new class `ThumbClick`). Module1 (every macro, licence check) and LicenseForm have identical source; the designers and every other part are byte-identical; checked by the tool, by the package build, and independently with olefile/olevba. P-code is left out, so PowerPoint compiles from source on load. The package uses it only with `-NumberedGallery`, until it passes in real PowerPoint | `sl-smart-design/patch_altdesign.py`, `deploy/build-slsd-package.ps1` |
+| 2 | Visual quality / repetition | Relevance ranking: designs that draw the relation the text states rank first (+30, kept even without pictures). Equal designs rotate by text, and families inserted last step back (deck variety). New "Cycle wheel" (numbered icon discs on a ring). Optional 2.5D icons (native cube tiles, editable). Short topic names are no longer the first two words ("The Agile") | `orchestrator.js`, `packs/vivid-10.21.js` (10.21.1), `plan.js`, `sections.js`, `app.js` |
+| 3 | Text accuracy | `planRelation` replaces keyword matching: structure first (numbering, step words, dates in order, a last point that returns to the first, two sections describing the same attributes). Wording counts only when it is about the whole set (title, intro, closing), never in one point's description, with technical phrases excluded ("for loop", "continuous integration", "high levels of"). The reason is kept with the plan. An unordered list is no longer turned into a pipeline because one point is called "Monitoring". Two points with attribute lists become two compared sides. Prose about kinds of one thing becomes one point per kind, each with its sentence kept word for word | `plan.js`, `napkin.js`, `sections.js`, `understand.js`, `v10.html` |
+| 4 | Same-slide fit | Laid out again in the free part. Scaling is allowed only while every text stays at the template minimum (22 pt, or the design's own smallest at full size); the V10.21 50 % scaling is removed. When it cannot fit, nothing is inserted; the panel says how much room is free and offers the designs that fit there, and a new slide only on a click | `v10.html`, `orchestrator.js` (`fit`), `app.js` |
+| 5 | Performance and icons | Generate stays at 50–260 ms in the panel (measured); the paid services' time is theirs. 2.5D icon variants as above, no paid dependency | — |
+| 6 | Mac | Accurate Windows-only list in `mac/README-MAC.md`. Opt-in AppleScript bridge (`mac_vba_bridge`, off by default, allow-listed macros only), untested on a Mac | `server.py`, `slsd.js`, `mac/` |
+
+Benchmark against V10.20.1 (`tests/run_bench.py --before d966bb4`, 7 new LVC texts):
+- long paragraph: 4 → 19 designs (3 → 0 text-only);
+- SQL vs NoSQL: comparison layouts are the top 3 (before: none in the top 3);
+- dense 10 points: 2 → 9 designs (two-slide versions keep every description at 22 pt);
+- sprint cycle: three cycle compositions in the top 3 (before: none);
+- Python loops: no cycle (before: none either; the V10.21 keyword rule would have made it one);
+- smallest text 22 pt everywhere;
+- every source point present in every design ("missing" in the table is the title only, which the slide's heading shows).
+
+Tests (17 Nov, final code): run_tests.py all passed (V10.11 29/29, V10.12 14/14, V10.12.1 13/13, V10.12.2 11/11, V10.20 35/35 incl. A29
+and A33 rewritten for the new fit rules; A28's lifecycle threshold lowered 20 → 18 designs: relevance and quality over
+quantity), test_upgrade 51/51, SL Smart Design 159 + 1 skipped (PowerPoint was open), installer 55/55 (isolated). 2.5D: one
+leading design is offered with 2.5D icons instead of flat ones (never both: no repeated composition).
 
 ## V10.21 — usability, visual quality, text analysis, same-slide fit, numbered designs, Mac (16 Nov 2026)
 Validated in headless Edge with the test host. That host refuses paid requests and COM. **No V10.21 change has been

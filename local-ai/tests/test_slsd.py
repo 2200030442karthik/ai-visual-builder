@@ -146,6 +146,22 @@ def t_server_inprocess():
             S._slsd_runner('RenameText'); check('host', 'Mac: commands answered with a plain message', False)
         except Exception as e:
             check('host', 'Mac: commands answered with a plain message', type(e).__name__ == 'MacroError' and 'Mac' in str(e), e)
+        check('host', 'Mac bridge off by default (not in /api/status)', S.mac_bridge_on() is False)
+        # 10.21.1: the opt-in Mac bridge - only the allow-listed macro of the configured add-in, no quotes can get in
+        test0, S.CONFIG['mac_vba_bridge'], S.TEST_NO_PAID = S.TEST_NO_PAID, True, False
+        import subprocess as SP
+        calls, run0 = [], SP.run
+        SP.run = lambda args, **k: calls.append(args) or type('R', (), {'returncode': 0, 'stderr': ''})()
+        try:
+            S._slsd_runner('ShowTemplateSelectorForm')
+            check('host', 'Mac bridge (opt-in): osascript runs the original macro by its full name',
+                  calls == [['osascript', '-e', 'tell application "Microsoft PowerPoint" to run VB macro macro name "SL_Smart_Design_v2_Key_Dec_25.ppam!Module1.ShowTemplateSelectorForm"']], calls)
+            try:
+                S.mac_script('Evil" & do shell script "x'); check('host', 'Mac bridge refuses a macro outside the list', False)
+            except Exception as e:
+                check('host', 'Mac bridge refuses a macro outside the list', type(e).__name__ == 'MacroError', e)
+        finally:
+            SP.run, S.CONFIG['mac_vba_bridge'], S.TEST_NO_PAID = run0, False, test0
     finally:
         S.sys.platform = real
     try:

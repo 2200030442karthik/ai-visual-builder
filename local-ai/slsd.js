@@ -217,11 +217,17 @@
     catch (e) { return false; }
   }
 
+  /* 10.21.1: on a Mac the panel host may run the commands through PowerPoint for Mac's AppleScript (opt-in, mac_vba_bridge) */
+  async function macBridge() {
+    try { const r = await fetch('/api/status', { headers: H, cache: 'no-store' }); const j = await r.json(); return !!(j && j.slsd && j.slsd.mac_bridge); }
+    catch (e) { return false; }
+  }
+
   function done(event) { if (event && !event.__done) { event.__done = true; try { event.completed(); } catch (e) { /* not a command event */ } } }
 
   async function alternativeDesign(event) {
     let prep = null;
-    if (onMac()) { await notice('Alternative Design', MAC_MSG); done(event); return; }
+    if (onMac() && !(await macBridge())) { await notice('Alternative Design', MAC_MSG); done(event); return; }
     try {
       prep = await prepareAlternative();
       if (!prep.ok) { await notice('Alternative Design', prep.message); return; }      // the command stays open while it is read
@@ -253,7 +259,7 @@
 
   function command(cmd) {
     return async event => {
-      if (onMac()) { await notice(LABELS[cmd], MAC_MSG); done(event); return; }
+      if (onMac() && !(await macBridge())) { await notice(LABELS[cmd], MAC_MSG); done(event); return; }
       try {
         const id = await ask(cmd);
         done(event);
@@ -264,7 +270,7 @@
     };
   }
 
-  root.SLSD = { onMac, MAC_MSG, points, pickContent, placeMissing, outOfRange, COMMANDS, LABELS, MIN, MAX, prepareAlternative, restoreAlternative, alternativeDesign, command };
+  root.SLSD = { onMac, macBridge, MAC_MSG, points, pickContent, placeMissing, outOfRange, COMMANDS, LABELS, MIN, MAX, prepareAlternative, restoreAlternative, alternativeDesign, command };
 
   if (typeof Office === 'undefined') return;
   Office.onReady(info => {

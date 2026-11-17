@@ -76,7 +76,7 @@ Answer with the SVG only: start with <svg and end with </svg>, no explanation an
 # draws up to four different layouts from it (plan.js and the design packs), each measured at 22 pt and checked. One paid
 # request for every variation; the drawing - where generated SVGs fail (clipped labels, crossing connectors) - is done by
 # code that measures it. The lists below must match the panel's (tests/test_claude.py checks them).
-PLAN_LAYOUTS = ['platform', 'stack3d', 'scene', 'capmap', 'swimlanes', 'planes', 'ecosystem', 'modules', 'pyramid', 'cycle', 'funnel', 'versus',
+PLAN_LAYOUTS = ['platform', 'stack3d', 'scene', 'capmap', 'swimlanes', 'planes', 'ecosystem', 'modules', 'pyramid', 'cycle', 'cyclewheel', 'funnel', 'versus',
                 'architecture', 'layers', 'capability', 'tree', 'pipeline', 'timeline', 'stair', 'hub', 'grid', 'columns', 'rows',
                 'roadmap', 'pillars', 'quadrant', 'spotlight', 'storyboard', 'callout', 'journey',
                 'learnmap', 'herobanner', 'bridge', 'iconrows', 'badges', 'splitpanels', 'poster', 'ribbon', 'colortiles',

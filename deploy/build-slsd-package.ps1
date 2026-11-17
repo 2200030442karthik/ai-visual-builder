@@ -5,11 +5,16 @@
 #   -SlsdAddin <ppam>      the SL Smart Design copy with its own tab hidden (make_unified_slsd.py --hide-tab)
 #   -OriginalAddin <ppam>  the company's original add-in: the copy must be identical to it except the hidden tab
 #   -IncludeTemplates      also packs the template library from this PC (proprietary; only with the owner's approval)
+#   -NumberedGallery       10.21.1: the add-in copy's Select Template gallery numbered, with clearer selection
+#                          (sl-smart-design/patch_altdesign.py: its form code and one new class only; Module1 with every
+#                          macro and the licence check, LicenseForm and the forms' designers checked identical to the original).
+#                          Off until the gallery has passed its real-PowerPoint test.
 param(
     [string]$RuntimeFrom,
     [string]$SlsdAddin = 'D:\Karthik\SL_Smart_Design_Source\Unified_V10.20.1\SL_Smart_Design_v2_Key_Dec_25.ppam',
     [string]$OriginalAddin = 'D:\Karthik\SL_Smart_Design_Source\Backup_before_V10.20\SL_Smart_Design_v2_Key_Dec_25.ppam',
     [switch]$IncludeTemplates,
+    [switch]$NumberedGallery,
     [string]$Out
 )
 $ErrorActionPreference = 'Stop'
@@ -70,14 +75,28 @@ Step "manifests: product Id $ProductId, $($urls.Count) URLs, every file present"
 # 4. SL Smart Design add-in: the tab-hidden copy, checked against the company's original (VBA / licence untouched)
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 function Parts($f) { $z = [IO.Compression.ZipFile]::OpenRead($f); try { $h = @{}; foreach ($e in $z.Entries) { $s = $e.Open(); try { $h[$e.FullName] = [BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash($s)) } finally { $s.Close() } }; $h } finally { $z.Dispose() } }
+$allowed = 'customUI/customUI.xml'
+if ($NumberedGallery) {
+    $gdir = Join-Path $env:TEMP "slsd-gallery-$PID"; if (Test-Path $gdir) { Remove-Item $gdir -Recurse -Force }
+    & python -I (Join-Path $La 'sl-smart-design\patch_altdesign.py') $SlsdAddin $gdir | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'The numbered gallery could not be built.' }
+    $SlsdAddin = Join-Path $gdir (Split-Path $SlsdAddin -Leaf)
+    # against the company's ORIGINAL: every macro and the licence check (Module1), LicenseForm: the same source
+    $chk = "import sys; sys.path.insert(0, sys.argv[3]); import vba_read; a = vba_read.module_sources(sys.argv[1]); b = vba_read.module_sources(sys.argv[2]); " +
+           "sys.exit(0 if a['Module1'] == b['Module1'] and a['LicenseForm'] == b['LicenseForm'] and set(b) == set(a) | {'ThumbClick'} else 1)"
+    & python -I -c $chk $OriginalAddin $SlsdAddin (Join-Path $La 'tests')
+    if ($LASTEXITCODE -ne 0) { throw 'The numbered gallery changed more than its form: refused.' }
+    $allowed = 'customUI/customUI.xml,ppt/vbaProject.bin'
+}
 $a = Parts $OriginalAddin; $b = Parts $SlsdAddin
 $diff = @($a.Keys + $b.Keys | Sort-Object -Unique | Where-Object { $a[$_] -ne $b[$_] })
-if (($diff -join ',') -ne 'customUI/customUI.xml') { throw "The add-in copy differs from the original in more than its ribbon: $($diff -join ', ')" }
+if (($diff -join ',') -ne $allowed) { throw "The add-in copy differs from the original in more than allowed ($allowed): $($diff -join ', ')" }
 $z = [IO.Compression.ZipFile]::OpenRead($SlsdAddin); try { $r = New-Object IO.StreamReader($z.GetEntry('customUI/customUI.xml').Open()); $ui = $r.ReadToEnd(); $r.Close() } finally { $z.Dispose() }
 if ($ui -notmatch 'id="Template_Selector"[^>]*visible="false"') { throw 'The add-in copy does not hide its own tab.' }
 New-Item -ItemType Directory -Force (Join-Path $Stage 'slsd') | Out-Null
 Copy-Item $SlsdAddin (Join-Path $Stage 'slsd')
-Step 'SL Smart Design add-in: tab hidden; every other part (VBA project, forms, licence check) identical to the original'
+if ($NumberedGallery) { Step 'SL Smart Design add-in: tab hidden; Select Template gallery numbered (form code + ThumbClick); Module1 (macros, licence check) and LicenseForm identical to the original' }
+else { Step 'SL Smart Design add-in: tab hidden; every other part (VBA project, forms, licence check) identical to the original' }
 
 # 5. Template library (optional; proprietary)
 $tplCount = 0
@@ -107,7 +126,7 @@ Copy-Item (Join-Path $Root 'docs\SLSD-INSTALL-GUIDE.txt') (Join-Path $Stage 'INS
 Copy-Item (Join-Path $Root 'docs\SLSD-IT-DEPLOYMENT.md') $it
 Copy-Item (Join-Path $Uni 'deployment.example.json') $it
 $pkg = [ordered]@{ product = 'SL Smart Design (with AI Visual Builder)'; version = $Ver; built = (Get-Date).ToString('s'); product_id = $ProductId
-                   status = 'staging'; templates_included = [bool]$IncludeTemplates; template_files = $tplCount
+                   status = 'staging'; templates_included = [bool]$IncludeTemplates; template_files = $tplCount; numbered_gallery = [bool]$NumberedGallery
                    addin_sha256 = (Get-FileHash $SlsdAddin).Hash; source_commit = ((& git -C $Root rev-parse --short HEAD) -join '') }
 [IO.File]::WriteAllText((Join-Path $Stage 'package.json'), ($pkg | ConvertTo-Json), (New-Object Text.UTF8Encoding $false))
 

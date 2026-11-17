@@ -31,6 +31,25 @@ const EX = {
       '- Data cleaning: handle missing values, duplicates and outliers\n- Exploratory analysis: find patterns with statistics and charts\n- Feature engineering: create variables that improve the model\n' +
       '- Modeling: train and compare machine learning algorithms\n- Evaluation: measure accuracy, precision and recall\n- Deployment: put the model into production and monitor it',
     facts: ['Data Science Lifecycle', 'Problem definition', 'Data collection', 'Data cleaning', 'Exploratory analysis', 'Feature engineering', 'Modeling', 'Evaluation', 'Deployment'] },
+  // 10.21.1: realistic LVC slide texts - short, long, structured, dense - and two whose relation must be read right
+  lvcShort: { text: 'Benefits of Python\n- Easy to learn\n- Large ecosystem of libraries\n- Strong community support',
+    facts: ['Python', 'Easy to learn', 'Large ecosystem of libraries', 'Strong community support'] },
+  lvcLong: { text: 'Machine learning lets computers learn patterns from data instead of following hand-written rules. In supervised learning, a model is trained on labelled examples so it can predict ' +
+      'outcomes for new data, such as classifying emails as spam. Unsupervised learning finds hidden structure in unlabelled data, for example grouping customers into segments. ' +
+      'Reinforcement learning trains an agent through rewards and penalties as it interacts with an environment, which is how game-playing systems improve.',
+    facts: ['Machine learning', 'Supervised learning', 'Unsupervised learning', 'Reinforcement learning'] },
+  lvcStructured: { text: 'Project Management Professional (PMP)\nWhat you learn: Agile and hybrid approaches, risk management, stakeholder engagement, scheduling and budgeting.\nBest for: Project managers, team leads and consultants preparing for the PMP exam.',
+    facts: ['What you learn', 'Best for', 'Risk management', 'Stakeholder engagement', 'Project managers', 'Team leads', 'Consultants'] },
+  lvcCompare: { text: 'SQL vs NoSQL databases\nSQL: Fixed schema, vertical scaling, strong consistency\nNoSQL: Flexible schema, horizontal scaling, eventual consistency',
+    facts: ['SQL', 'NoSQL', 'Fixed schema', 'Flexible schema', 'Vertical scaling', 'Horizontal scaling', 'Strong consistency', 'Eventual consistency'] },
+  lvcDense: { text: 'Cybersecurity fundamentals\n1. Confidentiality: only authorised people can read the data\n2. Integrity: data is not altered without permission\n3. Availability: systems stay up when users need them\n' +
+      '4. Authentication: users prove who they are with passwords, tokens or biometrics\n5. Authorisation: each user gets only the access their role needs\n6. Encryption: data is unreadable without the key, at rest and in transit\n' +
+      '7. Patching: known vulnerabilities are fixed quickly\n8. Monitoring: suspicious activity is detected and investigated\n9. Backups: copies are kept offline and tested\n10. Awareness training: staff learn to spot phishing',
+    facts: ['Confidentiality', 'Integrity', 'Availability', 'Authentication', 'Authorisation', 'Encryption', 'Patching', 'Monitoring', 'Backups', 'Awareness training'] },
+  lvcCycle: { text: 'The Agile sprint cycle\n- Sprint planning: the team picks the work for the sprint\n- Development: the team builds and tests the increment\n- Sprint review: stakeholders see the result\n- Retrospective: the team improves how it works, then the next sprint starts again',
+    facts: ['Sprint planning', 'Development', 'Sprint review', 'Retrospective'], relation: 'cycle' },
+  lvcLoops: { text: 'Loops in Python\n- For loop: repeats over each item of a sequence\n- While loop: repeats while a condition is true\n- Nested loops: a loop inside another loop',
+    facts: ['For loop', 'While loop', 'Nested loops'], relation: 'not cycle' },
 };
 // the same stand-in host as tests/app.html: signed in, Content_Slide selected, both AI services off
 const ACC = `access: { configured: true, mode: 'windows', authorized: true, user: 'test', reason: '', template: { layout_name: 'Content_Slide', fingerprint: { shapes: { 'content placeholder': [101.7, 205, 1078.5, 435.2], 'heading placeholder': [101.7, 119.1, 1078.5, 71.2], 'section tag strip': [1287.2, 0, 80.8, 720.3] }, tolerance: 3 } } }`;
@@ -60,14 +79,18 @@ const out = {}, svg = {};
 for (const [k, ex] of Object.entries(EX)) {
   A.ORCH.memo.clear(); W.eval('state.runText = ""; state.sections = []; 1');
   d.getElementById('content').value = ex.text; d.getElementById('content').dispatchEvent(new W.Event('input'));
+  const t0 = performance.now();
   await A.appGenerate();
+  const genMs = Math.round(performance.now() - t0);
   const first = A.APP.list.slice();
   const more = await W.eval('orchMore')(d.getElementById('content').value.trim(), () => {});
   const added = more && more.fresh ? more.list.slice(0, more.fresh) : [];
   const all = first.concat(added), looks = all.map(c => look(c.prims || []));
   const pairs = []; for (let i = 0; i < all.length; i++) for (let j = 0; j < i; j++) if (same(looks[i], looks[j])) pairs.push([j, i]);
   const fams = all.map(c => (c.family || c.title || '').replace(/ · .*$/, '')), famRep = fams.filter((f, i) => fams.indexOf(f) !== i).length;
-  out[k] = { generate: first.length, more: added.length, designs: all.map(c => measure(c, ex.facts)), lookAlikePairs: pairs.length, pairs,
+  const cyc = c => /cycle|loop|orbit|ring/i.test((c.family || '') + ' ' + (c.title || ''));
+  out[k] = { generate: first.length, more: added.length, genMs, top3: first.slice(0, 3).map(c => (c.family || c.title || '').replace(/ · .*$/, '')),
+    cycleTop3: first.slice(0, 3).filter(cyc).length, relation: ex.relation || '', designs: all.map(c => measure(c, ex.facts)), lookAlikePairs: pairs.length, pairs,
     categories: new Set(all.map(c => c.category)).size, familyRepeats: famRep };
   all.forEach((c, i) => { svg[`${k}-${String(i).padStart(2, '0')}${i >= first.length ? '-more' : ''}`] = W.toSVG(c.prims, 1280, 720); });
 }

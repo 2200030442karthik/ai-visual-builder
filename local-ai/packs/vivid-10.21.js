@@ -7,7 +7,7 @@
      two-column contrast  two coloured headers and their points as icon rows (two things the content compares)
    The same rules as every family (packs/README.txt): every label and description at 22 pt and up, approved colours,
    Open Sans, native shapes only, and only relationships the content states. Loaded after plan.js. */
-registerPack('vivid', '10.21.0', () => {
+registerPack('vivid', '10.21.1', () => {
   const W = '#FFFFFF', SOFT = '#D9D9D9';
   const objKey = it => it.icon || 'none';
   const seqOf = P => (planSeq(P) ? planOrder(P) : P.items);
@@ -92,6 +92,39 @@ registerPack('vivid', '10.21.0', () => {
             ...(o.D ? planIcon(objKey(it), X + o.pad, y + (rowH - o.D) / 2, o.D, c, W, g) : []),
             ...planText(it, X + o.pad + (o.D ? o.D + 12 : 0), y + (rowH - th) / 2, tw, o.s, { align: 'left', grp: g })], g, it.label));
         });
+      });
+      return out;
+    } });
+
+  /* 5. (10.21.1) Cycle wheel: a cycle the content states, as numbered icon discs on a ring (clockwise from the top, the
+     order given), each label and description outside its disc, the topic in the middle when it fits. */
+  regPlan('cyclewheel', { name: 'Cycle wheel', family: 'cyclewheel', kind: 'pictorial', appeal: 3,
+    suits: P => P.relation === 'cycle' && P.items.length >= 3 && P.items.length <= 6,
+    needs: P => P.relation !== 'cycle' ? 'only for a cycle stated in the content' : P.items.length < 3 || P.items.length > 6 ? 'works for 3 to 6 steps' : '',
+    opts: [{ s: 24, D: 84 }, { s: 22, D: 72 }, { s: 22, D: 60 }],
+    build: (P, R, o) => {
+      const L = planOrder(P), n = L.length, D = o.D, cx = R.x + R.w / 2, cy = R.y + R.h / 2;
+      const ry = R.h / 2 - D / 2 - 4, rx = Math.min(ry * 1.2, R.w * 0.2), out = [box('ellipse', cx - rx, cy - ry, 2 * rx, 2 * ry, { fill: null, line: SOFT, lineW: 8 })];
+      const boxes = [];
+      L.forEach((it, i) => {
+        const a = -Math.PI / 2 + i * 2 * Math.PI / n, nx = cx + rx * Math.cos(a), ny = cy + ry * Math.sin(a), right = Math.cos(a) > -0.05;
+        const NB = 42, x0 = right ? nx + D / 2 + 16 + NB : R.x, x1 = right ? R.x + R.w : nx - D / 2 - 16 - NB, tw = x1 - x0;
+        if (tw < 160 || !planFits(it, tw, o.s)) return boxes.push(null);
+        const th = planTextH(it, tw, o.s), ty = Math.max(R.y, Math.min(R.y + R.h - th, ny - th / 2));
+        boxes.push({ x: x0, y: ty, w: tw, h: th, it, i, nx, ny, right });
+      });
+      if (boxes.some(b => !b)) return planNo('a step does not fit beside the wheel');
+      const hit = (p, q) => p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h;
+      if (boxes.some((p, i) => boxes.some((q, j) => j > i && hit(p, q)))) return planNo('the steps overlap around the wheel');
+      // the topic in the middle, only when it fits at 22 pt inside the ring
+      const topic = String(P.short || P.title || '').trim(), inner = 2 * Math.min(rx, ry) * 0.62;
+      if (topic && planWords(topic, inner, 22) && linesAt(topic, inner, 22) <= 3)
+        out.push(label(cx - inner / 2, cy - planLH(topic, inner, 22) / 2, inner, planLH(topic, inner, 22), topic, { size: 22, bold: true, color: INK, align: 'center', valign: 'middle' }));
+      boxes.forEach(b => {
+        const c = accent(b.i), g = 'cw' + b.i, nb = 42;
+        out.push(...planGrp([...planIcon(objKey(b.it), b.nx - D / 2, b.ny - D / 2, D, W, c, g),
+          planNum(b.i, b.right ? b.nx + D / 2 + 8 : b.nx - D / 2 - 8 - nb, b.ny - nb / 2, nb, c, g),
+          ...planText(b.it, b.x, b.y, b.w, o.s, { align: b.right ? 'left' : 'right', grp: g })], g, b.it.label));
       });
       return out;
     } });

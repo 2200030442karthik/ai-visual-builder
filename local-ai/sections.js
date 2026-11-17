@@ -79,10 +79,12 @@ function secItems(body) {
 function secShort(title) {
   const m = /\(([^()]{2,14})\)\s*$/.exec(title);
   if (m) return m[1].trim();
-  const t = title.replace(/\s*\([^)]*\)\s*$/, '').trim(), w = t.split(/\s+/);
-  if (w.length <= 3) return t;
+  // 10.21.1: never the first words of a longer name ("The Agile sprint cycle" is not "The Agile"): a leading article goes,
+  // up to four words stay, a longer name is cut only where it divides ("X and Y", "X for Y"), else kept whole
+  const t = title.replace(/\s*\([^)]*\)\s*$/, '').trim().replace(/^(?:the|a|an)\s+/i, ''), w = t.split(/\s+/);
+  if (w.length <= 4) return t;
   const head = t.split(/\s+(?:and|&|for|with|in|of)\s+/i)[0];
-  return head.split(/\s+/).length <= 3 ? head : w.slice(0, 2).join(' ');
+  return head.split(/\s+/).length <= 4 && head.split(/\s+/).length >= 2 ? head : t;
 }
 /* { title, short, intro, sections: [{ name, kind, items: [{label, detail}] }] } or null when the text is not written
    as labelled sections (at least two labelled lists, or one known label with three or more entries). */
@@ -138,10 +140,12 @@ function sectionsPlan(SX) {
   SX.sections.forEach((s, i) => s.items.forEach(it => items.push({ id: 'p' + items.length, label: sc(planClean(it.label)), detail: planClean(it.detail || ''), group: 's' + i })));
   planIcons(items);
   const st = SX.statement || null;
-  // 10.21: two named sides the text compares (Pros / Cons, Before / After, X vs Y) -> a comparison (side by side)
-  const cmp = groups.length === 2 && typeof planTextRelation === 'function' && planTextRelation(SX.full || SX.title, items.length, groups.map(g => g.name)) === 'comparison';
+  // 10.21.1: two named sides the text compares (Pros / Cons, Before / After, X vs Y, the same attributes side by side)
+  const rel = groups.length === 2 && typeof planRelation === 'function' ? planRelation({ title: SX.title, full: SX.full || SX.title, items, groups: groups.map(g => g.name),
+    groupItems: SX.sections.map(s => s.items.map(it => it.label + ' ' + (it.detail || ''))) }) : { relation: '', why: '' };
+  const cmp = rel.relation === 'comparison';
   return planSemantics({ title: SX.title, headline: SX.title, takeaway: SX.paragraph && SX.lead && SX.lead.length <= 140 ? SX.lead.replace(/[.!]\s*$/, '') : '', hero: heroFor(SX.short, SX.full || SX.title), short: SX.short, statement: st, verbs: st ? st.verbs : [],
-    relation: cmp ? 'comparison' : groups.length >= 2 ? 'categories' : 'independent', items, groups: groups.length >= 2 ? groups : [], flow: [], layouts: [], from: 'text', sections: true, paragraph: !!SX.paragraph,
+    relation: cmp ? 'comparison' : groups.length >= 2 ? 'categories' : 'independent', relationWhy: cmp ? rel.why : '', items, groups: groups.length >= 2 ? groups : [], flow: [], layouts: [], from: 'text', sections: true, paragraph: !!SX.paragraph,
     sectionName: groups.length === 1 ? groups[0].name : '' });
 }
 /* The object for a whole topic: its short name first ("AI & ML" -> the brain, "Digital Marketing" -> the megaphone),
