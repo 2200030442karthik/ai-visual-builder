@@ -55,11 +55,23 @@ const appSay = (msg, err) => { setStatus0(msg, err); if (typeof galPublish === '
     .appgrid .gcard { position:relative; padding:5px; border-radius:10px; transition:box-shadow .15s, border-color .15s; }
     .appgrid .gcard:hover { border-color:#aab3dc; }
     .appgrid .gcard.sel { border-color:#3645A9; box-shadow:0 0 0 2px #c9cff0; }
-    .appgrid .gcard .gnum { position:absolute; top:7px; left:7px; z-index:1; min-width:18px; height:18px; padding:0 4px; box-sizing:border-box; border-radius:9px; background:#5c6670; color:#fff; font:600 11px/18px Segoe UI,Arial; text-align:center; }
+    .appgrid .gcard .gnum { display: none; }
     .appgrid .gcard.sel .gnum { background:#3645A9; }
     .appgrid .gcard:focus-visible { outline:2px solid #3645A9; outline-offset:1px; }
     .appgrid .gcard.sel::after { content:'✓'; position:absolute; top:6px; right:6px; width:18px; height:18px; border-radius:50%; background:#3645A9; color:#fff; font-size:11px; line-height:18px; text-align:center; }
     .appgrid .cat { color:var(--muted); font-size:10.5px; }
+    .appgrid .gcard { transition:box-shadow .15s, border-color .15s, transform .15s; }
+    .appgrid .gcard:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(20,30,60,.10); }
+    .appgrid .gthumb { background:#fbfcfe; box-shadow:inset 0 0 0 1px #eef1f6; }
+    .appgrid .badge { border-radius:10px; padding:1px 7px; }
+    .btnAiIcon { padding:3px 9px; font-size:11px; font-weight:600; white-space:nowrap; border-radius:12px; border:1px solid #3645A9; background:#eef0fa; color:#3645A9; }
+    .btnAiIcon:hover { background:#3645A9; color:#fff; }
+    .aiIconLib { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+    .aiIconLib .iconSrc { flex-basis:100%; font-size:11px; font-weight:600; color:var(--muted); margin-top:2px; }
+    .iconPick { display:flex; flex-direction:column; align-items:center; gap:2px; width:64px; padding:4px 2px; border:1px solid #d8deea; border-radius:8px; background:#fff; font-size:10px; line-height:1.15; color:var(--ink); }
+    .iconPick:hover { border-color:#3645A9; box-shadow:0 0 0 2px #c9cff0; }
+    .iconPick svg { width:36px; height:36px; }
+    .iconPick span { max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .appbig { margin-top:10px; }
     .appbig .preview { border-radius:10px; }
     .appbig h3 { font-size:13.5px; margin:8px 0 2px; }
@@ -150,7 +162,7 @@ function appButtons() {
   const review = c && c.engine === 'builtin' && typeof needsReview === 'function' && needsReview(state.sec);
   $('appInsert').disabled = !c || APP.busy || APP.stale || !state.inOffice || !gateOK() || (review && !$('appReviewed').checked);
   $('appInsert').textContent = !c ? 'Select a visual to insert' : !state.inOffice ? 'Open in PowerPoint to insert' : !gateOK() ? 'Select a Content Slide to insert' : review && !$('appReviewed').checked ? 'Confirm the checked points first'
-    : APP_DEV ? `Insert selected visual${c.slides > 1 ? ` (${c.slides} slides)` : ''}` : `Insert design ${APP.sel + 1}: “${appName(c)}”${c.slides > 1 ? ` (${c.slides} slides)` : ''}`;
+    : APP_DEV ? `Insert selected visual${c.slides > 1 ? ` (${c.slides} slides)` : ''}` :  `Insert “${appName(c)}”${c.slides > 1 ? ` (${c.slides} slides)` : ''}`
   $('appMore').disabled = APP.busy || !APP.list.length || APP.stale;
   $('appActs').hidden = !APP.list.length && !$('content').value.trim();
   $('appEmpty').hidden = !!APP.list.length || APP.busy || !$('appErr').hidden;
@@ -202,6 +214,7 @@ async function appMore() {
 }
 
 /* ---------- gallery ---------- */
+const srcTag = c => { const o = orchSource(c); return `<span class="badge src ${o.src}" title="${esc(o.srcWhy)}">${esc(o.srcName)}</span>`; };
 const BADGE = c => c.edit === 'full' ? ['full', 'Editable'] : ['partial', 'Editable · icons as pictures'];
 function appRender() {
   const L = APP.list, cats = ['All'].concat([...new Set(L.map(c => c.category))]);
@@ -216,7 +229,7 @@ function appRender() {
   const run = APP.shown = (APP.shown || 0) + 1;
   $('appGrid').innerHTML = shown.map(([c, i]) => { const [cls, txt] = BADGE(c);
     return `<button type="button" class="gcard${i === APP.sel ? ' sel' : ''}" data-i="${i}" aria-pressed="${i === APP.sel}" aria-label="Design ${i + 1} of ${L.length}: ${esc(appName(c))}"><span class="gnum">${i + 1}</span><div class="gthumb"></div>` +
-      `<div class="gname">${esc(appName(c))}</div><div class="cat">${esc(c.category)}${c.slides > 1 ? ` · ${c.slides} slides` : ''}</div><span class="badge ${cls}">${txt}</span></button>`; }).join('');
+      `<div class="gname">${esc(appName(c))}</div><div class="cat">${esc(c.category)}${c.slides > 1 ? ` · ${c.slides} slides` : ''}</div><span class="badge ${cls}">${txt}</span>${srcTag(c)}</button>`; }).join('');
   $('appGrid').querySelectorAll('.gcard').forEach(b => {
     b.addEventListener('click', () => { hoverHide(); appSelect(+b.dataset.i); });
     // 10.14: resting the pointer (or the keyboard focus) on a design shows it large, without a click
@@ -246,7 +259,7 @@ function hoverShow(card) {
   let el = $('appHover');
   if (!el) { el = document.createElement('div'); el.id = 'appHover'; el.setAttribute('role', 'tooltip'); document.body.appendChild(el); }
   const pics = c.prims.filter(p => p.t === 'image').length;
-  el.innerHTML = thumb(c.prims) + `<div class="ht">${esc(appName(c))}</div><div class="hd">${esc(c.category)} · ${c.edit === 'full' ? 'Fully editable' : `Editable shapes and text; ${pics} icon${pics === 1 ? ' is a picture' : 's are pictures'}`}${c.slides > 1 ? ` · ${c.slides} slides` : ''}</div>`;
+  el.innerHTML = thumb(c.prims) + `<div class="ht">${esc(appName(c))}</div><div class="hd">${esc(c.category)} · ${c.edit === 'full' ? 'Fully editable' : `Editable shapes and text; ${pics} icon${pics === 1 ? ' is a picture' : 's are pictures'}`}${c.slides > 1 ? ` · ${c.slides} slides` : ''} · ${esc(orchSource(c).srcWhy)}</div>`;
   const r = card.getBoundingClientRect(), vh = window.innerHeight, w = document.documentElement.clientWidth - 16, h = w * (TEMPLATE.contentArea.h + 24) / (TEMPLATE.contentArea.w + 24) + 52;
   // above the card when it fits there, else below it, else wherever it covers least of it
   const top = r.top - h - 8 >= 4 ? r.top - h - 8 : r.bottom + 8 + h <= vh - 4 ? r.bottom + 8 : Math.max(4, Math.min(vh - h - 4, r.top - h / 2));
@@ -396,7 +409,7 @@ function galPublish(note, err) {
   if (!GAL.open) return;
   clearTimeout(GAL.t);
   GAL.t = setTimeout(async () => {
-    const items = APP.list.map((c, i) => ({ i, name: appName(c), category: c.category, edit: c.edit, slides: c.slides || 1, ai: !!(c.concept || c.engine === 'claude' || c.engine === 'napkin'), svg: thumb(c.prims) }));
+    const items = APP.list.map((c, i) => ({ i, name: appName(c), category: c.category, edit: c.edit, slides: c.slides || 1, ai: !!(c.concept || c.engine === 'claude' || c.engine === 'napkin'), ...orchSource(c), svg: thumb(c.prims) }));
     try { await api('/api/gallery', { k: galKey(), v: ++GAL.v, items, sel: APP.sel, note: GAL.note, err: GAL.err, busy: APP.busy }, 30000); }
     catch (e) { console.warn('The large gallery could not be updated', e); }
   }, 60);

@@ -110,9 +110,12 @@ function orchScore(c) {
 }
 /* The best, varied list: duplicates (same layout signature, or the same family twice) removed; categories in turn,
    each at most 3 times before every other category had its turn. */
+/* 10.24: compositions retired from the gallery after review: text that collides in the layered stack, a lone title
+   with a stray rule (poster), a small grey hub (ecosystem). Kept in the packs for editing visuals already inserted. */
+const ORCH_RETIRED = /^(isostack|poster|ecosystem)$/;
 function orchRank(all, max, shown, strict) {
   const seen = new Set(), fam = new Set(), pool = [], prints = [];
-  all.filter(c => c && c.prims && c.prims.length).map(c => Object.assign(c, { score: orchScore(c) })).sort((a, b) => b.score - a.score).forEach(c => {
+  all.filter(c => c && c.prims && c.prims.length && !ORCH_RETIRED.test(String(c.family || '').replace(/:\d+$/, ''))).map(c => Object.assign(c, { score: orchScore(c) })).sort((a, b) => b.score - a.score).forEach(c => {
     // an AI service's own drawings are each their own design; its plan drawn here competes by family like the rest
     const sig = orchSig(c.prims), fk = c.own ? c.id : c.category + '|' + c.family, fp = c.footprint || (c.footprint = orchFootprint(c.prims));
     const look = { fp, sp: c.shapeprint || (c.shapeprint = orchShapePrint(c.prims)) };
@@ -317,7 +320,8 @@ async function orchDesigns(ctx, max) {
   // names only, said in their name). Neither leaves out a point; the condensed ones leave out the descriptions, visibly.
   // (target: some candidates are removed as look-alikes when the gallery is ranked)
   const complete = out.filter(c => c.complete).length, target = ORCH_MIN + 6;
-  if (!ctx.more && complete < target && m.plan.items.length >= 4) {
+  // 10.24: only for large content (7+ points) or when few one-slide designs fit - four short points are never split
+  if (!ctx.more && complete < target && m.plan.items.length >= 4 && (m.plan.items.length >= 7 || complete < 6)) {
     if (!m.split) {
       const S = planSlides(m.plan, ctx.R, { slides: 'split', density: 'full', overview: false });
       // a part that is one section is drawn as a list captioned with the section's name (the topic too, on the first)
@@ -372,15 +376,21 @@ const orchVariety = (text, fam) => { let h = 2166136261; for (const ch of String
 /* 10.21.1: relevance before decoration. A design whose composition shows the relation the text states (a cycle drawn
    as a cycle, a comparison side by side, steps in order, levels as levels) ranks above the general compositions, which
    otherwise topped every gallery whatever the content said. Nothing changes for content that states no relation. */
-const ORCH_SHAPES = { cycle: /^(cycle|cyclewheel|orbit|mirrorlinks)$/, funnel: /^(funnel)$/, layers: /^(pyramid|isostack|stack3d|layers|stair)$/, comparison: /^(versus|contrast|splitpanel|splitpanels)$/,
-  sequence: /^(pipeline|timeline|chevrons|zigzag|stair|roadmap|journey|scene|numcards|steps)$/ };
+const ORCH_SHAPES = { cycle: /^(cycle|cyclewheel|orbit|mirrorlinks)$/, funnel: /^(funnel)$/, layers: /^(pyramid|isostack|stack3d|layers|stair|cylsteps)$/, comparison: /^(versus|contrast|splitpanel|splitpanels)$/,
+  sequence: /^(pipeline|timeline|chevrons|zigzag|stair|roadmap|journey|scene|numcards|steps|cylsteps|arrowcards)$/ };
+/* 10.24: compositions that claim a relation of their own - a centre the points hang from, layers on top of each other,
+   two sides - mislead when the text states a different one (steps drawn as spokes of a hub); they rank far below */
+const ORCH_CLAIMS = /^(hub|hubcorners|ecosystem|orbit|callout|callouts|devicelinks|isostack|stack3d|layers|pyramid|quadrant|quadcircle|versus|contrast|target)$/;
 function orchRelevance(k, P) {
   if (!P) return 0;
   const fam = String((PLAN_LAYOUTS[k] && PLAN_LAYOUTS[k].family) || k).replace(/^cap:/, ''), rel = /^(cycle|funnel|layers|comparison)$/.test(P.relation) ? P.relation : typeof planSeq === 'function' && planSeq(P) ? 'sequence' : '';
+  // 10.23: a topic written as the course slides write it - the topic, its description, its named points and the
+  // outcome - is drawn as such by the topic spotlight (packs/spotlight-10.23.js), first
+  if (/^topic(?:spot|band)$/.test(fam)) return P.sections && P.intro && (P.groups || []).some(g => g.kind === 'outcome') ? 30 : 0;
   if (!rel) return 0;
   if (ORCH_SHAPES[rel].test(fam)) return 30;
   if (rel !== 'sequence' && ORCH_SHAPES.sequence.test(fam) && planSeq(P)) return 8;      // a cycle or a funnel is also an order
-  return -6;
+  return rel && ORCH_CLAIMS.test(fam) ? -20 : -6;
 }
 const orchPackBonus = k => { const p = (PLAN_LAYOUTS[k] && PLAN_LAYOUTS[k].pack) || ''; return /scenes/.test(p) ? 12 : /learning|concepts/.test(p) ? 10 : /showcase/.test(p) ? 8 : /modern/.test(p) ? 4 : /pro/.test(p) ? 2 : 0; };
 /* A provider's result as candidates: its designs as native, editable objects first (never the picture by default). */
@@ -434,6 +444,14 @@ function orchPlanDesigns(key, plan) {
     prims: r.prims, edit: 'full', complete: d.density === 'full', slides: 1, rich: true, base: 72 + orchPackBonus(r.key) + orchAppeal(r.key) + orchRelevance(r.key, d.plan) - (d.density === 'names' ? 6 : 0), why: 'designed with AI, drawn as editable shapes',
     fit: orchFits(orchPlanBuild(plan, r.key, r.style, d.density)),
     insert: async () => { ST.designs = [{ r, plan: d.plan, full: plan, density: d.density, from: 'AI design' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } }));
+}
+/* 10.24: where a design comes from, shown on every card: Claude (its own composition, or its reading of the text drawn
+   in a layout), Napkin (its design, rebuilt as editable shapes) or Built-in (this add-in's layouts, made locally). */
+function orchSource(c) {
+  if (c.engine === 'claude') return c.concept ? { src: 'claude', srcName: 'Claude design', srcWhy: 'Composed by Claude for this text, drawn as editable shapes' }
+    : { src: 'claude', srcName: 'Claude', srcWhy: 'Claude read the text; drawn in a built-in layout' };
+  if (c.engine === 'napkin') return { src: 'napkin', srcName: 'Napkin', srcWhy: 'Designed by Napkin, rebuilt as editable shapes' };
+  return { src: 'builtin', srcName: 'Built-in', srcWhy: 'Made on this PC from your text (no AI service)' };
 }
 registerEngine(orchProvider('napkin'));
 registerEngine(orchProvider('claude'));

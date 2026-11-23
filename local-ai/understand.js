@@ -405,7 +405,10 @@ function recordModel(text) {
     if (!rec.title && !rec.fields.length && wordCount(l) <= 8 && !/[.!?]$/.test(l)) { rec.title = l; continue; }
     return null;
   }
-  return rec.fields.length >= 3 ? rec : null;
+  // 10.24: a record holds data ("Project ID: V10_TEST_2026", "Owner: Priya", "Price: ₹5,499.50"); points with their
+  // descriptions ("Data collection: gather raw data from sources") are a list of concepts, drawn by every layout
+  const data = f => /[\d@#$%₹€£=_()\\/]/.test(f.value) || wordCount(f.value) <= 2;
+  return rec.fields.length >= 3 && rec.fields.filter(data).length * 2 >= rec.fields.length ? rec : null;
 }
 /* A record drawn natively in R: 'pairs' (a coloured key beside its value, two columns), 'table' (one row per field) or
    'cards' (a card per field); lists as a band of cards under it (or beside a table). Every value exactly as written,

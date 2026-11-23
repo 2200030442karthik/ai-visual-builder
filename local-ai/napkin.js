@@ -70,7 +70,7 @@ const PANELS = {};
 /* The panel's own analysis as a plan (the free layout check before a request). */
 function planFromPrep(prep) {
   // 10.15: content written as labelled sections ("What you learn" / "Best for"): one named group per section
-  if (prep.sections && prep.sections.length && typeof sectionsPlan === 'function') return sectionsPlan({ title: prep.title, full: prep.full || prep.title, short: prep.short, sections: prep.sections, statement: prep.statement, paragraph: prep.paragraph, lead: prep.lead });
+  if (prep.sections && prep.sections.length && typeof sectionsPlan === 'function') return sectionsPlan({ title: prep.title, full: prep.full || prep.title, short: prep.short, sections: prep.sections, statement: prep.statement, paragraph: prep.paragraph, lead: prep.lead, intro: prep.intro });
   const sc = t => typeof sentenceCase === 'function' && !prep.record ? sentenceCase(t) : t;   // 10.19: LVC sentence case (brand.js); exact records as written
   const items = (prep.points || []).map((p, i) => ({ id: 'p' + i, label: sc(planClean(p.label)), detail: planClean(p.exact || p.detail || ''), group: '' })).filter(i => i.label);
   planIcons(items);

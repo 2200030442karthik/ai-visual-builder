@@ -1,0 +1,33 @@
+SL SMART DESIGN + AI VISUAL BUILDER - TEAM INSTALLATION
+=======================================================
+For Windows 10/11 (64-bit) with Microsoft 365 PowerPoint desktop. About one minute.
+You need the activation key your manager gave you (AIVB-XXXXX-XXXXX-XXXXX-XXXXX).
+
+RESULT: ONE "SL Smart Design" tab with everything -
+  Alternative Design | AI Visual Builder | Several slides | Edit a visual | SL Templates | Miscellaneous | Shape Rename
+
+INSTALL
+1. Right-click the zip > Extract All > Extract.
+2. In the extracted folder, double-click "Install AI Visual Builder.bat".
+   - "Windows protected your PC": More info > Run anyway.
+   - Certificate for "localhost": YES.
+   - Permission to share the add-in folder (User Account Control): YES.
+3. Type your activation key and press Enter (or press Enter alone and enter it later in the panel).
+
+ONCE IN POWERPOINT
+1. Start PowerPoint.
+2. Home > Add-ins > Advanced (or More Add-ins) > SHARED FOLDER > SL Smart Design > Add.
+3. Close PowerPoint and start it again. From now on there is one SL Smart Design tab with everything.
+   Until then you also still see the original SL Smart Design tab - nothing is lost at any point.
+
+USE
+Open a deck on the Simplilearn LVC template, select a Content_Slide, SL Smart Design tab > AI Visual Builder.
+Claude AI, Napkin AI and the built-in designs are all available after activation. The SL Smart Design commands
+(Alternative Design, SL Templates, ...) work as before.
+
+HELP (in %LOCALAPPDATA%\Programs\AIVisualBuilderPilot)
+- "AI Visual Builder is not running": Restart AI Visual Builder.bat
+- New or changed activation key: Activate AI Visual Builder.bat
+- Original SL Smart Design tab back at once: Restore SL Smart Design.bat (close PowerPoint first)
+- Remove everything (the original SL Smart Design comes back): Uninstall AI Visual Builder.bat
+- Update: extract the new zip and run Install again. Your activation is kept.

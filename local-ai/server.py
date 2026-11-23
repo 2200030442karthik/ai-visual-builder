@@ -41,9 +41,10 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import access as A
+import activation as ACT
 import claude_visual as C
 
-VERSION = '10.21.1'
+VERSION = '10.22'
 HERE = os.path.dirname(os.path.abspath(__file__))
 # 10.18: hosted mode (a central HTTPS service for the team, e.g. Azure App Service; deploy/README-PILOT.md). Off unless
 # AIVB_HOSTED=1. Then: plain HTTP on $PORT behind the platform's HTTPS front end, bound to all interfaces; only the
@@ -54,7 +55,7 @@ DATA_DIR = os.environ.get('AIVB_DATA_DIR') or os.path.join(os.environ.get('LOCAL
 STATIC = {'/': ('v10.html', 'text/html; charset=utf-8'), '/v10.html': ('v10.html', 'text/html; charset=utf-8'),
           '/gallery-dialog.html': ('gallery-dialog.html', 'text/html; charset=utf-8'),
           '/slsd-notice.html': ('slsd-notice.html', 'text/html; charset=utf-8'),
-          **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'sections', 'original', 'faithful', 'napkin', 'studio', 'orchestrator', 'app', 'bridge', 'slsd')},
+          **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'sections', 'original', 'faithful', 'napkin', 'studio', 'orchestrator', 'app', 'bridge', 'slsd', 'gate')},
           # the ribbon's icons (manifest-v10.xml), served by this host like the panel itself
           **{f'/assets/icon-{n}.png': (f'assets/icon-{n}.png', 'image/png') for n in (16, 32, 64, 80)},
           # 10.20.1: the SL Smart Design tab's icons (manifest-slsd.xml; made by sl-smart-design/make_icons.py)
@@ -69,7 +70,7 @@ MAX_TEXT = 10000
 # paid_order: "auto" (10.14: by the content - Claude for technical structure, Napkin for concepts) or a fixed list such as
 # ["napkin", "claude"] (the next is the fallback). Set by the administrator; the app shows neither.
 CONFIG = {'port': 44317, 'napkin_base': 'https://api.napkin.ai', 'napkin_max_per_day': 0, 'napkin_timeout_s': 60, 'claude_max_per_day': 0, 'claude_timeout_s': 300,
-          'paid_policy': 'when-needed', 'paid_order': 'auto', 'soft_tints': False, 'paid_engines': 1,
+          'paid_policy': 'when-needed', 'paid_order': 'auto', 'soft_tints': False, 'sme_space': False, 'paid_engines': 1,
           'slsd_addin': 'SL_Smart_Design_v2_Key_Dec_25.ppam', 'mac_vba_bridge': False}
 # slsd_addin (10.20.1): the file name of the SL Smart Design VBA add-in whose macros the SL Smart Design tab runs
 # mac_vba_bridge (10.21.1, macOS only, off by default, NOT YET TESTED ON A MAC): run the same allow-listed macros through
@@ -107,6 +108,52 @@ if '--test' in sys.argv:    # tests only: also serve the test harness and its in
 SCHEME = 'https'
 # --test hosts never send a paid request, whatever keys this PC has (10.13: Generate decides on its own)
 TEST_NO_PAID = '--test' in sys.argv
+
+# V10.22 team installations (deploy/team): nothing works until this Windows user on this PC is activated with a key
+# from the manager (activation.py: the key also unlocks the organization's Claude and Napkin keys in the package).
+# Switched on by the team launcher (AIVB_ACTIVATION=1); the development host and the hosted service are unchanged.
+ACTIVATION = os.environ.get('AIVB_ACTIVATION') == '1' and not HOSTED
+ACT_BUNDLE = os.environ.get('AIVB_BUNDLE') or os.path.join(HERE, ACT.BUNDLE_NAME)
+ACT_STATE = {'t': 0.0, 'v': None}
+ACT_LOCK = threading.Lock()
+ACT_TRIES = []
+NOT_ACTIVATED = 'AI Visual Builder is not activated on this PC. Open AI Visual Builder and enter the activation key from your manager.'
+STATIC['/activate.html'] = ('activate.html', 'text/html; charset=utf-8')
+# Pages and scripts are always served: the panel page is also the SL Smart Design tab's function file (one runtime), and
+# gate.js shows the activation form over the panel. Without activation only these APIs answer: status, the activation
+# itself, and SL Smart Design's own commands and the panel opening (SL Smart Design has its own licence check).
+ACT_FREE_GET = ('/api/status', '/api/activation', '/api/slsd/status', '/api/bridge/next', '/api/bridge/status')
+# 10.24: /api/claude/icon is no longer free of activation - it can spend Claude credits
+ACT_FREE_POST = ('/api/activate', '/api/slsd/run', '/api/bridge/open', '/api/bridge/ack')
+
+
+def activation_state(force=False):
+    """{'ok': True} when no activation is needed or this user is activated (checked again at most once a minute while
+    activated, at every request while not)."""
+    if not ACTIVATION:
+        return {'ok': True, 'required': False}
+    with ACT_LOCK:
+        v, now = ACT_STATE['v'], time.time()
+        if force or not v or not v['ok'] or now - ACT_STATE['t'] > 60:
+            v = dict(ACT.status(DATA_DIR, ACT_BUNDLE), required=True)
+            ACT_STATE.update(t=now, v=v)
+        return v
+
+
+def activation_try(b):
+    """The panel's activation page: at most 10 attempts a minute; the key is never logged."""
+    now = time.time()
+    with ACT_LOCK:
+        ACT_TRIES[:] = [t for t in ACT_TRIES if now - t < 60]
+        if len(ACT_TRIES) >= 10:
+            raise NapkinError('Too many attempts. Wait a minute, then try again.', 429)
+        ACT_TRIES.append(now)
+    if not ACTIVATION:
+        return {'ok': True, 'required': False}
+    res = ACT.activate(str(b.get('key') or '')[:80], DATA_DIR, ACT_BUNDLE)
+    log('activation ' + ('done' if res.get('ok') else 'refused (' + str(res.get('reason')) + ')'))
+    activation_state(force=True)
+    return {k: res.get(k) for k in ('ok', 'reason', 'message', 'label', 'expires', 'days_left', 'services') if k in res}
 CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' https://appsforoffice.microsoft.com; "
        "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://appsforoffice.microsoft.com; "
        "font-src 'self' data:; connect-src 'self' https://*.microsoft.com https://*.office.com https://*.office.net; "
@@ -512,6 +559,25 @@ def claude_create(b, who=None):
     return {'id': rid, 'status': 'pending', 'format': fmt, 'model': s['model']}
 
 
+def claude_icon(b, who=None):
+    desc = str(b.get('description') or b.get('prompt') or '').strip()
+    if not desc:
+        raise NapkinError('Please describe the icon you want to generate.', 400)
+    if len(desc) > 120:
+        raise NapkinError('Icon description is too long (maximum 120 characters).', 400)
+    # 10.24: the administrator's paid_policy "never" (and a test host) keeps Claude off here too; the panel then offers
+    # the matching icons of the built-in library, which cost nothing
+    if TEST_NO_PAID or CONFIG['paid_policy'] == 'never':
+        return {'ok': False, 'source': 'off', 'error': 'Claude is switched off by the administrator; choose one of the library icons.'}
+    s = C.settings(DATA_DIR)
+    try:
+        return C.generate_icon(s, desc, timeout_s=CONFIG.get('claude_timeout_s', 30))
+    except Exception as e:
+        log(f'claude_icon failed: {e}')
+        raise NapkinError(f'Icon generation failed: {e}', 500)
+
+
+
 # ---------------------------------------------------------------- large gallery (V10.16)
 # The panel's designs for its large gallery (an Office dialog, gallery-dialog.html): the panel publishes the thumbnails
 # under a random key it made (32 hex characters) and only it can write (an authorized user); the dialog reads them with
@@ -530,7 +596,7 @@ def gallery_put(b):
     if len(GALLERY) >= 20 and k not in GALLERY:
         GALLERY.pop(min(GALLERY, key=lambda x: GALLERY[x]['at']))
     items = [{'i': int(x.get('i', 0)), 'name': str(x.get('name') or '')[:120], 'category': str(x.get('category') or '')[:60], 'edit': str(x.get('edit') or '')[:20],
-              'slides': int(x.get('slides') or 1), 'ai': bool(x.get('ai')), 'svg': str(x.get('svg') or '')} for x in (b.get('items') or [])[:60] if isinstance(x, dict)]
+              'slides': int(x.get('slides') or 1), 'ai': bool(x.get('ai')), 'src': str(x.get('src') or '')[:12], 'srcName': str(x.get('srcName') or '')[:30], 'srcWhy': str(x.get('srcWhy') or '')[:120], 'svg': str(x.get('svg') or '')} for x in (b.get('items') or [])[:60] if isinstance(x, dict)]
     GALLERY[k] = {'at': now, 'data': {'v': int(b.get('v') or 0), 'items': items, 'sel': int(b.get('sel', -1)), 'note': str(b.get('note') or '')[:400],
                                       'err': bool(b.get('err')), 'busy': bool(b.get('busy')), 'open': b.get('open', True) is not False}}
     return {'ok': True}
@@ -791,6 +857,11 @@ class Handler(BaseHTTPRequestHandler):
             return
         q = urllib.parse.parse_qs(qs)
         arg = lambda k: q.get(k, [''])[0]
+        act = activation_state()
+        if path == '/api/activation':
+            return self.send(200, act)
+        if not act['ok'] and path not in ACT_FREE_GET:
+            return self.fail(403, NOT_ACTIVATED)
         try:
             if path == '/api/status':
                 s, p = napkin_settings(), A.policy()
@@ -811,7 +882,8 @@ class Handler(BaseHTTPRequestHandler):
                     napkin['enabled'] = claude['enabled'] = False
                 orchestrate = {'paid': CONFIG['paid_policy'], 'order': CONFIG['paid_order'], 'engines': CONFIG['paid_engines']}
                 return self.send(200, {'server': VERSION, 'access': access, 'napkin': napkin, 'claude': claude, 'orchestrate': orchestrate,
-                                       'brand': {'soft_tints': CONFIG['soft_tints'] is True}, 'slsd': {'mac_bridge': mac_bridge_on()}})
+                                       'brand': {'soft_tints': CONFIG['soft_tints'] is True, 'sme_space': CONFIG['sme_space'] is True}, 'slsd': {'mac_bridge': mac_bridge_on()},
+                                       'activation': act})
             if path == '/api/gallery':
                 return self.send(200, gallery_get(arg('k')))
             if path == '/api/bridge/next':
@@ -856,6 +928,10 @@ class Handler(BaseHTTPRequestHandler):
             if n > (GALLERY_MAX_BODY if path == '/api/gallery' else MAX_BODY) or 'application/json' not in self.headers.get('Content-Type', ''):
                 return self.fail(400, 'JSON up to 256 KB expected.')
             b = json.loads(self.rfile.read(n) or b'{}')
+            if path == '/api/activate':
+                return self.send(200, activation_try(b))
+            if path not in ACT_FREE_POST and not activation_state()['ok']:
+                return self.fail(403, NOT_ACTIVATED)
             # a test panel host never makes a paid request (the tests use saved results and stand-ins)
             if TEST_NO_PAID and path in ('/api/napkin/visual', '/api/claude/visual'):
                 return self.fail(403, 'Paid requests are switched off on a test panel host.')
@@ -869,6 +945,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/claude/visual':
                 who = self.authorized()
                 return who and self.send(200, claude_create(b, who))
+            if path == '/api/claude/icon':
+                who = self.authorized()
+                return who and self.send(200, claude_icon(b, who))
             if path == '/api/gallery':
                 who = self.authorized()
                 return who and self.send(200, gallery_put(b))
@@ -909,6 +988,20 @@ class Server(ThreadingHTTPServer):
         log('connection error from', client_address[0], sys.exc_info()[1])
 
 
+def slsd_tab_loop():
+    """V10.22 team installations (AIVB_SLSD_UNIFY=1): one SL Smart Design tab, decided by slsd_tab.py every 15 s and
+    changed only while PowerPoint is closed; the original add-in comes back whenever the web tab is not there."""
+    import slsd_tab as T
+    while True:
+        try:
+            did = T.step(DATA_DIR, os.environ.get('AIVB_SLSD_ID') or T.PRODUCT_ID, os.environ.get('AIVB_SLSD_CATALOG') or T.CATALOG_ID)
+            if did:
+                log(f'SL Smart Design: its own tab {did} (one SL Smart Design tab: the web tab is {"there" if did == "hidden" else "not there"})')
+        except Exception as e:      # never stops the panel host
+            log(f'SL Smart Design tab check: {type(e).__name__}: {e}')
+        time.sleep(15)
+
+
 def main():
     global SCHEME
     plain = '--http' in sys.argv or HOSTED
@@ -934,6 +1027,8 @@ def main():
         ctx.load_cert_chain(cert, key)
         # the handshake happens in each request's own thread (Handler.setup), not in the accept loop
         srv.socket = ctx.wrap_socket(srv.socket, server_side=True, do_handshake_on_connect=False)
+    if os.environ.get('AIVB_SLSD_UNIFY') == '1' and not HOSTED and sys.platform == 'win32':
+        threading.Thread(target=slsd_tab_loop, daemon=True, name='slsd-tab').start()
     log(f'AI Visual Builder {VERSION} on ' + (f'port {PORT} (hosted for {", ".join(sorted(ALLOWED_HOSTS))})' if HOSTED else f'{SCHEME}://localhost:{PORT}/') + '  (Ctrl+C to stop)')
     try:
         srv.serve_forever()

@@ -47,8 +47,8 @@ HEAD = '''<?xml version="1.0" encoding="UTF-8"?>
   <Version>@VERSION@</Version>
   <ProviderName>Simplilearn</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="SL Smart Design"/>
-  <Description DefaultValue="SL Smart Design with AI Visual Builder: template redesigns and editable AI infographics in the Simplilearn template."/>
+  <DisplayName DefaultValue="AI SL Smart Design"/>
+  <Description DefaultValue="AI SL Smart Design: AI-powered infographics and smart slide designs in the Simplilearn template."/>
   <IconUrl DefaultValue="@ICONS@/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="@ICONS@/icon-64.png"/>
   <SupportUrl DefaultValue="https://2200030442karthik.github.io/ai-visual-builder/"/>
@@ -93,8 +93,8 @@ def rid(cid, kind):
 
 def build():
     images = {}
-    short = {'Tab.Label': 'SL Smart Design', 'GetStarted.Title': 'SL Smart Design is ready'}
-    long_ = {'GetStarted.Description': 'Open the SL Smart Design tab: Alternative Design, AI Visual Builder, SL Templates and more. '
+    short = {'Tab.Label': 'AI SL Smart Design', 'GetStarted.Title': 'AI SL Smart Design is ready'}
+    long_ = {'GetStarted.Description': 'Open the AI SL Smart Design tab: AI Visual Builder, Several slides, Edit a visual, Alternative Design and more. '
                                        'If it does not load, run local-ai\\Restart AI Visual Builder.bat.'}
 
     def icon(name, ind):
@@ -105,7 +105,7 @@ def build():
             out.append(f'{ind}  <bt:Image size="{n}" resid="{k}"/>')
         return out + [f'{ind}</Icon>']
 
-    tab = ['          <ExtensionPoint xsi:type="PrimaryCommandSurface">', '            <CustomTab id="SLSD.Tab">']
+    tab = ['          <ExtensionPoint xsi:type="PrimaryCommandSurface">', '            <CustomTab id="AISLSD.Tab">']
     for gid, glabel, gicon, controls in GROUPS:
         short[rid(gid, 'Label')] = glabel
         tab += [f'              <Group id="{gid}">', f'                <Label resid="{rid(gid, "Label")}"/>'] + icon(gicon, '                ')
@@ -121,7 +121,51 @@ def build():
                 tab += ['                  <Action xsi:type="ExecuteFunction">', f'                    <FunctionName>{fn}</FunctionName>', '                  </Action>']
             tab.append('                </Control>')
         tab.append('              </Group>')
-    tab += ['              <Label resid="Tab.Label"/>', '            </CustomTab>', '          </ExtensionPoint>']
+    tab += ['              <Label resid="Tab.Label"/>', '            </CustomTab>']
+    short['Group.AISLSD.Label'] = 'AI SL Smart Design'
+    tab += [
+        '            <OfficeTab id="TabHome">',
+        '              <Group id="AISLSD.HomeGroup">',
+        '                <Label resid="Group.AISLSD.Label"/>',
+    ] + icon('aivb', '                ') + [
+        '                <Control xsi:type="Button" id="AIVB10.HomeOpen">',
+        '                  <Label resid="AIVB10Open.Label"/>',
+        '                  <Supertip>',
+        '                    <Title resid="AIVB10Open.Label"/>',
+        '                    <Description resid="AIVB10Open.Tip"/>',
+        '                  </Supertip>',
+    ] + icon('aivb', '                  ') + [
+        '                  <Action xsi:type="ShowTaskpane">',
+        '                    <TaskpaneId>AIVisualBuilderV10Pane</TaskpaneId>',
+        '                    <SourceLocation resid="Taskpane.Url"/>',
+        '                  </Action>',
+        '                </Control>',
+        '                <Control xsi:type="Button" id="AIVB10.HomeSlides">',
+        '                  <Label resid="AIVB10Slides.Label"/>',
+        '                  <Supertip>',
+        '                    <Title resid="AIVB10Slides.Label"/>',
+        '                    <Description resid="AIVB10Slides.Tip"/>',
+        '                  </Supertip>',
+    ] + icon('aivb', '                  ') + [
+        '                  <Action xsi:type="ExecuteFunction">',
+        '                    <FunctionName>aivbOpenSlides</FunctionName>',
+        '                  </Action>',
+        '                </Control>',
+        '                <Control xsi:type="Button" id="AIVB10.HomeEdit">',
+        '                  <Label resid="AIVB10Edit.Label"/>',
+        '                  <Supertip>',
+        '                    <Title resid="AIVB10Edit.Label"/>',
+        '                    <Description resid="AIVB10Edit.Tip"/>',
+        '                  </Supertip>',
+    ] + icon('aivb', '                  ') + [
+        '                  <Action xsi:type="ExecuteFunction">',
+        '                    <FunctionName>aivbOpenEdit</FunctionName>',
+        '                  </Action>',
+        '                </Control>',
+        '              </Group>',
+        '            </OfficeTab>',
+        '          </ExtensionPoint>'
+    ]
 
     def res(tag, item, d):
         return [f'      <bt:{tag}>'] + [f'        <bt:{item} id="{k}" DefaultValue="{escape(v, {chr(34): "&quot;"})}"/>' for k, v in d.items()] + [f'      </bt:{tag}>']

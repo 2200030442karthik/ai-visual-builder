@@ -390,7 +390,7 @@ async function run() {
     fresh(); W.__cfg.policy = 'always'; await gate();
     L = await gen(eduT);
     const nk = L.filter(c => c.engine === 'napkin');
-    res.paid.always = { paid: paidCalls(), napkin: nk.length, total: L.length, editable: nk.every(c => c.prims.some(p => p.t === 'text')), status: status().slice(0, 200), providerNamed: /Napkin|Claude/.test(status() + d.getElementById('appMain').textContent) };
+    res.paid.always = { paid: paidCalls(), napkin: nk.length, total: L.length, editable: nk.every(c => c.prims.some(p => p.t === 'text')), status: status().slice(0, 200), providerNamed: /Napkin|Claude/.test(status()), srcShown: [...d.querySelectorAll('#appGrid .badge.src.napkin')].some(b => b.textContent === 'Napkin') };
     // the same text again: no new request (reused in this session)
     W.__calls = []; L = await gen(eduT + ' '); res.paid.again = { paid: paidCalls(), n: L.length };
     // a new session on the same text: the kept result is reused (free) - and without it, the 24-hour guard stops a resend
@@ -479,7 +479,7 @@ async function run() {
       JSON.stringify({ edu: Gn.edu, de: Gn.de, facts: Gn.facts, genai: Gn.genai, records: Gn.records, meaningless: Gn.meaningless })],
     ['A5 Insert selected: built-in and design visuals go in as native, tagged objects, insert = preview; a repeat asks first; undo takes it out', ['builtin', 'designs'].every(k => I[k] && I[k].objects > 0 && I[k].insertEqualsPreview && I[k].tagged && I[k].undone && (I[k].edit === 'partial' || I[k].pictures === 0)) && I.dup && I.dup.warned && I.dup.objects,
       JSON.stringify(I)],
-    ['A6 AI services by policy and content: never -> none; when-needed -> none for records, one (Napkin first) for concepts; always -> one request, its designs editable, never named', Pd.never.paid === 0 && Pd.notNeeded.paid === 0 && Pd.whenNeeded.paid === 1 && Pd.whenNeeded.napkinFirst && Pd.whenNeeded.napkin >= 1 && Pd.always.paid === 1 && Pd.always.napkin >= 1 && Pd.always.editable && !Pd.always.providerNamed,
+    ['A6 AI services by policy and content: never -> none; when-needed -> none for records, one (Napkin first) for concepts; always -> one request, its designs editable, not named in the status; 10.24: each card names its source (Napkin)', Pd.never.paid === 0 && Pd.notNeeded.paid === 0 && Pd.whenNeeded.paid === 1 && Pd.whenNeeded.napkinFirst && Pd.whenNeeded.napkin >= 1 && Pd.always.paid === 1 && Pd.always.napkin >= 1 && Pd.always.editable && !Pd.always.providerNamed && Pd.always.srcShown,
       JSON.stringify({ never: Pd.never, notNeeded: Pd.notNeeded, whenNeeded: Pd.whenNeeded, always: Pd.always })],
     ['A12 Hybrid: technical structure goes to Claude first; its plan is drawn as 6+ different editable compositions and inserts; Napkin not asked', /claude\/visual/.test(Pd.hybrid.claudeFirst) && Pd.hybrid.napkinAsked === 0 && Pd.hybrid.claude >= 6 && new Set(Pd.hybrid.families).size >= 5 && Pd.hybrid.editable && Pd.hybrid.inserted,
       JSON.stringify(Pd.hybrid)],

@@ -78,7 +78,7 @@ Answer with the SVG only: start with <svg and end with </svg>, no explanation an
 # code that measures it. The lists below must match the panel's (tests/test_claude.py checks them).
 PLAN_LAYOUTS = ['platform', 'stack3d', 'scene', 'capmap', 'swimlanes', 'planes', 'ecosystem', 'modules', 'pyramid', 'cycle', 'cyclewheel', 'funnel', 'versus',
                 'architecture', 'layers', 'capability', 'tree', 'pipeline', 'timeline', 'stair', 'hub', 'grid', 'columns', 'rows',
-                'roadmap', 'pillars', 'quadrant', 'spotlight', 'storyboard', 'callout', 'journey',
+                'roadmap', 'pillars', 'quadrant', 'spotlight', 'storyboard', 'callout', 'journey', 'topicspot', 'topicband', 'cylsteps', 'arrowcards', 'badgecards',
                 'learnmap', 'herobanner', 'bridge', 'iconrows', 'badges', 'splitpanels', 'poster', 'ribbon', 'colortiles',
                 'concepttiles', 'orbit', 'honeycomb', 'isostack', 'bento', 'keystatement',
                 'numcards', 'chevrons', 'zigzag', 'contrast']
@@ -352,3 +352,198 @@ def generate(s, content, context, variations, ordered, timeout_s, client=None, m
     files = [x for x in svgs if x]
     return {'files': files, 'svgs': files, 'mode': mode, 'errors': [key_hidden(e) for e in dict.fromkeys(errors)], 'usage': usage,
             'cost_usd': cost(usage, s.get('prices')), 'seconds': round(time.time() - t0, 1), 'model': model, 'effort': s['effort']}
+
+
+# ---------------- AI Icon Generation ----------------
+ICON_SYSTEM = """You design a single minimalist corporate icon for a PowerPoint slide representing the user's description.
+Return ONLY a valid JSON object matching the schema below. No markdown backticks, no explanatory text.
+The icon is drawn on a 100 x 100 coordinate grid (0 to 100).
+Rules:
+1. Compose the icon using 2 to 8 simple geometric shapes from this allowed list:
+   rect, roundRect, ellipse, triangle, trapezoid, diamond, cube, pill, chevron, can, cloud, foldedCorner, gear6, hexagon, shield, blockArc, tab, donut, plus, star5, rtTriangle, parallelogram.
+2. Coordinates x, y, w, h are numbers from 0 to 100. Center the icon nicely (overall bounding box within 10 to 90).
+3. Allowed colors:
+   - "primary": main brand accent color (e.g. blue)
+   - "tint": lighter tint of the accent color
+   - "shade": darker shade of the accent color
+   - "white": pure white (#FFFFFF) for windows, cutouts, inner details
+   - "dark": dark charcoal (#2B2B2B) for wheels, tracks, stands, bases
+   - "coral": accent coral (#E58F6D) for lights, alerts, indicators
+   - "gold": accent gold (#DDB945) for highlights, badges
+   - "none": transparent
+4. Return format:
+{
+  "name": "snake_case_name",
+  "label": "Display Title",
+  "elements": [
+    { "shape": "shapeName", "x": 10, "y": 30, "w": 80, "h": 40, "fill": "primary", "line": "none", "lineW": 0, "rot": 0 }
+  ],
+  "svg": "<svg viewBox=\\"0 0 100 100\\" xmlns=\\"http://www.w3.org/2000/svg\\">...</svg>"
+}"""
+
+FALLBACK_ICON_TEMPLATES = {
+    'vehicle': {
+        'name': 'vehicle',
+        'label': 'Vehicle',
+        'elements': [
+            {'shape': 'trapezoid', 'x': 28, 'y': 34, 'w': 44, 'h': 20, 'fill': 'primary'},
+            {'shape': 'roundRect', 'x': 12, 'y': 50, 'w': 76, 'h': 22, 'fill': 'primary'},
+            {'shape': 'rect', 'x': 34, 'y': 38, 'w': 14, 'h': 12, 'fill': 'white'},
+            {'shape': 'rect', 'x': 52, 'y': 38, 'w': 14, 'h': 12, 'fill': 'white'},
+            {'shape': 'ellipse', 'x': 22, 'y': 64, 'w': 18, 'h': 18, 'fill': 'dark'},
+            {'shape': 'ellipse', 'x': 27, 'y': 69, 'w': 8, 'h': 8, 'fill': 'white'},
+            {'shape': 'ellipse', 'x': 60, 'y': 64, 'w': 18, 'h': 18, 'fill': 'dark'},
+            {'shape': 'ellipse', 'x': 65, 'y': 69, 'w': 8, 'h': 8, 'fill': 'white'},
+            {'shape': 'rect', 'x': 12, 'y': 55, 'w': 5, 'h': 7, 'fill': 'coral'}
+        ],
+        'svg': '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><polygon points="34,34 66,34 72,54 28,54" fill="#62B7E4"/><rect x="12" y="50" width="76" height="22" rx="4" fill="#62B7E4"/><rect x="34" y="38" width="14" height="12" fill="#FFFFFF"/><rect x="52" y="38" width="14" height="12" fill="#FFFFFF"/><circle cx="31" cy="73" r="9" fill="#2B2B2B"/><circle cx="31" cy="73" r="4" fill="#FFFFFF"/><circle cx="69" cy="73" r="9" fill="#2B2B2B"/><circle cx="69" cy="73" r="4" fill="#FFFFFF"/></svg>'
+    },
+    'truck': {
+        'name': 'delivery_truck',
+        'label': 'Delivery Truck',
+        'elements': [
+            {'shape': 'roundRect', 'x': 10, 'y': 28, 'w': 52, 'h': 42, 'fill': 'tint'},
+            {'shape': 'roundRect', 'x': 58, 'y': 38, 'w': 32, 'h': 32, 'fill': 'primary'},
+            {'shape': 'rect', 'x': 68, 'y': 42, 'w': 16, 'h': 12, 'fill': 'white'},
+            {'shape': 'ellipse', 'x': 18, 'y': 64, 'w': 18, 'h': 18, 'fill': 'dark'},
+            {'shape': 'ellipse', 'x': 40, 'y': 64, 'w': 18, 'h': 18, 'fill': 'dark'},
+            {'shape': 'ellipse', 'x': 70, 'y': 64, 'w': 18, 'h': 18, 'fill': 'dark'},
+            {'shape': 'rect', 'x': 86, 'y': 54, 'w': 4, 'h': 8, 'fill': 'gold'}
+        ],
+        'svg': '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="28" width="52" height="42" rx="3" fill="#A8D8F0"/><rect x="58" y="38" width="32" height="32" rx="3" fill="#62B7E4"/><rect x="68" y="42" width="16" height="12" fill="#FFFFFF"/><circle cx="27" cy="73" r="9" fill="#2B2B2B"/><circle cx="49" cy="73" r="9" fill="#2B2B2B"/><circle cx="79" cy="73" r="9" fill="#2B2B2B"/></svg>'
+    },
+    'robot': {
+        'name': 'robot',
+        'label': 'Robot',
+        'elements': [
+            {'shape': 'roundRect', 'x': 30, 'y': 22, 'w': 40, 'h': 28, 'fill': 'primary'},
+            {'shape': 'ellipse', 'x': 38, 'y': 32, 'w': 8, 'h': 8, 'fill': 'coral'},
+            {'shape': 'ellipse', 'x': 54, 'y': 32, 'w': 8, 'h': 8, 'fill': 'coral'},
+            {'shape': 'roundRect', 'x': 25, 'y': 54, 'w': 50, 'h': 34, 'fill': 'tint'},
+            {'shape': 'rect', 'x': 35, 'y': 60, 'w': 30, 'h': 16, 'fill': 'white'},
+            {'shape': 'plus', 'x': 46, 'y': 10, 'w': 8, 'h': 12, 'fill': 'primary'}
+        ],
+        'svg': '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="30" y="22" width="40" height="28" rx="4" fill="#62B7E4"/><circle cx="42" cy="36" r="4" fill="#E58F6D"/><circle cx="58" cy="36" r="4" fill="#E58F6D"/><rect x="25" y="54" width="50" height="34" rx="4" fill="#A8D8F0"/><rect x="35" y="60" width="30" height="16" fill="#FFFFFF"/></svg>'
+    },
+    'drone': {
+        'name': 'drone',
+        'label': 'Drone',
+        'elements': [
+            {'shape': 'roundRect', 'x': 35, 'y': 42, 'w': 30, 'h': 18, 'fill': 'primary'},
+            {'shape': 'ellipse', 'x': 45, 'y': 54, 'w': 10, 'h': 10, 'fill': 'dark'},
+            {'shape': 'pill', 'x': 16, 'y': 34, 'w': 30, 'h': 6, 'fill': 'shade'},
+            {'shape': 'pill', 'x': 54, 'y': 34, 'w': 30, 'h': 6, 'fill': 'shade'},
+            {'shape': 'ellipse', 'x': 10, 'y': 28, 'w': 22, 'h': 14, 'fill': 'tint'},
+            {'shape': 'ellipse', 'x': 68, 'y': 28, 'w': 22, 'h': 14, 'fill': 'tint'}
+        ],
+        'svg': '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="35" y="42" width="30" height="18" rx="4" fill="#62B7E4"/><circle cx="50" cy="59" r="5" fill="#2B2B2B"/><ellipse cx="21" cy="35" rx="11" ry="7" fill="#A8D8F0"/><ellipse cx="79" cy="35" rx="11" ry="7" fill="#A8D8F0"/></svg>'
+    },
+    'solar': {
+        'name': 'solar_panel',
+        'label': 'Solar Panel',
+        'elements': [
+            {'shape': 'parallelogram', 'x': 15, 'y': 22, 'w': 70, 'h': 46, 'fill': 'primary'},
+            {'shape': 'pill', 'x': 46, 'y': 66, 'w': 8, 'h': 24, 'fill': 'dark'},
+            {'shape': 'star5', 'x': 70, 'y': 10, 'w': 20, 'h': 20, 'fill': 'gold'}
+        ],
+        'svg': '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><polygon points="25,22 85,22 75,68 15,68" fill="#62B7E4"/><rect x="46" y="66" width="8" height="24" rx="4" fill="#2B2B2B"/></svg>'
+    }
+}
+
+
+def _match_fallback_icon(description, generic=True):
+    words = re.findall(r'[a-zA-Z0-9]+', description.lower())
+    for w in words:
+        if w in ('vehicle', 'car', 'automobile', 'auto', 'drive', 'van', 'suv'):
+            return FALLBACK_ICON_TEMPLATES['vehicle']
+        if w in ('truck', 'delivery', 'cargo', 'freight', 'shipping', 'lorry'):
+            return FALLBACK_ICON_TEMPLATES['truck']
+        if w in ('robot', 'bot', 'android', 'cyborg'):
+            return FALLBACK_ICON_TEMPLATES['robot']
+        if w in ('drone', 'uav', 'quadcopter'):
+            return FALLBACK_ICON_TEMPLATES['drone']
+        if w in ('solar', 'sun', 'panel', 'green', 'clean'):
+            return FALLBACK_ICON_TEMPLATES['solar']
+    if not generic:
+        return None
+    # generic dynamic fallback
+    clean_name = re.sub(r'[^a-z0-9]+', '_', description.strip().lower())[:24].strip('_') or 'custom_icon'
+    clean_label = ' '.join(w.capitalize() for w in clean_name.split('_'))
+    return {
+        'name': clean_name,
+        'label': clean_label,
+        'elements': [
+            {'shape': 'roundRect', 'x': 16, 'y': 16, 'w': 68, 'h': 68, 'fill': 'tint'},
+            {'shape': 'ellipse', 'x': 30, 'y': 30, 'w': 40, 'h': 40, 'fill': 'primary'},
+            {'shape': 'star5', 'x': 40, 'y': 40, 'w': 20, 'h': 20, 'fill': 'white'}
+        ],
+        'svg': '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="16" y="16" width="68" height="68" rx="12" fill="#A8D8F0"/><circle cx="50" cy="50" r="20" fill="#62B7E4"/></svg>'
+    }
+
+
+def generate_icon(s, description, timeout_s=30, client=None):
+    """Generates a custom corporate icon representing `description` using Claude API.
+    Falls back to smart vector templates if API key is not configured or on connection failure.
+    """
+    desc = str(description or '').strip()
+    if not desc:
+        raise ValueError('No description given.')
+
+    key = s.get('key') if isinstance(s, dict) else ''
+    model = s.get('model') if isinstance(s, dict) else DEFAULT_MODEL
+    enabled = bool(s.get('enabled')) if isinstance(s, dict) else False
+
+    # If Claude is configured and anthropic package is installed:
+    if enabled and key and anthropic is not None:
+        try:
+            client = client or anthropic.Anthropic(api_key=key, timeout=timeout_s, max_retries=0)
+            with client.messages.stream(
+                    model=model, max_tokens=2000, system=ICON_SYSTEM,
+                    messages=[{'role': 'user', 'content': f'Design a corporate slide icon for: {desc}'}]) as stream:
+                msg = stream.get_final_message()
+            text = ''.join(b.text for b in msg.content if b.type == 'text')
+            m = re.search(r'\{[\s\S]*\}', text)
+            if m:
+                data = json.loads(m.group(0))
+                els = _clean_icon_elements(data.get('elements')) if isinstance(data, dict) else []
+                if els:
+                    clean_name = re.sub(r'[^a-z0-9_]+', '', str(data.get('name') or desc).lower().replace(' ', '_'))[:30] or 'ai_icon'
+                    return {'ok': True, 'source': 'claude',
+                            'icon': {'name': clean_name, 'label': str(data.get('label') or desc.title())[:40], 'elements': els}}
+            err = 'Claude returned no usable icon'
+        except Exception as e:
+            err = f'{type(e).__name__}'.replace(key, '<key>') if key else type(e).__name__
+        # 10.24: said as it is - a stand-in drawing is never presented as Claude's design
+        fb = _match_fallback_icon(desc, generic=False)
+        return {'ok': bool(fb), 'source': 'template', 'icon': fb, 'error': '' if fb else f'Claude could not design this icon ({err}).'}
+    fb = _match_fallback_icon(desc, generic=False)
+    return {'ok': bool(fb), 'source': 'template', 'icon': fb, 'error': '' if fb else 'Claude is not set up on this PC; choose one of the library icons.'}
+
+
+ICON_SHAPES = {'rect', 'roundRect', 'ellipse', 'triangle', 'trapezoid', 'diamond', 'cube', 'pill', 'chevron', 'can', 'cloud', 'foldedCorner',
+               'gear6', 'hexagon', 'shield', 'blockArc', 'tab', 'donut', 'plus', 'star5', 'rtTriangle', 'parallelogram', 'line'}
+ICON_COLOURS = {'primary', 'tint', 'shade', 'white', 'dark', 'coral', 'gold', 'none'}
+
+
+def _clean_icon_elements(els):
+    """Claude's icon parts, checked: known shapes and colour tokens only, numbers on the 0-100 grid, at most 12 parts."""
+    out = []
+    num = lambda v, lo=0.0, hi=100.0: max(lo, min(hi, float(v)))
+    for e in (els if isinstance(els, list) else [])[:12]:
+        try:
+            if not isinstance(e, dict) or e.get('shape') not in ICON_SHAPES:
+                continue
+            col = lambda k: e.get(k) if e.get(k) in ICON_COLOURS else ('primary' if k == 'fill' else 'none')
+            if e['shape'] == 'line':
+                out.append({'shape': 'line', 'x1': num(e['x1']), 'y1': num(e['y1']), 'x2': num(e['x2']), 'y2': num(e['y2']),
+                            'line': col('line') if e.get('line') not in (None, 'none') else col('fill'), 'lineW': num(e.get('lineW', 3), 1, 12)})
+                continue
+            w, h = num(e['w'], 1), num(e['h'], 1)
+            if w < 2 or h < 2:
+                continue
+            out.append({'shape': e['shape'], 'x': num(e['x']), 'y': num(e['y']), 'w': w, 'h': h, 'fill': col('fill'), 'line': 'none',
+                        'rot': num(e.get('rot', 0), -360, 360)})
+        except (KeyError, TypeError, ValueError):
+            continue
+    return out
+

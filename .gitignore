@@ -29,3 +29,15 @@ evaluation/
 
 # unified SL Smart Design package build output (deploy/build-slsd-package.ps1): kept on disk, never committed
 SLSD_Unified_Package/
+
+# V10.22 team package build output and activation keys: never committed
+Team_Package/
+Team_Pilot_Package/
+deploy/team-keys/
+activation-keys.csv
+activation-bundle.json
+
+# 10.24: the single-file installers carry the activation bundle and the course sample is internal: never in the (public) repository
+Dist_Installer/
+sample for claude.pptx
+*.exe

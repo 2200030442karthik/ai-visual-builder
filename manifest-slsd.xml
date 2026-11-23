@@ -9,8 +9,8 @@
   <Version>10.20.1.2</Version>
   <ProviderName>Simplilearn</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="SL Smart Design"/>
-  <Description DefaultValue="SL Smart Design with AI Visual Builder: template redesigns and editable AI infographics in the Simplilearn template."/>
+  <DisplayName DefaultValue="AI SL Smart Design"/>
+  <Description DefaultValue="AI SL Smart Design: AI-powered infographics and smart slide designs in the Simplilearn template."/>
   <IconUrl DefaultValue="https://localhost:44317/assets/v3/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://localhost:44317/assets/v3/icon-64.png"/>
   <SupportUrl DefaultValue="https://2200030442karthik.github.io/ai-visual-builder/"/>
@@ -34,7 +34,7 @@
           </GetStarted>
           <FunctionFile resid="Taskpane.Url"/>
           <ExtensionPoint xsi:type="PrimaryCommandSurface">
-            <CustomTab id="SLSD.Tab">
+            <CustomTab id="AISLSD.Tab">
               <Group id="SLSD.Design">
                 <Label resid="SLSDDesign.Label"/>
                 <Icon>
@@ -280,6 +280,62 @@
               </Group>
               <Label resid="Tab.Label"/>
             </CustomTab>
+            <OfficeTab id="TabHome">
+              <Group id="AISLSD.HomeGroup">
+                <Label resid="Group.AISLSD.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.aivb.16"/>
+                  <bt:Image size="32" resid="Icon.aivb.32"/>
+                  <bt:Image size="80" resid="Icon.aivb.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="AIVB10.HomeOpen">
+                  <Label resid="AIVB10Open.Label"/>
+                  <Supertip>
+                    <Title resid="AIVB10Open.Label"/>
+                    <Description resid="AIVB10Open.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.aivb.16"/>
+                    <bt:Image size="32" resid="Icon.aivb.32"/>
+                    <bt:Image size="80" resid="Icon.aivb.80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>AIVisualBuilderV10Pane</TaskpaneId>
+                    <SourceLocation resid="Taskpane.Url"/>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="AIVB10.HomeSlides">
+                  <Label resid="AIVB10Slides.Label"/>
+                  <Supertip>
+                    <Title resid="AIVB10Slides.Label"/>
+                    <Description resid="AIVB10Slides.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.aivb.16"/>
+                    <bt:Image size="32" resid="Icon.aivb.32"/>
+                    <bt:Image size="80" resid="Icon.aivb.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>aivbOpenSlides</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="AIVB10.HomeEdit">
+                  <Label resid="AIVB10Edit.Label"/>
+                  <Supertip>
+                    <Title resid="AIVB10Edit.Label"/>
+                    <Description resid="AIVB10Edit.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.aivb.16"/>
+                    <bt:Image size="32" resid="Icon.aivb.32"/>
+                    <bt:Image size="80" resid="Icon.aivb.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>aivbOpenEdit</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
           </ExtensionPoint>
         </DesktopFormFactor>
       </Host>
@@ -328,8 +384,8 @@
         <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://localhost:44317/v10.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="Tab.Label" DefaultValue="SL Smart Design"/>
-        <bt:String id="GetStarted.Title" DefaultValue="SL Smart Design is ready"/>
+        <bt:String id="Tab.Label" DefaultValue="AI SL Smart Design"/>
+        <bt:String id="GetStarted.Title" DefaultValue="AI SL Smart Design is ready"/>
         <bt:String id="SLSDDesign.Label" DefaultValue="Design"/>
         <bt:String id="SLSDAltDesign.Label" DefaultValue="Alternative Design"/>
         <bt:String id="AIVB10Open.Label" DefaultValue="AI Visual Builder"/>
@@ -348,9 +404,10 @@
         <bt:String id="SLSDRename.Label" DefaultValue="Shape Rename"/>
         <bt:String id="SLSDRenText.Label" DefaultValue="Text"/>
         <bt:String id="SLSDRenHead.Label" DefaultValue="Heading"/>
+        <bt:String id="Group.AISLSD.Label" DefaultValue="AI SL Smart Design"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="GetStarted.Description" DefaultValue="Open the SL Smart Design tab: Alternative Design, AI Visual Builder, SL Templates and more. If it does not load, run local-ai\Restart AI Visual Builder.bat."/>
+        <bt:String id="GetStarted.Description" DefaultValue="Open the AI SL Smart Design tab: AI Visual Builder, Several slides, Edit a visual, Alternative Design and more. If it does not load, run local-ai\Restart AI Visual Builder.bat."/>
         <bt:String id="SLSDAltDesign.Tip" DefaultValue="Redesign the slide's points (2 to 10, one per line) with a template from the SL Smart Design library."/>
         <bt:String id="AIVB10Open.Tip" DefaultValue="Turn the slide's content into editable infographics designed by AI: generate, preview, insert."/>
         <bt:String id="AIVB10Slides.Tip" DefaultValue="Spread long content over several slides, each with its own editable visual."/>

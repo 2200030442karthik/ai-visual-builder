@@ -1,0 +1,37 @@
+AI VISUAL BUILDER (TEAM PILOT) - QUICK START GUIDE
+=====================================================
+Compatibility: Windows 10/11 (64-bit) with Microsoft 365 PowerPoint desktop.
+
+WHAT THIS PACKAGE DOES:
+- Installs AI Visual Builder safely for your user profile.
+- Adds an "AI Visual Builder" group right on PowerPoint's HOME tab.
+- PRESERVES your existing "SL Smart Design" add-in and all other plugins (100% untouched).
+- Includes full access to Claude AI, Napkin AI, and built-in native infographics.
+
+INSTALLATION (1 CLICK):
+1. Save your open presentations and close PowerPoint.
+2. Double-click "INSTALL - AI Visual Builder.bat".
+3. If Windows SmartScreen appears: click "More info" -> "Run anyway".
+4. When Windows asks whether to install a certificate for "localhost", choose YES.
+   (This is required by Microsoft Office to load local add-ins securely over HTTPS).
+5. Once you see "INSTALLATION COMPLETED SUCCESSFULLY", press any key to finish.
+
+HOW TO USE IN POWERPOINT:
+1. Open PowerPoint and open any deck using the Simplilearn template.
+2. Select a Content Slide.
+3. Look at the HOME tab in PowerPoint:
+   You will see the "AI Visual Builder" group with:
+   - Generate visuals: Click to open the AI generation taskpane.
+   - Several slides: Spread long content across multiple slides.
+   - Edit a visual: Edit or tweak previously inserted visuals.
+4. Your original "SL Smart Design" ribbon tab remains available with Alternative Design and SL Templates.
+
+TROUBLESHOOTING:
+- Did you run the previous broken installer and lose your SL Smart Design tab?
+  -> Simply double-click "Restore-Original-SLSD.bat" (with PowerPoint closed). Your SL Smart Design tab will return immediately.
+- Want to verify service or restart it?
+  -> Double-click "Restart AI Visual Builder.bat".
+- Want to update AI API keys?
+  -> Double-click "Set AI keys.bat".
+- Want to completely remove AI Visual Builder?
+  -> Double-click "Uninstall AI Visual Builder.bat".

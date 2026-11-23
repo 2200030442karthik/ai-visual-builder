@@ -575,6 +575,7 @@ function planCandidates(P) {
 /* V10.12: a plan's style applies while it is drawn: P.style.accent = the approved colour the palette starts at (a colour
    variant), P.style.spacing 'open' = more white space around the layout; P.start = the first step number. */
 const PLAN_OPEN = { x: 0.045, y: 0.07 };
+const PLAN_COMPACT = [0.6, 0.72, 0.86];       // 10.22: heights tried before the full area (planRender)
 function planArea(P, R) {
   if (!(P.style && P.style.spacing === 'open')) return R;
   const dx = R.w * PLAN_OPEN.x, dy = R.h * PLAN_OPEN.y;
@@ -584,7 +585,18 @@ function planRender(P, key, R) {
   const st = P.style || {}, n = TEMPLATE.accents.length;
   ACCENT_SHIFT = (((st.accent | 0) % n) + n) % n; PLAN_NUM0 = P.start | 0;
   try {
-    const r = planRender0(P, key, planArea(P, R));
+    // 10.22: compact, as in the reference decks - the smallest height (from the top of the area) at which the layout
+    // still passes every check at the template's text sizes; the full area only when nothing smaller does.
+    // "More white space" (spacing 'open') keeps the whole area.
+    const A = planArea(P, R);
+    let r = null;
+    if (!(st.spacing === 'open') && A.h > 200) {
+      for (const f of PLAN_COMPACT) {
+        const c = planRender0(P, key, { x: A.x, y: A.y, w: A.w, h: Math.round(A.h * f) });
+        if (c.ok) { r = c; break; }
+      }
+    }
+    r = r || planRender0(P, key, A);
     r.style = Object.assign({ accent: ACCENT_SHIFT, spacing: st.spacing === 'open' ? 'open' : 'fill' }, st.icons ? { icons: st.icons } : {});   // 10.21.1: the icon style goes with the design (insertion draws it again)
     return r;
   } finally { ACCENT_SHIFT = 0; PLAN_NUM0 = 0; }
@@ -636,13 +648,14 @@ function planVariations(P, R, max, o) {
 const planClean = t => String(t == null ? '' : t).replace(/\s+/g, ' ').replace(/^\s*(?:\d{1,2}[.)]|[-•*])\s*/, '').replace(/\s*[:;,]\s*$/, '').trim();
 /* Objects for the items: the catalogue's best match for the provider's hint and the item's own words, each object once. */
 function planIcons(items) {
-  const used = new Set();
-  items.forEach(it => {
-    const sc = conceptScores(it.label, [it.hint, it.detail].filter(Boolean).join(' ')).concat(it.hint ? conceptScores(it.hint, '') : []);
-    const pick = sc.find(x => x.score >= 3 && !used.has(x.key)) || sc.find(x => x.score >= 3);
-    it.icon = pick ? pick.key : 'none';
-    if (pick) used.add(pick.key);
+  // 10.24: chosen for the whole set at once (gallery.js iconAssign): the strongest match anywhere first
+  const lists = items.map(it => {
+    const m = new Map();
+    conceptScores(it.label, [it.hint, it.detail].filter(Boolean).join(' ')).concat(it.hint ? conceptScores(it.hint, '') : [])
+      .forEach(x => { const o = m.get(x.key); if (!o || x.score > o.score) m.set(x.key, x); });
+    return [...m.values()].sort((a, b) => b.score - a.score || a.order - b.order);
   });
+  iconAssign(lists, 3).forEach((pick, i) => { items[i].icon = pick ? pick.key : 'none'; });
 }
 /* Claude's plan (the JSON of claude_visual.py PLAN_SCHEMA) -> a checked plan; problems name what was repaired. */
 function planFromClaude(raw) {

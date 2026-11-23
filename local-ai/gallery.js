@@ -338,7 +338,7 @@ const CATALOG = [
   ['collect', 'Data collection', 'data collection | collect* | gather* | ingest* | data acquisition | data sources? | raw data | sourcing | data capture'],
   ['clean', 'Data cleaning', 'data cleaning | clean* | transform* | standardi[sz]* | preprocess* | pre-process* | data preparation | prepar(?:e|ing) the data | wrangl* | missing values? | duplicates? | outliers? | normali[sz]*'],
   ['features', 'Feature engineering', 'feature engineering | feature selection | feature extraction | features? | encoding', 'variables?'],
-  ['train', 'Model training', 'model training | model selection | train* | fitting | algorithms? | hyperparameters? | learns?'],
+  ['train', 'Model training', 'model training | model selection | train(?:ing|ed)? (?:the |a )?models? | fitting | algorithms? | hyperparameters? | learns?', 'train*'],
   ['evaluate', 'Model evaluation', 'model evaluation | evaluat* | assess* | validat* | accuracy | precision | recall | metrics? | testing | tests? | tuning | benchmark*'],
   ['predict', 'Prediction output', 'predict* | inference | forecast* | projections?', 'outputs? | outcomes? | results?'],
   ['deploy', 'Deployment', 'deploy* | production | releas* | rollouts? | go-live | launch* | serving'],
@@ -359,24 +359,24 @@ const CATALOG = [
   ['window', 'Web page / system', 'websites? | web pages? | portals?', 'systems?'],
   ['shield', 'Security', 'secur* | governance | protect* | safety | defen[cs]e* | firewalls? | guard*'],
   ['lock', 'Access control', 'access control | access | authent* | passwords? | encrypt* | privacy | permissions? | credentials?'],
-  ['chartUp', 'Analytics chart', 'analytics | insights? | trends? | growth | statistics | performance'],
+  ['chartUp', 'Analytics chart', 'analytics | insights? | trends? | growth | statistics | performance | scal* | productiv* | sales growth'],
   ['monitor', 'Monitoring dashboard', 'monitor* | dashboards? | reporting | observab* | visuali[sz]*'],
-  ['team', 'Team', 'stakeholders? | teams? | people | staff | customers? | employees? | learners? | students? | users? | community'],
+  ['team', 'Team', 'collaborat* | teamwork | cooperat* | partnerships? | mentor* | hiring | recruit* | onboarding | stakeholders? | teams? | people | staff | customers? | employees? | learners? | students? | users? | community'],
   ['person', 'Person', 'managers? | owners? | leaders? | individuals? | persons? | sponsors?'],
   ['sheet', 'Workbook / spreadsheet', 'workbooks? | spreadsheets? | excel | worksheets? | sheets?'],
   ['pages', 'Paginated / printable report', 'paginated | printable | print(?:ing|ed|outs?)? | pdfs? | multi-page'],
   ['org', 'Organization', 'compan(?:y|ies) | organi[sz]ations? | developers? | vendors? | firms? | corporations? | startups? | enterprises? | manufacturers? | publishers? | creators? | founders? | makers? | producers? | builders? | designers? | inventors? | maintainers? | operators? | acquirers?'],
   ['warning', 'Risk / warning', 'risks? | issues? | incidents? | warnings? | alerts? | errors? | failures?'],
   ['milestone', 'Milestone', 'milestones? | deliverables?'],
-  ['flag', 'Goal', 'goals? | targets? | objectives? | kpis?'],
+  ['flag', 'Goal', 'goals? | targets? | objectives? | kpis? | strateg* | missions? | visions?'],
   ['calendar', 'Schedule', 'schedul* | deadlines? | timelines? | calendar | planning | plans?'],
   ['document', 'Document', 'documents? | logs? | logging | documentation | polic(?:y|ies) | charter | contracts? | specifications? | guidelines? | articles? | reports?'],
-  ['checklist', 'Checklist', 'checklists? | verif* | complian* | audits? | reviews? | quality assurance | approv*'],
+  ['checklist', 'Checklist', 'checklists? | verif* | complian* | audits? | reviews? | quality assurance | quality | certif* | approv*'],
   ['filter', 'Filter', 'filter* | sorting | screening | selection'],
   ['magnifier', 'Search / investigation', 'search* | investigat* | discover* | explor* | research | analy[sz]* | inspect*'],
   ['bulb', 'Idea', 'ideas? | innovat* | concepts? | creativ* | brainstorm*'],
   ['coin', 'Cost / money', 'costs? | budget* | pric(?:e|es|ing) | revenue | profit* | invest* | sales | savings? | roi'],
-  ['gear', 'Process / automation', 'automat* | orchestrat* | process(?:es|ing)? | operations? | workflows? | pipelines? | maintenance | configur*', 'engineering'],
+  ['gear', 'Process / automation', 'automat* | orchestrat* | process(?:es|ing)? | operations? | workflows? | pipelines? | maintenance | configur* | efficien* | execution | implement*', 'engineering'],
   ['info', 'Information', 'informational | informative | information | quick facts | facts?'],
   ['access', 'Accessibility', 'accessib* | inclusiv* | disabilit*'],
   ['spark', 'Engagement and inspiration', 'engag* | inspir* | motivat* | encourag*'],
@@ -398,16 +398,21 @@ function conceptScores(label, detail) {
 }
 /* Objects for the points of one visual: each from its own point. A point that matches nothing (or only weakly) gets the
    neutral marker, never another point's or the title's object. Two points get the same object only when nothing else fits. */
+/* 10.24: the objects are chosen for the whole set at once - the strongest match anywhere first - so a point that fits an
+   object best keeps it even when an earlier point also matched it weakly ("Data collection" before "Collect feedback").
+   A point's alternative must score at least 60% of its own best; with none left it shares, or gets the marker. */
+function iconAssign(lists, min) {
+  const pick = lists.map(() => null), used = new Set(), pairs = [];
+  lists.forEach((sc, i) => { const best = sc[0] ? sc[0].score : 0; sc.forEach(x => { if (x.score >= min && x.score >= best * 0.6) pairs.push({ i, x, d: best - x.score }); }); });
+  pairs.sort((a, b) => b.x.score - a.x.score || a.d - b.d || a.i - b.i);
+  pairs.forEach(p => { if (!pick[p.i] && !used.has(p.x.key)) { pick[p.i] = p.x; used.add(p.x.key); } });
+  lists.forEach((sc, i) => { if (!pick[i] && sc[0] && sc[0].score >= min) pick[i] = sc[0]; });
+  return pick;
+}
 function iconsFor(items) {
-  const used = new Set();
-  return items.map(it => {
-    const sc = conceptScores(it.label || '', it.detail || ''), best = sc[0];
-    if (!best || best.score < 3) return { key: 'none', matched: false, name: 'Point marker', why: 'no catalog object depicts this point' };
-    let pick = best;
-    if (used.has(best.key)) { const alt = sc.find(x => !used.has(x.key) && x.score >= 3 && x.score >= best.score * 0.6); if (alt) pick = alt; }
-    used.add(pick.key);
-    return { key: pick.key, matched: true, name: pick.name, why: pick.hits.join(', '), score: pick.score };
-  });
+  const picks = iconAssign(items.map(it => conceptScores(it.label || '', it.detail || '')), 3);
+  return picks.map(pick => pick ? { key: pick.key, matched: true, name: pick.name, why: pick.hits.join(', '), score: pick.score }
+    : { key: 'none', matched: false, name: 'Point marker', why: 'no catalog object depicts this point' });
 }
 /* A component as a group of shapes; returns primitives tagged with the group id, its name and the object key. */
 let grpSeq = 0;

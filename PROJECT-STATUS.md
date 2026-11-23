@@ -1,6 +1,56 @@
 # AI Visual Builder — project status
 
-## Current version: V10.21.1 (17 Nov 2026, local, not pushed) on V10.20.1 (16 Nov 2026) — SL Smart Design + AI Visual Builder unified; installer validated (staging)
+## Current version: V10.22 (18 Nov 2026, local, not pushed) — add-only team installation with activation keys; V10.21.1 app
+
+## V10.22 (afternoon) — ONE SL Smart Design tab on team PCs; compact visuals (18 Nov 2026)
+**One tab.** Team package now installs the unified SL Smart Design web tab (manifest-slsd, product Id 2f01d600…) as a
+shared-folder add-in: `deploy/team/Share.ps1` (one UAC prompt, visible window) shares the install's `catalog\` folder
+read-only for the user (`\\<PC>\SLSmartDesign$`), trusted catalog {EEBC6074…}; the user adds it once (Home > Add-ins >
+Advanced > SHARED FOLDER). Without admin rights: Developer registration, original tab kept. Retired on install: our
+own V10.20 `SLSD_AIVisualBuilder` VBA add-in and the pilot's Home group (the extra tabs seen on 18 Nov).
+`local-ai/slsd_tab.py` (server thread, AIVB_SLSD_UNIFY=1): hides the licensed add-in's own tab ONLY when PowerPoint's
+ribbon cache shows the web tab (`Wef\AppCommands\*\TrustedCatalog\<id>*`), only with PowerPoint closed, from the user's
+own file (ribbon XML only; VBA identical, checked; original kept byte for byte) and restores it automatically when the
+web tab is missing; Uninstall / Restore SL Smart Design restore at once. Activation gate moved into the panel
+(`gate.js` overlay) because v10.html is also the tab's function file: SL Smart Design commands (`/api/slsd/*`,
+`/api/bridge/*`) work without activation, every AI API needs it.
+**Endpoint security:** Cisco Secure Endpoint silently deleted a script with a hidden elevated PowerShell
+(`-Verb RunAs -WindowStyle Hidden`) twice; elevated calls now use a visible window.
+**Compact visuals** (reference `sample for claude.pptx`: 960×540, 16.5 pt body = 22 pt here, compact cards/rows,
+SME box at 814–1199 × 148–636 pt equivalent): `plan.js planRender` tries 60 / 72 / 86 % of the area height first and
+keeps the first that passes every check (top-aligned). SME video placeholders (name/text "SME"/"video", or Media) are
+never covered or removed; `config.json "sme_space": true` reserves the SME area on every slide. A permanently narrow
+area (688 pt) was tried and rejected: 13 acceptance failures, design counts 24→3-7, saved Napkin/Claude results
+rejected. Tests (worktree = HEAD + only these changes): V10.20 35/35, V10.12.x all, activation 41/41, slsd_tab 13/13,
+SL Smart Design 159, upgrade 51/51, server/claude/hosted/ribbon ALL PASSED; design counts 18/24/24/24 (were 16/24/24/24).
+Working tree also holds someone else's uncommitted UI change (number badges hidden, `paid_order` list) that fails A34
+(and A12 by order) - not part of this work.
+**Not yet tested:** the share + catalog + one-tab switch on a team PC in real PowerPoint (needs a UAC answer).
+
+## V10.22 — team installation: add-only, one click, activation keys (18 Nov 2026)
+**Why:** the unified / "Easy Pilot" installer (deploy/slsd-unified, Install.ps1 step 5) REPLACES the licensed
+`SL_Smart_Design_v2_Key_Dec_25.ppam` with a tab-hidden copy; with Developer registration the replacement tab appears
+only after Home > Add-ins in each session, so SL Smart Design "disappeared" on team desktops. The Team Pilot package
+made earlier on 18 Nov (deploy/team-pilot, untracked) overwrote any .ppam not 57,600 bytes, shipped the licensed .ppam,
+cleared Office's whole WEF cache, force-closed PowerPoint and carried the Claude/Napkin keys in plain text
+(`AIVB-keys.json` in the zip). Do not share Team_Pilot_Package; if it was shared, rotate both keys.
+
+| Part | File | What |
+|---|---|---|
+| Installer | `deploy/team/Install.ps1` (+ `.bat`) | adds only the AI Visual Builder group (own WEF\Developer value, Id 78643140…; an update replaces the earlier pilots in place); never touches SL Smart Design or other add-ins, never closes PowerPoint, no cache clearing; per-user access policy with a daily cap (30 Claude + 30 Napkin); app/runtime kept as .prev until the new version answers |
+| Repair | `common.ps1 RepairSLSD`, `Restore SL Smart Design.bat` | if the unified install is present, runs ITS uninstaller (-KeepData), which restores this PC's own baseline (original licensed add-in + registration); asked first, PowerPoint must be closed; nothing copied from the package |
+| Activation | `local-ai/activation.py`, `local-ai/activate.html`, `server.py` (AIVB_ACTIVATION=1, set by `deploy/team/run_server.pyw`) | keys AIVB-XXXXX-XXXXX-XXXXX-XXXXX (100 bits); bundle = Claude/Napkin keys encrypted (PBKDF2 200k + HMAC-SHA256 CTR, encrypt-then-MAC; stdlib only); record bound to Windows user + PC (DPAPI); until activated every page is the activation page and every API (except status/activation) 403; expired / withdrawn / changed / foreign activation removes the AI keys; 10 attempts a minute; key never logged |
+| Build | `deploy/Make-TeamPackage.ps1` (+ `Make team package (administrator).bat`), `deploy/build-team-package.ps1` | first run makes `deploy/team-keys/` (bundle + `activation-keys.csv`, gitignored), later runs reuse it (users stay activated); zip 17.9 MB in ~9 s; refuses key / licence / certificate files and this PC's real key values |
+
+Tests (18 Nov): `tests/test_activation.py` 39/39 (crypto, record binding, server gate over HTTP, rate limit, no key in
+log), `test_server.py` and `test_hosted.py` ALL PASSED. Isolated real installation from the extracted zip (instance
+AIVBTeamTest, port 44351, dummy-key bundle, -NoRegister -NoAutostart): installed + activated in 15 s, panel served,
+WEF\Developer and %APPDATA%\Microsoft\AddIns unchanged (hashes), not-activated → activation page and AI keys removed,
+Activate.ps1 wrong/right key, Uninstall removed everything and left the pilot registration. Repair path checked with a
+stand-in uninstaller. Real package built: 25 keys valid until 2027-03-31 (one checked to unlock both AI keys).
+**Not yet tested:** a team PC in real PowerPoint (ribbon, activation page in the task pane), a real unified-install
+repair on a team PC. **Limits:** offline activation - one key works on any number of PCs (withdraw = new package or
+rotate the AI keys); Developer registration may need Home > Add-ins once per session; Windows only.
 
 Authorized employee + Content Slide of the approved template → paste content → analyze → accurate infographic and
 pictorial suggestions → preview → insert editable PowerPoint shapes. JavaScript panel + small Python host; no AI

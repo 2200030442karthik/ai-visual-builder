@@ -74,7 +74,7 @@
     .gcard { text-align:left; border:1px solid var(--line); border-radius:8px; background:#fff; padding:4px; font-size:11.5px; line-height:1.3; }
     .gcard.sel { border-color:var(--accent); box-shadow:0 0 0 2px #c9cff0; }
     .gcard { position:relative; }
-    .gcard .gnum { position:absolute; top:6px; left:6px; z-index:1; min-width:18px; height:18px; padding:0 4px; box-sizing:border-box; border-radius:9px; background:#5c6670; color:#fff; font:600 11px/18px Segoe UI,Arial; text-align:center; }
+    .gcard .gnum { display: none; }
     .gcard.sel .gnum { background:var(--accent); }
     .gcard.sel::after { content:"\2713"; position:absolute; top:6px; right:6px; width:18px; height:18px; border-radius:9px; background:var(--accent); color:#fff; font:700 11px/18px Segoe UI,Arial; text-align:center; }
     .gcard:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
@@ -85,6 +85,7 @@
     .gwhy { color:var(--muted); font-size:11px; }
     .badge { display:inline-block; margin-top:3px; border-radius:8px; padding:0 6px; font-size:10.5px; font-weight:600; }
     .badge.full { background:#e5f4ea; color:#1e7d45; } .badge.partial { background:#fff3dc; color:#8a5300; } .badge.image { background:#f2e6e6; color:#a4262c; }
+    .badge.src { margin-left:4px; } .badge.src.claude { background:#fbe9e1; color:#a1431c; } .badge.src.napkin { background:#e3f0fa; color:#1d5f8f; } .badge.src.builtin { background:#eeeeee; color:#4a4a4a; }
     .spin { display:inline-block; width:11px; height:11px; border:2px solid #c7cce8; border-top-color:var(--accent); border-radius:50%; animation:sp 0.8s linear infinite; vertical-align:-1px; margin-right:5px; }
     @keyframes sp { to { transform:rotate(360deg); } }
   </style>
@@ -175,6 +176,11 @@
       minBody: 22,              // Simplilearn standard (V10.5): no text below 22 pt; content that does not fit goes to more slides
       minNote: 22,              // connector labels such as "1:N" use the same floor
       contentArea: { x: 102, y: 205, w: 1079, h: 435 },
+      // 10.22: the SME video area of the reference decks ("sample for claude.pptx": the box at 611-900 x 110-476 of
+      // 960 pt = 814-1199 x 148-636 pt here). A slide's SME video placeholder is never covered or removed (readSlide);
+      // with config.json "sme_space": true this area is kept free on every slide, placeholder or not (freeArea).
+      smeArea: { x: 814, y: 148, w: 385, h: 488 },
+      reserveSme: false,
       bottomMargin: 72,         // keep clear of the footer area
       // The approved Simplilearn palette (V10.5), ordered so neighbouring points get clearly different colours.
       // brand.js maps every other colour (tints, shades, Napkin output) to this palette or to the neutrals.
@@ -1933,6 +1939,7 @@
       if (state.svc && state.svc.access && state.svc.access.mode === 'entra' && !state.svc.access.authorized && !state.token && state.inOffice && await signIn(false))
         try { state.svc = await api('/api/status', null, 8000); } catch (e) { /* stays as it was */ }
       const s = state.svc;
+      TEMPLATE.reserveSme = !!(s && s.brand && s.brand.sme_space === true);     // 10.22: the administrator's choice
       showGate();
       dot('dotHost', s ? 'ok' : 'bad');
       $('txtHost').textContent = s ? `Panel host ${s.server || ''}: connected (this PC only)` : 'Panel host: not answering. Double-click "Start AI Visual Builder.bat".';
@@ -2314,6 +2321,8 @@
       const hOf = s => s.usedH != null ? s.usedH : s.height;
       const obstacles = shapes.filter(s => !s.isTitle && !s.removable && s.width * hOf(s) < 0.6 * S.w * S.h &&
         s.left < base.x + base.w && s.left + s.width > base.x && s.top < base.y + base.h && s.top + hOf(s) > base.y);
+      // 10.22: the SME video area kept free on every slide when the administrator asks for it (config "sme_space")
+      if (T.reserveSme && T.smeArea) obstacles.push({ left: T.smeArea.x * sx, top: T.smeArea.y * sy, width: T.smeArea.w * sx, height: T.smeArea.h * sy });
       let rects = [base];
       for (const o of obstacles) {
         const pad = 14, ox1 = o.left - pad, oy1 = o.top - pad, ox2 = o.left + o.width + pad, oy2 = o.top + hOf(o) + pad;
@@ -2340,6 +2349,8 @@
         }
         // An empty content placeholder ("Click to add text") can be replaced by the visual: nothing is lost.
         info.removable = s.type === 'Placeholder' && !info.isTitle && !info.text && !info.noText && !/footer|slide number|date/i.test(s.name);
+        // 10.22: an SME video placeholder (by name or text, empty or not, any kind) is never covered or removed
+        if (/\bSME\b|video/i.test(s.name + ' ' + info.text) || s.type === 'Media') { info.removable = false; info.sme = true; }
         // 10.19: how far down its text reaches (top-anchored text only; anything else keeps its whole box)
         if (info.text && !info.isTitle) {
           try {
@@ -2895,6 +2906,8 @@
   <script src="/packs/concepts-10.16.js"></script>
   <script src="/packs/scenes-10.17.js"></script>
   <script src="/packs/vivid-10.21.js"></script>
+<script src="/packs/spotlight-10.23.js"></script>
+<script src="/packs/infographics-10.24.js"></script>
   <script src="/original.js"></script>
   <script src="/faithful.js"></script>
   <script src="/napkin.js"></script>
@@ -2903,5 +2916,6 @@
   <script src="/app.js"></script>
 <script src="/bridge.js"></script>
 <script src="/slsd.js"></script>
+<script src="/gate.js"></script>
 </body>
 </html>

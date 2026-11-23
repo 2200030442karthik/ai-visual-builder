@@ -103,7 +103,10 @@ function sectionsRead(text) {
     else before.push(l);
   }
   if (!secs.length) return null;
-  secs.forEach(s => { s.items = secItems(s.body); });
+  // 10.23: an outcome written as one sentence ("Outcome: Gain insights into needs, priorities, and assumptions") is one
+  // statement, not a list of its commas
+  const sentence = s => /^(?:outcomes?|results?|impact|goals?|purpose)$/i.test(s.name.trim()) && !/\n/.test(s.body.trim()) && s.body.split(/[,;]/)[0].trim().split(/\s+/).length >= 4;
+  secs.forEach(s => { s.items = sentence(s) ? [{ label: secCap(s.body.trim().replace(/[.;:]+$/, '')), detail: '' }] : secItems(s.body); });
   const usable = secs.filter(s => s.items.length >= 1);
   const ok = usable.length >= 2 && usable.filter(s => s.known).length >= 1 && usable.every(s => s.items.length <= 8) ||
     usable.length === 1 && usable[0].known && usable[0].items.length >= 3 && usable[0].items.length <= 8;
@@ -130,7 +133,7 @@ function sectionsPrep(SX, text) {
     ` and ${st.object ? 'the ' + st.object : 'its examples'} as ${SX.sections[0].items.length} items with an object each: ${SX.sections[0].items.map(i => i.label).join('; ')}. A modern, engaging educational infographic; ` +
     'use the wording of the text; do not add facts, figures or items, and do not repeat the sentence as a block of text.' : '';
   return { content: st ? st.text : parts.join('\n\n'), concepts, ordered: false, list: true, points, headings: SX.sections.map(s => s.name).filter(Boolean), source: text, context: (ctx2 || context).slice(0, 900),
-    record: null, title: SX.title, short: SX.short, sections: SX.sections, statement: st || null, paragraph: !!SX.paragraph, lead: SX.lead || '' };
+    record: null, title: SX.title, short: SX.short, sections: SX.sections, statement: st || null, paragraph: !!SX.paragraph, lead: SX.lead || '', intro: SX.intro || '' };
 }
 /* The plan of sectioned content: one group per section (its name drawn as the group's heading), every item in it. */
 function sectionsPlan(SX) {
@@ -146,7 +149,8 @@ function sectionsPlan(SX) {
   const cmp = rel.relation === 'comparison';
   return planSemantics({ title: SX.title, headline: SX.title, takeaway: SX.paragraph && SX.lead && SX.lead.length <= 140 ? SX.lead.replace(/[.!]\s*$/, '') : '', hero: heroFor(SX.short, SX.full || SX.title), short: SX.short, statement: st, verbs: st ? st.verbs : [],
     relation: cmp ? 'comparison' : groups.length >= 2 ? 'categories' : 'independent', relationWhy: cmp ? rel.why : '', items, groups: groups.length >= 2 ? groups : [], flow: [], layouts: [], from: 'text', sections: true, paragraph: !!SX.paragraph,
-    sectionName: groups.length === 1 ? groups[0].name : '' });
+    sectionName: groups.length === 1 ? groups[0].name : '',
+    intro: SX.paragraph ? '' : String(SX.intro || '').trim() });   // 10.23: the topic's one-line description (packs/spotlight-10.23.js)
 }
 /* The object for a whole topic: its short name first ("AI & ML" -> the brain, "Digital Marketing" -> the megaphone),
    then its full title; '' when the catalogue has no accurate one. */

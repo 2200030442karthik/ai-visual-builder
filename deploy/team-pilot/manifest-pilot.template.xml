@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
+  <Id>78643140-2b68-48d8-b072-3b253dddf2b8</Id>
+  <Version>10.21.1.0</Version>
+  <ProviderName>AI Visual Builder</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="AI Visual Builder (Pilot)"/>
+  <Description DefaultValue="Turns your slide content into editable infographics in the Simplilearn template."/>
+  <IconUrl DefaultValue="https://localhost:__PORT__/assets/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://localhost:__PORT__/assets/icon-64.png"/>
+  <SupportUrl DefaultValue="https://2200030442karthik.github.io/ai-visual-builder/"/>
+  <AppDomains><AppDomain>https://localhost:__PORT__</AppDomain></AppDomains>
+  <Hosts><Host Name="Presentation"/></Hosts>
+  <Requirements><Sets DefaultMinVersion="1.1"><Set Name="PowerPointApi" MinVersion="1.5"/></Sets></Requirements>
+  <DefaultSettings><SourceLocation DefaultValue="https://localhost:__PORT__/v10.html"/></DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Presentation">
+        <DesktopFormFactor>
+          <GetStarted>
+            <Title resid="GetStarted.Title"/>
+            <Description resid="GetStarted.Description"/>
+            <LearnMoreUrl resid="GetStarted.LearnMoreUrl"/>
+          </GetStarted>
+          <FunctionFile resid="Taskpane.Url"/>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="AIVB10.Group">
+                <Label resid="Group.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.16"/>
+                  <bt:Image size="32" resid="Icon.32"/>
+                  <bt:Image size="80" resid="Icon.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="AIVB10.Open">
+                  <Label resid="Button.Label"/>
+                  <Supertip>
+                    <Title resid="Button.Label"/>
+                    <Description resid="Button.Tooltip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16"/>
+                    <bt:Image size="32" resid="Icon.32"/>
+                    <bt:Image size="80" resid="Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>AIVisualBuilderV10Pane</TaskpaneId>
+                    <SourceLocation resid="Taskpane.Url"/>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="AIVB10.Slides">
+                  <Label resid="Slides.Label"/>
+                  <Supertip>
+                    <Title resid="Slides.Label"/>
+                    <Description resid="Slides.Tooltip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16"/>
+                    <bt:Image size="32" resid="Icon.32"/>
+                    <bt:Image size="80" resid="Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>AIVisualBuilderV10Pane</TaskpaneId>
+                    <SourceLocation resid="Slides.Url"/>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="AIVB10.Edit">
+                  <Label resid="Edit.Label"/>
+                  <Supertip>
+                    <Title resid="Edit.Label"/>
+                    <Description resid="Edit.Tooltip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16"/>
+                    <bt:Image size="32" resid="Icon.32"/>
+                    <bt:Image size="80" resid="Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>AIVisualBuilderV10Pane</TaskpaneId>
+                    <SourceLocation resid="Edit.Url"/>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Icon.16" DefaultValue="https://localhost:__PORT__/assets/icon-16.png"/>
+        <bt:Image id="Icon.32" DefaultValue="https://localhost:__PORT__/assets/icon-32.png"/>
+        <bt:Image id="Icon.80" DefaultValue="https://localhost:__PORT__/assets/icon-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:__PORT__/v10.html"/>
+        <bt:Url id="Slides.Url" DefaultValue="https://localhost:__PORT__/v10.html?open=slides"/>
+        <bt:Url id="Edit.Url" DefaultValue="https://localhost:__PORT__/v10.html?open=edit"/>
+        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://localhost:__PORT__/v10.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="GetStarted.Title" DefaultValue="AI Visual Builder is ready"/>
+        <bt:String id="Group.Label" DefaultValue="AI Visual Builder"/>
+        <bt:String id="Button.Label" DefaultValue="Generate visuals"/>
+        <bt:String id="Slides.Label" DefaultValue="Several slides"/>
+        <bt:String id="Edit.Label" DefaultValue="Edit a visual"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="GetStarted.Description" DefaultValue="Home tab > AI Visual Builder > Generate visuals. If the group is missing: Home > Add-ins > AI Visual Builder."/>
+        <bt:String id="Button.Tooltip" DefaultValue="Turn your content into editable infographics: paste it, generate, pick one and insert."/>
+        <bt:String id="Slides.Tooltip" DefaultValue="Spread long content over several slides, each with its own editable visual."/>
+        <bt:String id="Edit.Tooltip" DefaultValue="Change the texts, icons, colours or layout of a visual you inserted."/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>

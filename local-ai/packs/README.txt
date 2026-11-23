@@ -26,4 +26,11 @@ that the lists match).
 Packs: core@10.10 (plan.js: 11 families), pro@10.11.0 (pro-10.11.js: 12 families), modern@10.13.0 (modern-10.13.js:
 roadmap, pillars, quadrant framework), showcase@10.14.0, learning@10.15.0, concepts@10.16.0 (concepts-10.16.js:
 concept tiles, orbit, hexagon cluster, layered stack, bento grid, statement spotlight), scenes@10.17.0
-(scenes-10.17.js: 16 compositions of AI-infographic style; families may set appeal, used by the ranking).
+(scenes-10.17.js: 16 compositions of AI-infographic style; families may set appeal, used by the ranking),
+vivid@10.21 (vivid-10.21.js), spotlight@10.23.0 (spotlight-10.23.js: the topic spotlight of the reference course slides -
+topic and description, named sections as bordered icon cards with white badge icons, the outcome bar; topicspot and
+topicband; adds the objects eye, interview and workshop), infographics@10.24.0 (infographics-10.24.js:
+rising 2.5D cylinders, icon cards with arrows, icon cards - ideas from the MIT-licensed antvis/infographic catalogue drawn
+in the brand standard; more catalogue terms for everyday business words).
+10.24: the gallery no longer offers isostack, poster and ecosystem (orchestrator.js ORCH_RETIRED); every card names its
+source: Built-in, Claude or Napkin (orchestrator.js orchSource).
