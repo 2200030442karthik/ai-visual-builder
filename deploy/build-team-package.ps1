@@ -64,7 +64,7 @@ Remove-Item (Join-Path $app 'packs\README.txt') -ErrorAction SilentlyContinue
 Copy-Item (Join-Path $Src 'run_server.pyw') $app
 Copy-Item $Bundle (Join-Path $app 'activation-bundle.json')
 $cfg = Get-Content (Join-Path $La 'config.json') -Raw | ConvertFrom-Json
-$cfg.paid_policy = 'when-needed'          # Claude and Napkin on: the keys only work after activation, with daily caps
+$cfg.paid_policy = 'always'               # 10.24: Claude designs for every new text (the owner's choice); keys only work after activation
 [IO.File]::WriteAllText((Join-Path $app 'config.json'), ($cfg | ConvertTo-Json -Depth 4), (New-Object Text.UTF8Encoding $false))
 
 # 3. Manifest: the ONE SL Smart Design tab (Alternative Design, AI Visual Builder, Several slides, Edit a visual,
