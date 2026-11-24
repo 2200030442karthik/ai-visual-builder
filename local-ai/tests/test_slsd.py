@@ -127,6 +127,22 @@ def t_server_inprocess():
     gate['block'] = False
     wait(first)
     check('host', 'the next command runs once the window closed', wait(S.slsd_run({'cmd': 'footer-note'})['id'])['state'] == 'done')
+    # 10.25 SL Editor: SL Design / SL Animation commands of SL_Audomation; values go through the add-in's own setters first
+    sled = []
+    S.SLED_RUNNER = lambda macro, pre: sled.append((macro, list(pre)))
+    for k, m in S.SLED_MACROS.items():
+        vals = {'an-import': {'id': '1234'}, 'an-shift': {'from': '2', 'by': '0,5'}, 'de-brandline-custom': {'color': '#3645a9'}}.get(k, {})
+        j = wait(S.slsd_run({'cmd': k, 'values': vals})['id'])
+        check('sled', f'{k} runs {m}', j['state'] == 'done' and sled[-1][0] == m, j)
+    check('sled', 'shift: both setters, then the action', sled and [x for x in sled if x[0] == 'Shift_All_Animations'][0][1] == [('Shift_Animations_User_Form', '2'), ('Shift_By_User_Form', '0.5')])
+    check('sled', 'custom brandline: colour code without # in capitals', [x for x in sled if x[0] == 'Brandline_University'][0][1] == [('Brandline_University_ColorCode', '3645A9')])
+    for cmd, vals in (('an-import', {'id': '12a'}), ('an-import', {}), ('an-shift', {'from': '1;x', 'by': '1'}), ('de-brandline-custom', {'color': 'red'}), ('an-fade', {})):
+        try:
+            S.slsd_run({'cmd': cmd, 'values': vals}); check('sled', f'refused: {cmd} {vals}', False)
+        except S.NapkinError as e:
+            check('sled', f'refused: {cmd} {vals}', e.code == 400, e)
+    import addin_tabs as AT
+    check('sled', 'addin_tabs knows both company add-ins', AT.ADDINS == ('SL_Smart_Design_v2_Key_Dec_25', 'SL_Audomation'))
     # the real runner sends PowerPoint's documented macro form
     import slsd_com
     sent = []
@@ -221,21 +237,25 @@ def t_manifest(port_up):
     check('ribbon', 'same add-in Id as manifest-v10.xml (replaces it, not a second add-in)', root.find('o:Id', ns).text == v10.find('o:Id', ns).text)
     check('ribbon', 'version is a.b.c.d and newer than V10.20.0', re.fullmatch(r'\d+\.\d+\.\d+\.\d+', root.find('o:Version', ns).text) and
           tuple(map(int, root.find('o:Version', ns).text.split('.'))) > tuple(map(int, v10.find('o:Version', ns).text.split('.'))))
-    check('ribbon', 'no group on the Home tab', root.find('.//v:OfficeTab', ns) is None and 'TabHome' not in text)
+    # 10.25 SL Editor: Home > SL Editor (the panel), SL Design, SL Animation; one custom tab "SL Editor"
+    home = root.find('.//v:OfficeTab', ns)
+    hs = {s.get('id'): s.get('DefaultValue') for s in root.iter() if s.tag.endswith('}String')}
+    hl = [hs.get(c.find('v:Label', ns).get('resid')) for c in home.iter('{%s}Control' % ns['v'])] if home is not None else []
+    check('ribbon', 'Home tab: SL Editor, SL Design, SL Animation', home is not None and home.get('id') == 'TabHome' and hl == ['SL Editor', 'SL Design', 'SL Animation'], hl)
     tabs = root.findall('.//v:CustomTab', ns)
     strings = {s.get('id'): s.get('DefaultValue') for s in root.iter() if s.tag.endswith('}String')}
-    check('ribbon', 'one custom tab "SL Smart Design"', len(tabs) == 1 and strings.get(tabs[0].find('v:Label', ns).get('resid')) == 'SL Smart Design')
+    check('ribbon', 'one custom tab "SL Editor"', len(tabs) == 1 and strings.get(tabs[0].find('v:Label', ns).get('resid')) == 'SL Editor')
     groups = tabs[0].findall('v:Group', ns)
     labels = [strings[g.find('v:Label', ns).get('resid')] for g in groups]
-    check('ribbon', 'groups Design | SL Templates | Miscellaneous | Shape Rename', labels == ['Design', 'SL Templates', 'Miscellaneous', 'Shape Rename'], labels)
+    check('ribbon', 'groups Design | SL Templates | Miscellaneous | Shape Rename | SL Design | SL Animation', labels == ['Design', 'SL Templates', 'Miscellaneous', 'Shape Rename', 'SL Design', 'SL Animation'], labels)
     ctl = {strings[c.find('v:Label', ns).get('resid')]: c for c in tabs[0].iter('{%s}Control' % ns['v'])}
-    want = ['Alternative Design', 'AI Visual Builder', 'Several slides', 'Edit a visual', 'Add Footer Note', 'Add Blue Codebox', 'Add Black Codebox', 'Add Footer Info',
+    want = ['Alternative Design', 'AI SL Smart Design', 'SL Design', 'SL Animation', 'Several slides', 'Edit a visual', 'Add Footer Note', 'Add Blue Codebox', 'Add Black Codebox', 'Add Footer Info',
             'Add Problem Solution', 'Add Problem Solution Image', 'Remove Animations', 'Delete Empty Boxes', 'Text', 'Heading']
-    check('ribbon', 'every original SL Smart Design button and the AI Visual Builder buttons', sorted(ctl) == sorted(want), sorted(set(want) ^ set(ctl)))
+    check('ribbon', 'every original SL Smart Design button, the AI buttons and SL Design / SL Animation', sorted(ctl) == sorted(want), sorted(set(want) ^ set(ctl)))
     design = [strings[c.find('v:Label', ns).get('resid')] for c in groups[0].findall('v:Control', ns)]
-    check('ribbon', 'Alternative Design and AI Visual Builder side by side in Design', design[:2] == ['Alternative Design', 'AI Visual Builder'], design)
-    a = ctl.get('AI Visual Builder')
-    check('ribbon', 'AI Visual Builder opens the task pane itself (ShowTaskpane: first click, no bridge)',
+    check('ribbon', 'Alternative Design and AI SL Smart Design side by side in Design', design[:2] == ['Alternative Design', 'AI SL Smart Design'], design)
+    a = ctl.get('AI SL Smart Design')
+    check('ribbon', 'AI SL Smart Design opens the task pane itself (ShowTaskpane: first click, no bridge)',
           a is not None and a.find('v:Action', ns).get(XT) == 'ShowTaskpane' and a.find('v:Action/v:TaskpaneId', ns).text == 'AIVisualBuilderV10Pane')
     js = open(os.path.join(AI, 'slsd.js'), encoding='utf-8').read() + open(os.path.join(AI, 'bridge.js'), encoding='utf-8').read()
     fns = [c.find('v:Action/v:FunctionName', ns).text for c in ctl.values() if c.find('v:Action', ns).get(XT) == 'ExecuteFunction']

@@ -116,9 +116,15 @@ function orchScore(c) {
 /* 10.24: compositions retired from the gallery after review: text that collides in the layered stack, a lone title
    with a stray rule (poster), a small grey hub (ecosystem). Kept in the packs for editing visuals already inserted. */
 const ORCH_RETIRED = /^(isostack|poster|ecosystem)$/;
+/* 10.25: the sentence in a box ("Key message", "Statement banner", "Statement with icon", "Key statement"): not an
+   infographic. Shown only when no other design exists for the text (Claude breaks a paragraph into its key ideas). */
+const ORCH_PLAIN = /^(statement|key_message|s-key|s-banner|s-icon)$/;
+const orchPlain = c => ORCH_PLAIN.test(String(c.family || '').replace(/:\d+$/, ''));
 function orchRank(all, max, shown, strict) {
   const seen = new Set(), fam = new Set(), pool = [], prints = [];
-  all.filter(c => c && c.prims && c.prims.length && !ORCH_RETIRED.test(String(c.family || '').replace(/:\d+$/, ''))).map(c => Object.assign(c, { score: orchScore(c) })).sort((a, b) => b.score - a.score).forEach(c => {
+  const live = all.filter(c => c && c.prims && c.prims.length && !ORCH_RETIRED.test(String(c.family || '').replace(/:\d+$/, '')));
+  const rich = live.filter(c => !orchPlain(c));
+  (rich.length ? rich : live).map(c => Object.assign(c, { score: orchScore(c) })).sort((a, b) => b.score - a.score).forEach(c => {
     // an AI service's own drawings are each their own design; its plan drawn here competes by family like the rest
     const sig = orchSig(c.prims), fk = c.own ? c.id : c.category + '|' + c.family, fp = c.footprint || (c.footprint = orchFootprint(c.prims));
     const look = { fp, sp: c.shapeprint || (c.shapeprint = orchShapePrint(c.prims)) };
@@ -246,8 +252,21 @@ async function orchMore(text, onStage) {
   // the gallery's standard holds for the additions too: when Generate had enough complete designs with objects, More
   // visuals adds only such designs (or none, with a note) - never the weaker ones it left out
   const strict = (memo.list || []).filter(c => c.complete !== false && !c.own).length >= 6 || (memo.list || []).every(c => c.complete !== false);
-  const fresh = orchRank(memo.cands.filter(c => !before.has(c.id)), ORCH_MAX, shownFam, strict);
-  memo.list = fresh.concat((memo.list || []).filter(c => !fresh.includes(c))).slice(0, ORCH_MAX * 2);
+  let fresh = orchRank(memo.cands.filter(c => !before.has(c.id)), ORCH_MAX, shownFam, strict);
+  // 10.25: when the new layouts run out, the shown ones in other colour schemes and spacing (each look once), so
+  // "More visuals" keeps giving new options click after click
+  if (fresh.length < 6) {
+    memo.variantRound = (memo.variantRound || 0) + 1;
+    for (let k = 0; k < 3 && fresh.length < 6; k++) {
+      for (const e of ORCH.engines.filter(x => x.kind === 'native' && x.more && x.available(ctx))) {
+        try { memo.cands.push(...await e.more(ctx)); } catch (err) { /* nothing more from it */ }
+      }
+      const pool = memo.cands.filter(c => !before.has(c.id) && !fresh.includes(c));
+      const extra = orchRank(pool, 8 - fresh.length, null, strict).filter(c => !fresh.some(f => f.family === c.family));
+      fresh = fresh.concat(extra);
+    }
+  }
+  memo.list = fresh.concat((memo.list || []).filter(c => !fresh.includes(c))).slice(0, ORCH_MAX * 4);
   return { list: memo.list, fresh: fresh.length, note: fresh.length ? '' : 'Every distinct design for this content is already shown.' };
 }
 
@@ -280,7 +299,7 @@ registerEngine({ id: 'designs', kind: 'native', order: 20,
   available: () => true,
   // 10.17: every composition that fits is drawn (one Generate shows 20+ distinct designs; the ranking removes look-alikes)
   run: async ctx => orchDesigns(ctx, 40),
-  more: async ctx => orchDesigns(ctx, 8) });
+  more: async ctx => orchDesigns(ctx, 16) });
 /* 10.16: the facts every design of a text must show (beyond its items, which planRender already requires): a statement's
    subject, verbs and object; labelled sections' names. */
 const orchFacts = P => { const st = P && P.statement;
@@ -401,7 +420,12 @@ function orchProvider(key) {
   return { id: key, kind: 'paid', order: key === 'napkin' ? 60 : 70,
     available: () => !!(PANELS[key] && PANELS[key].auto && PANELS[key].auto.available()),
     cached: async ctx => { const R = await PANELS[key].auto.cached(ctx.text); if (R && key === 'claude') await orchClaudeIcons(R, ctx && ctx.text, false); return R ? orchFrom(key, R) : null; },
-    run: async ctx => { const R = await PANELS[key].auto.request(4); if (R && key === 'claude') await orchClaudeIcons(R, ctx && ctx.text, true); return R ? orchFrom(key, R) : []; } };
+    // 10.25: Claude's icons are asked for at the same time as its plan (from the points read here), not after it
+    run: async ctx => {
+      const early = key === 'claude' ? orchClaudeIconsEarly(ctx) : null;
+      const R = await PANELS[key].auto.request(4);
+      if (R && key === 'claude') { await early; await orchClaudeIcons(R, ctx && ctx.text, true); }
+      return R ? orchFrom(key, R) : []; } };
 }
 /* 10.24: Claude's own icon for every point of its plan (one more request, with the plan's: the points it read), each
    an editable drawing of simple shapes (studio.js registerCustomIcon). Kept on this PC for the text, so the same text
@@ -414,6 +438,12 @@ async function orchClaudeIcons(R, text, ask) {
   let kept = {};
   try { kept = JSON.parse(localStorage.getItem(CLAUDE_ICONS_FOR) || '{}'); } catch (e) { kept = {}; }
   let keys = kept[h];
+  // 10.25: the icons asked for at the same time as the plan, by the point's label (no second wait)
+  if (!keys) {
+    let by = {}; try { by = JSON.parse(localStorage.getItem(CLAUDE_ICONS_BY) || '{}'); } catch (e) { by = {}; }
+    const got = plan.items.map(i => { const k = by[iconLabelKey(i.label)]; return k && CMP[k] ? k : null; });
+    if (got.filter(Boolean).length >= Math.ceil(plan.items.length * 0.6)) keys = got;
+  }
   if (!keys && ask) {
     try {
       const res = await api('/api/claude/icons', { items: plan.items.map(i => ({ label: i.label, detail: i.detail || '' })) }, 120000);
@@ -427,6 +457,27 @@ async function orchClaudeIcons(R, text, ask) {
     } catch (e) { orchNote('claude icons failed: ' + errText(e)); }
   }
   (keys || []).forEach((k, i) => { if (k && CMP[k] && plan.items[i]) plan.items[i].icon = k; });
+}
+/* 10.25: the icons for the points this panel reads in the text, asked for while Claude designs its plan; kept by label,
+   so its plan's points (the same points, in the text's words) take them without another request. */
+const CLAUDE_ICONS_BY = 'aivb.claude_icons_by.v1';
+const iconLabelKey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+async function orchClaudeIconsEarly(ctx) {
+  try {
+    if (typeof registerCustomIcon !== 'function') return;
+    const prep = await PANELS.napkin.prepared(ctx.text);
+    const pts = (prep && prep.points || []).filter(p => p && p.label).slice(0, 8);
+    if (pts.length < 2) return;
+    let by = {}; try { by = JSON.parse(localStorage.getItem(CLAUDE_ICONS_BY) || '{}'); } catch (e) { by = {}; }
+    const want = pts.filter(p => !by[iconLabelKey(p.label)]);
+    if (!want.length) return;
+    const res = await api('/api/claude/icons', { items: want.map(p => ({ label: p.label, detail: String(p.detail || p.exact || '').slice(0, 160) })) }, 120000);
+    if (!(res && res.ok && Array.isArray(res.icons))) { orchNote('claude icons (early): ' + ((res && res.error) || 'none')); return; }
+    res.icons.forEach((ic, i) => { if (!ic || !want[i]) return; const k = registerCustomIcon(ic); if (k) { saveCustomIcon(k, ic); by[iconLabelKey(want[i].label)] = k; } });
+    const all = Object.keys(by); all.slice(0, Math.max(0, all.length - 400)).forEach(k => delete by[k]);
+    try { localStorage.setItem(CLAUDE_ICONS_BY, JSON.stringify(by)); } catch (e) { /* not kept */ }
+    orchNote(`claude icons (early): ${res.icons.filter(Boolean).length} of ${want.length}`);
+  } catch (e) { orchNote('claude icons (early) failed: ' + errText(e)); }
 }
 function orchFrom(key, R) {
   const A = PANELS[key].auto, out = [];

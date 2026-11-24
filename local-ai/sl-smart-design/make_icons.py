@@ -107,6 +107,12 @@ ICONS = {
                                *[c.line(.08, y, .08, y + .1, .06, GREY) for y in (.24, .44, .64)], *[c.line(.92, y, .92, y + .1, .06, GREY) for y in (.24, .44, .64)],
                                c.line(.35, .35, .65, .65, .09, RED), c.line(.65, .35, .35, .65, .09, RED)],
     'rename-text': lambda c: [c.frame(.06, .2, .94, .8, .06, .06, GREY), c.line(.3, .35, .7, .35, .09, BLUE), c.line(.5, .35, .5, .68, .09, BLUE)],
+    # 10.25 SL Editor: the add-in (rounded gradient-like tile with a layout and a spark), SL Design, SL Animation
+    'sleditor': lambda c: [c.rrect(.04, .04, .96, .96, .24, '#3645A9'), c.rrect(.04, .5, .96, .96, .24, '#2F7FD0'), c.rrect(.04, .5, .96, .7, 0, '#3363BE'),
+                           c.rrect(.22, .25, .58, .5, .07, WHITE), c.rrect(.22, .57, .44, .75, .06, '#C9D8F5'), c.rrect(.52, .57, .78, .75, .06, '#E6EEFB'),
+                           c.poly([(.75, .14), (.79, .25), (.9, .29), (.79, .33), (.75, .44), (.71, .33), (.6, .29), (.71, .25)], '#FFD66B')],
+    'sldesign': lambda c: [c.rrect(.06, .1, .94, .9, .1, '#E9EEFB'), c.rrect(.14, .2, .5, .52, .06, SKY), c.circle(.7, .36, .15, ORANGE), c.rrect(.14, .62, .86, .72, .03, BLUE), c.rrect(.14, .76, .6, .82, .02, GREY)],
+    'slanimation': lambda c: [c.circle(.42, .5, .34, BLUE), c.poly([(.32, .32), (.6, .5), (.32, .68)], WHITE), c.circle(.84, .3, .08, ORANGE), c.circle(.88, .55, .06, SKY), c.circle(.8, .78, .05, ORANGE)],
     'rename-heading': lambda c: [c.frame(.06, .2, .94, .8, .06, .06, GREY), c.line(.32, .33, .32, .68, .09, ORANGE), c.line(.68, .33, .68, .68, .09, ORANGE), c.line(.32, .5, .68, .5, .09, ORANGE)],
 }
 

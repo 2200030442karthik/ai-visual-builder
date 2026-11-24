@@ -9,16 +9,16 @@ import os, re, sys
 from xml.sax.saxutils import escape
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
-ID, VERSION, BASE = '08d15d9d-8629-4583-b67d-5f80143dde6d', '10.20.1.2', 'https://localhost:44317'
+ID, VERSION, BASE = '08d15d9d-8629-4583-b67d-5f80143dde6d', '10.25.0.0', 'https://localhost:44317'
 # Office caches add-in images by URL (and showed generic icons while the host sent Cache-Control: no-store, 16 Nov):
 # the icons are versioned so Office fetches them afresh. Change ICONS when an icon changes.
-ICONS = BASE + '/assets/v3'
+ICONS = BASE + '/assets/v4'
 
 # group id, label, group icon, [(control id, label, tooltip, icon, 'pane' | 'fn', function)]
 GROUPS = [
     ('SLSD.Design', 'Design', 'design', [
         ('SLSD.AltDesign', 'Alternative Design', "Redesign the slide's points (2 to 10, one per line) with a template from the SL Smart Design library.", 'design', 'fn', 'slsdAlternativeDesign'),
-        ('AIVB10.Open', 'AI Visual Builder', "Turn the slide's content into editable infographics designed by AI: generate, preview, insert.", 'aivb', 'pane', None),
+        ('AIVB10.Open', 'AI SL Smart Design', "Turn the slide's content into editable infographics designed by AI: generate, preview, insert.", 'aivb', 'pane', None),
         ('AIVB10.Slides', 'Several slides', 'Spread long content over several slides, each with its own editable visual.', 'aivb', 'fn', 'aivbOpenSlides'),
         ('AIVB10.Edit', 'Edit a visual', 'Change the texts, icons, colours or layout of a visual AI Visual Builder inserted.', 'aivb', 'fn', 'aivbOpenEdit')]),
     ('SLSD.Templates', 'SL Templates', 'footer-note', [
@@ -34,6 +34,11 @@ GROUPS = [
     ('SLSD.Rename', 'Shape Rename', 'rename-text', [
         ('SLSD.RenText', 'Text', 'Name the selected shapes Text_1, Text_2 ... in the order you selected them.', 'rename-text', 'fn', 'slsdRenameText'),
         ('SLSD.RenHead', 'Heading', 'Name the selected shapes T_Text_1, T_Text_2 ... in the order you selected them.', 'rename-heading', 'fn', 'slsdRenameHeading')]),
+    # 10.25 SL Editor: the SL Design and SL Animation commands (SL_Audomation) in the panel's own tabs
+    ('SLED.Design', 'SL Design', 'sldesign', [
+        ('SLED.OpenDesign', 'SL Design', 'Brand shapes, text boxes, bullets, layout templates, brandlines and speaker notes.', 'sldesign', 'fn', 'sledOpenDesign')]),
+    ('SLED.Anim', 'SL Animation', 'slanimation', [
+        ('SLED.OpenAnim', 'SL Animation', 'Entrance and exit animations, bulk timing shift, transitions, audio and video export.', 'slanimation', 'fn', 'sledOpenAnimation')]),
 ]
 
 HEAD = '''<?xml version="1.0" encoding="UTF-8"?>
@@ -47,8 +52,8 @@ HEAD = '''<?xml version="1.0" encoding="UTF-8"?>
   <Version>@VERSION@</Version>
   <ProviderName>Simplilearn</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="AI SL Smart Design"/>
-  <Description DefaultValue="AI SL Smart Design: AI-powered infographics and smart slide designs in the Simplilearn template."/>
+  <DisplayName DefaultValue="SL Editor"/>
+  <Description DefaultValue="SL Editor: AI SL Smart Design (AI infographics, editing, SL Smart Design templates), SL Design and SL Animation in one add-in."/>
   <IconUrl DefaultValue="@ICONS@/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="@ICONS@/icon-64.png"/>
   <SupportUrl DefaultValue="https://2200030442karthik.github.io/ai-visual-builder/"/>
@@ -84,7 +89,7 @@ TAIL = '''    </Resources>
 
 
 def icon_url(name, n):
-    return f'{ICONS}/icon-{n}.png' if name == 'aivb' else f'{ICONS}/slsd/{name}-{n}.png'
+    return f'{ICONS}/icon-{n}.png' if name in ('aivb', 'sleditor') else f'{ICONS}/slsd/{name}-{n}.png'
 
 
 def rid(cid, kind):
@@ -93,9 +98,9 @@ def rid(cid, kind):
 
 def build():
     images = {}
-    short = {'Tab.Label': 'AI SL Smart Design', 'GetStarted.Title': 'AI SL Smart Design is ready'}
-    long_ = {'GetStarted.Description': 'Open the AI SL Smart Design tab: AI Visual Builder, Several slides, Edit a visual, Alternative Design and more. '
-                                       'If it does not load, run local-ai\\Restart AI Visual Builder.bat.'}
+    short = {'Tab.Label': 'SL Editor', 'GetStarted.Title': 'SL Editor is ready'}
+    long_ = {'GetStarted.Description': 'Home > SL Editor opens the panel: AI SL Smart Design, SL Design and SL Animation. '
+                                       'If it does not load, run "Restart AI SL Smart Design" from the Start menu.'}
 
     def icon(name, ind):
         out = [f'{ind}<Icon>']
@@ -122,44 +127,46 @@ def build():
             tab.append('                </Control>')
         tab.append('              </Group>')
     tab += ['              <Label resid="Tab.Label"/>', '            </CustomTab>']
-    short['Group.AISLSD.Label'] = 'AI SL Smart Design'
+    short['Group.AISLSD.Label'] = 'SL Editor'
+    short['SLEDHome.Label'] = 'SL Editor'
+    long_['SLEDHome.Tip'] = 'Open SL Editor: AI SL Smart Design (AI infographics and editing), SL Design and SL Animation.'
     tab += [
         '            <OfficeTab id="TabHome">',
         '              <Group id="AISLSD.HomeGroup">',
         '                <Label resid="Group.AISLSD.Label"/>',
-    ] + icon('aivb', '                ') + [
+    ] + icon('sleditor', '                ') + [
         '                <Control xsi:type="Button" id="AIVB10.HomeOpen">',
-        '                  <Label resid="AIVB10Open.Label"/>',
+        '                  <Label resid="SLEDHome.Label"/>',
         '                  <Supertip>',
-        '                    <Title resid="AIVB10Open.Label"/>',
-        '                    <Description resid="AIVB10Open.Tip"/>',
+        '                    <Title resid="SLEDHome.Label"/>',
+        '                    <Description resid="SLEDHome.Tip"/>',
         '                  </Supertip>',
-    ] + icon('aivb', '                  ') + [
+    ] + icon('sleditor', '                  ') + [
         '                  <Action xsi:type="ShowTaskpane">',
         '                    <TaskpaneId>AIVisualBuilderV10Pane</TaskpaneId>',
         '                    <SourceLocation resid="Taskpane.Url"/>',
         '                  </Action>',
         '                </Control>',
         '                <Control xsi:type="Button" id="AIVB10.HomeSlides">',
-        '                  <Label resid="AIVB10Slides.Label"/>',
+        '                  <Label resid="SLEDOpenDesign.Label"/>',
         '                  <Supertip>',
-        '                    <Title resid="AIVB10Slides.Label"/>',
-        '                    <Description resid="AIVB10Slides.Tip"/>',
+        '                    <Title resid="SLEDOpenDesign.Label"/>',
+        '                    <Description resid="SLEDOpenDesign.Tip"/>',
         '                  </Supertip>',
-    ] + icon('aivb', '                  ') + [
+    ] + icon('sldesign', '                  ') + [
         '                  <Action xsi:type="ExecuteFunction">',
-        '                    <FunctionName>aivbOpenSlides</FunctionName>',
+        '                    <FunctionName>sledOpenDesign</FunctionName>',
         '                  </Action>',
         '                </Control>',
         '                <Control xsi:type="Button" id="AIVB10.HomeEdit">',
-        '                  <Label resid="AIVB10Edit.Label"/>',
+        '                  <Label resid="SLEDOpenAnim.Label"/>',
         '                  <Supertip>',
-        '                    <Title resid="AIVB10Edit.Label"/>',
-        '                    <Description resid="AIVB10Edit.Tip"/>',
+        '                    <Title resid="SLEDOpenAnim.Label"/>',
+        '                    <Description resid="SLEDOpenAnim.Tip"/>',
         '                  </Supertip>',
-    ] + icon('aivb', '                  ') + [
+    ] + icon('slanimation', '                  ') + [
         '                  <Action xsi:type="ExecuteFunction">',
-        '                    <FunctionName>aivbOpenEdit</FunctionName>',
+        '                    <FunctionName>sledOpenAnimation</FunctionName>',
         '                  </Action>',
         '                </Control>',
         '              </Group>',
@@ -190,7 +197,7 @@ def main():
         BASE = a[a.index('--base') + 1].rstrip('/')
         if not re.fullmatch(r'https://[A-Za-z0-9.-]+(:(\d{2,5}|__PORT__))?', BASE):
             raise SystemExit('--base must be an https:// address (Office loads add-ins only over HTTPS).')
-        ICONS = BASE + '/assets/v3'
+        ICONS = BASE + '/assets/v4'
     out = a[a.index('--out') + 1] if '--out' in a else os.path.join(ROOT, 'manifest-slsd.xml')
     with open(out, 'w', encoding='utf-8', newline='\n') as f:
         f.write(build())

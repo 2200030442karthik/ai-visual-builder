@@ -180,9 +180,14 @@ Design:
 - One statement ("X helps you create, organize and edit A, B, C and D"): X is the hero (short), the listed examples
   are the items (the text's words), and what X does ("create, organize, and edit diverse types of content") is the
   single group's name or the headline - never the whole sentence as one block of text, never invented items.
-- concepts: exactly 6 complete compositions of your own design, each a genuinely different visual idea that comes from
+- A paragraph or a definition without a list ("Generative AI: a branch of AI that creates original content in response
+  to natural language prompts"): never one block of text. Break it into its 3 to 5 key ideas, in the text's order, each
+  an item with a short label (2-4 of the text's own words, e.g. "Branch of AI", "Creates original content", "Natural
+  language prompts") and the rest of that idea as detail; the term defined is the hero (short) and the title. Use only
+  the text's words and meaning - no new facts.
+- concepts: exactly 3 complete compositions of your own design, each a genuinely different visual idea that comes from
   THIS content's meaning (what flows into what, what contains what, what is compared, what grows, what surrounds the
-  topic) rather than from a generic template - modern and engaging for learners like a polished AI infographic. Use six
+  topic) rather than from a generic template - modern and engaging for learners like a polished AI infographic. Use three
   different structures and metaphors, for example: a hero object (a device, a disc, a card) joined by elbow connectors
   with dots to cards that each hold an icon tile and a label; an input -> topic -> outputs flow; a header pill over a
   panel of icon columns per section; an orbit or ecosystem around the topic; a winding learner journey; layered slabs or
@@ -246,7 +251,11 @@ PLAN_SCHEMA = {
 
 # Configurable in claude.json (configure-claude.ps1): model, effort (low|medium|high|xhigh|max), max_tokens, and the
 # prices used for the cost estimate shown in the panel ($ per million tokens; the bill itself is in platform.claude.com).
-DEFAULTS = {'model': DEFAULT_MODEL, 'effort': 'high', 'max_tokens': 32000}
+# 10.25: faster by default - medium effort (Opus 5.5's own default) and fast mode (same model, up to 2.5x output speed,
+# premium price); "speed": "standard" in claude.json turns fast mode off. A model or account without fast mode is asked
+# again at standard speed (a rejected request is not billed) and remembered for this run.
+DEFAULTS = {'model': DEFAULT_MODEL, 'effort': 'medium', 'max_tokens': 32000, 'speed': 'fast'}
+FAST_OFF = set()      # models whose fast mode was refused in this run
 PRICES = {'claude-opus-5-5': (4.0, 20.0), 'claude-sonnet-5-5': (2.0, 10.0), 'claude-haiku-5-5': (0.10, 0.50), 'claude-fable-5-1': (10.0, 50.0)}
 EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
 
@@ -272,7 +281,8 @@ def settings(data_dir):
         pin, pout = float(s.get('price_input_per_mtok', pin)), float(s.get('price_output_per_mtok', pout))
     except (TypeError, ValueError):
         pin = pout = None
-    return {'key': key, 'model': model, 'effort': effort, 'max_tokens': max_tokens, 'prices': (pin, pout) if pin is not None else None,
+    speed = s.get('speed') if s.get('speed') in ('fast', 'standard') else DEFAULTS['speed']
+    return {'key': key, 'model': model, 'effort': effort, 'max_tokens': max_tokens, 'speed': speed, 'prices': (pin, pout) if pin is not None else None,
             'sdk': anthropic is not None, 'enabled': bool(key) and anthropic is not None and s.get('enabled', True) is not False}
 
 
@@ -293,14 +303,33 @@ class ClaudeError(Exception):
     pass
 
 
+def _stream(client, s, **kw):
+    """One streamed request, in fast mode when set and available; returns the final message."""
+    model = kw.get('model') or DEFAULT_MODEL
+    if isinstance(s, dict) and s.get('speed', DEFAULTS['speed']) == 'fast' and model not in FAST_OFF:
+        try:
+            with client.messages.stream(speed='fast', **kw) as stream:
+                return stream.get_final_message()
+        except TypeError:
+            FAST_OFF.add(model)
+        except anthropic.BadRequestError as e:
+            m = str(getattr(e, 'message', e)).lower()
+            if 'speed' not in m and 'fast' not in m:
+                raise
+            FAST_OFF.add(model)
+        except anthropic.RateLimitError:
+            pass     # fast mode has its own rate limit: this request at standard speed
+    with client.messages.stream(**kw) as stream:
+        return stream.get_final_message()
+
+
 def one_svg(client, s, content, context, arrangement):
     """One variation: (svg text, usage dict). Raises ClaudeError with a plain explanation. One request, no fallback model:
     a declined request is reported, never re-run elsewhere (no extra paid calls)."""
-    with client.messages.stream(
+    msg = _stream(client, s,
             model=s['model'], max_tokens=s['max_tokens'], system=SYSTEM,
             output_config={'effort': s['effort']},
-            messages=[{'role': 'user', 'content': prompt(content, context, arrangement)}]) as stream:
-        msg = stream.get_final_message()
+            messages=[{'role': 'user', 'content': prompt(content, context, arrangement)}])
     usage = {'input_tokens': msg.usage.input_tokens, 'output_tokens': msg.usage.output_tokens}
     if msg.stop_reason == 'refusal':
         raise ClaudeError('Claude declined this request.')
@@ -315,11 +344,10 @@ def one_svg(client, s, content, context, arrangement):
 
 def one_plan(client, s, content, context, _arrangement=None):
     """The content plan: (JSON text, usage). One request with structured output (the schema guarantees valid JSON)."""
-    with client.messages.stream(
+    msg = _stream(client, s,
             model=s['model'], max_tokens=s['max_tokens'], system=PLAN_SYSTEM,
             output_config={'effort': s['effort'], 'format': {'type': 'json_schema', 'schema': PLAN_SCHEMA}},
-            messages=[{'role': 'user', 'content': f'Content:\n<content>\n{content}\n</content>' + (f'\n\nGuidance (not content): {context}' if context else '')}]) as stream:
-        msg = stream.get_final_message()
+            messages=[{'role': 'user', 'content': f'Content:\n<content>\n{content}\n</content>' + (f'\n\nGuidance (not content): {context}' if context else '')}])
     usage = {'input_tokens': msg.usage.input_tokens, 'output_tokens': msg.usage.output_tokens}
     if msg.stop_reason == 'refusal':
         raise ClaudeError('Claude declined this request.')
@@ -523,10 +551,8 @@ def generate_icon(s, description, timeout_s=30, client=None, style='flat'):
     if enabled and key and anthropic is not None:
         try:
             client = client or anthropic.Anthropic(api_key=key, timeout=timeout_s, max_retries=0)
-            with client.messages.stream(
-                    model=model, max_tokens=2000, system=ICON_SYSTEM,
-                    messages=[{'role': 'user', 'content': f'Design a corporate slide icon for: {desc}\n' + ICON_STYLES.get(style, ICON_STYLES['flat'])}]) as stream:
-                msg = stream.get_final_message()
+            msg = _stream(client, s, model=model, max_tokens=4000, system=ICON_SYSTEM, output_config={'effort': 'low'},
+                          messages=[{'role': 'user', 'content': f'Design a corporate slide icon for: {desc}\n' + ICON_STYLES.get(style, ICON_STYLES['flat'])}])
             text = ''.join(b.text for b in msg.content if b.type == 'text')
             m = re.search(r'\{[\s\S]*\}', text)
             if m:
@@ -565,9 +591,8 @@ def generate_icons(s, items, timeout_s=60, client=None, style='3d'):
     try:
         client = client or anthropic.Anthropic(api_key=key, timeout=timeout_s, max_retries=0)
         listing = '\n'.join(f'{n + 1}. {p["label"]}' + (f' - {p["detail"]}' if p['detail'] else '') for n, p in enumerate(pts))
-        with client.messages.stream(model=s.get('model') or DEFAULT_MODEL, max_tokens=8000, system=ICONS_SYSTEM,
-                                    messages=[{'role': 'user', 'content': 'Design one slide icon for each of these points:\n' + listing + '\n' + ICON_STYLES.get(style, ICON_STYLES['3d'])}]) as stream:
-            msg = stream.get_final_message()
+        msg = _stream(client, s, model=s.get('model') or DEFAULT_MODEL, max_tokens=8000, system=ICONS_SYSTEM, output_config={'effort': 'low'},
+                      messages=[{'role': 'user', 'content': 'Design one slide icon for each of these points:\n' + listing + '\n' + ICON_STYLES.get(style, ICON_STYLES['3d'])}])
         text = ''.join(b.text for b in msg.content if b.type == 'text')
         m = re.search(r'\{[\s\S]*\}', text)
         data = json.loads(m.group(0)) if m else {}

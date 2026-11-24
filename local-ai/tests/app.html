@@ -53,7 +53,7 @@ async function run() {
 
   /* ===== U: what the user sees ===== */
   const technical = ['aiStatus', 'setupBox', 'analysePanel', 'analyse', 'step3', 'perfBox', 'perf', 'napkinPanel', 'claudePanel', 'napkinVar', 'napkinOk', 'napkinLast', 'claudeLast', 'insert', 'insertAll', 'stPlanRow', 'stTab_designs'];
-  res.ui.before = { technicalVisible: technical.filter(vis), simple: d.body.classList.contains('simple'), version: d.querySelector('h1 > span').offsetParent !== null,
+  res.ui.before = { technicalVisible: technical.filter(vis), simple: d.body.classList.contains('simple'), version: !!(d.querySelector('h1 > span') && d.querySelector('h1 > span').offsetParent !== null),
     sub: d.querySelector('.sub').offsetParent !== null, gen: vis('appGen') && d.getElementById('appGen').textContent.trim(), empty: vis('appEmpty'), insertBar: vis('appInsert'), stPanel: vis('stPanel') };
 
   /* ===== G: one button: analysis inside, 10-20 varied editable visuals, selection, preview ===== */
@@ -453,7 +453,7 @@ async function run() {
       G.src = '/v10.html' + q; await wait(300); await loaded(G, q); await wait(300);
       const D = G.contentDocument, v = id => { const e = D.getElementById(id); return !!e && e.offsetParent !== null; };
       res.dev[k] = { simple: D.body.classList.contains('simple'), stPanel: v('stPanel'), editTab: D.getElementById('stTab_edit').classList.contains('sel'), slidesTab: D.getElementById('stTab_slides').classList.contains('sel'),
-        aiStatus: v('aiStatus'), napkin: v('napkinPanel'), analyse: v('analyse'), perf: !!D.getElementById('perfBox') && D.getElementById('perfBox').offsetParent !== null, devbar: !!D.querySelector('.devbar'), version: D.querySelector('h1 > span').offsetParent !== null };
+        aiStatus: v('aiStatus'), napkin: v('napkinPanel'), analyse: v('analyse'), perf: !!D.getElementById('perfBox') && D.getElementById('perfBox').offsetParent !== null, devbar: !!D.querySelector('.devbar'), version: !!(D.querySelector('h1 > span') && D.querySelector('h1 > span').offsetParent !== null) };
     }
   }
 

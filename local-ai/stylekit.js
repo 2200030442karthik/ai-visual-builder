@@ -33,7 +33,7 @@
       <button type="button" id="skBold">Bold on / off</button></div>
     <div class="sksub">Replace the selected icon</div>
     <div class="skrow"><input type="text" id="skIconDesc" placeholder="Describe it: car with sensors, handshake, rocket…" style="flex:1;min-width:0">
-      <select id="skIconStyle" aria-label="Icon style"><option value="flat">Flat</option><option value="3d">3D</option></select>
+      <select id="skIconStyle" aria-label="Icon style"><option value="flat">Flat</option><option value="3d">3D</option><option value="3dpic">3D picture</option></select>
       <button type="button" id="skIconGo" class="skgo">Design icon</button></div>
     <div id="skIconPicks" class="aiIconLib"></div>
     <div id="skNote" class="small"></div>`;
@@ -130,13 +130,57 @@
       await context.sync();
     });
   }
+  /* 10.25: 3D picture icons (3dicons v1, CC0): rendered 3D objects inserted as pictures (not recolourable shapes) */
+  let IDX3 = null;
+  const SYN3 = { money: 'dollar wallet money-bag money card', finance: 'dollar money chart wallet', cost: 'dollar money', idea: 'bulb', innovation: 'bulb rocket', goal: 'target flag',
+    target: 'target', success: 'trophy medal star', award: 'trophy medal', security: 'lock sheild key locker', secure: 'lock sheild', privacy: 'lock sheild', time: 'clock calender',
+    schedule: 'calender clock', deadline: 'clock calender', chat: 'chat chat-bubble chat-text', communication: 'chat mail megaphone phone-only', email: 'mail', message: 'chat mail',
+    marketing: 'megaphone chart', announce: 'megaphone', settings: 'setting tool', tool: 'tool setting', growth: 'chart rocket', launch: 'rocket', speed: 'rocket flash', data: 'chart file folder',
+    analytics: 'chart zoom', report: 'file-text chart', search: 'zoom', find: 'zoom', learning: 'notebook bulb lab', study: 'notebook', education: 'notebook bulb', science: 'lab', research: 'lab zoom',
+    team: 'boy girl', people: 'boy girl', user: 'boy girl', customer: 'boy girl', location: 'map-pin location', place: 'map-pin', travel: 'travel map-pin', video: 'video-camera play', music: 'music headphone',
+    phone: 'phone-only mobile', mobile: 'mobile', computer: 'computer', laptop: 'computer', network: 'wifi link', internet: 'wifi', file: 'file file-text', document: 'file-text notebook',
+    storage: 'folder', health: 'heart gym', fitness: 'gym', love: 'heart', shopping: 'bag', ecommerce: 'bag card', payment: 'card wallet', design: 'paint-brush color-palette brush',
+    creative: 'paint-kit color-palette', strategy: 'chess target puzzle', problem: 'puzzle', solution: 'puzzle bulb', energy: 'flash battery', power: 'flash battery', approval: 'tick thumb-up',
+    done: 'tick', like: 'thumb-up heart', notification: 'notify-heart megaphone', photo: 'picture camera', image: 'picture', write: 'pencil notebook', edit: 'pencil', delete: 'trash-can',
+    weather: 'sun umbrella moon', risk: 'umbrella sheild', protection: 'umbrella sheild', coffee: 'tea-cup takeaway-cup cup' };
+  async function index3d() { if (!IDX3) { try { IDX3 = await (await fetch('/assets/3dicons/index.json', { cache: 'force-cache' })).json(); } catch (e) { IDX3 = []; } } return IDX3; }
+  async function find3d(desc, n) {
+    const L = await index3d(), words = String(desc).toLowerCase().match(/[a-z]+/g) || [];
+    const want = new Set(words.flatMap(w => [w, w.replace(/s$/, '')].concat((SYN3[w] || SYN3[w.replace(/s$/, '')] || '').split(' ')).filter(Boolean)));
+    const sc = it => { const s = (it.slug + ' ' + it.name).toLowerCase(); let v = 0; want.forEach(w => { if (it.slug === w) v += 5; else if (s.split(/[^a-z]+/).includes(w)) v += 3; }); return v; };
+    return L.map(it => [it, sc(it)]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, n).map(x => x[0]);
+  }
+  const pick3d = it => `<button type="button" class="iconPick pic3d" data-slug="${esc2(it.slug)}" data-name="${esc2(it.name)}" title="${esc2(it.name)} (3D picture)"><img src="/assets/3dicons/${esc2(it.slug)}.png" alt="" width="36" height="36"><span>${esc2(it.name)}</span></button>`;
+  const b64of = async url => { const blob = await (await fetch(url)).blob(); return await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); }); };
+  async function replacePicture(slug, label) {
+    await run(`Icon replaced by the 3D picture “${label}”.`, async context => {
+      const { top } = await selection(context);
+      const x = Math.min(...top.map(s => s.left)), y = Math.min(...top.map(s => s.top)), r = Math.max(...top.map(s => s.left + s.width)), b = Math.max(...top.map(s => s.top + s.height));
+      const D = Math.max(Math.min(r - x, b - y), 56), box = { left: (x + r) / 2 - D / 2, top: (y + b) / 2 - D / 2 };
+      const data = await b64of(`/assets/3dicons/${slug}.png`);
+      top.forEach(s => s.delete());
+      await context.sync();
+      await new Promise((res, rej) => Office.context.document.setSelectedDataAsync(data, { coercionType: Office.CoercionType.Image, imageLeft: box.left, imageTop: box.top, imageWidth: D, imageHeight: D },
+        a => a.status === Office.AsyncResultStatus.Succeeded ? res() : rej(new Error((a.error && a.error.message) || 'the picture could not be inserted'))));
+    });
+  }
+  const wire3d = picks => picks.querySelectorAll('.pic3d').forEach(b => { b.onclick = () => replacePicture(b.dataset.slug, b.dataset.name); });
   document.getElementById('skIconGo').addEventListener('click', async () => {
     const desc = document.getElementById('skIconDesc').value.trim(), picks = document.getElementById('skIconPicks');
+    if (SK.style === '3dpic') {
+      const got = desc ? await find3d(desc, 12) : (await index3d()).slice(0, 24);
+      picks.innerHTML = got.length ? '<div class="iconSrc">3D picture icons <span class="badge src builtin">3dicons · CC0</span></div>' + got.map(pick3d).join('') : '';
+      wire3d(picks);
+      note(got.length ? 'Select the icon to replace on the slide, then click a 3D picture. It is a picture: resize it freely; its colours stay as drawn.' : 'No 3D picture matches; try another word (money, goal, team, idea, security).', !got.length);
+      return;
+    }
     if (!desc) { note('Describe the icon first.', true); return; }
     const seen = new Set(), found = conceptScores(desc, '').filter(x => CMP[x.key] && !seen.has(x.key) && seen.add(x.key)).slice(0, 5);
     const pick = (key, name) => `<button type="button" class="iconPick" data-key="${esc2(key)}" data-name="${esc2(name)}" title="${esc2(name)}">${thumbOf(key)}<span>${esc2(name)}</span></button>`;
     picks.innerHTML = (found.length ? '<div class="iconSrc">Library <span class="badge src builtin">Built-in</span></div>' + found.map(x => pick(x.key, x.name)).join('') : '');
-    const wire = () => picks.querySelectorAll('.iconPick').forEach(b => { b.onclick = () => replaceIcon(b.dataset.key, b.dataset.name); });
+    const wire = () => { picks.querySelectorAll('.iconPick:not(.pic3d)').forEach(b => { b.onclick = () => replaceIcon(b.dataset.key, b.dataset.name); }); wire3d(picks); };
+    const p3 = await find3d(desc, 4);
+    if (p3.length) picks.insertAdjacentHTML('beforeend', '<div class="iconSrc">3D pictures <span class="badge src builtin">3dicons · CC0</span></div>' + p3.map(pick3d).join(''));
     wire();
     note(`Asking Claude for a ${SK.style === '3d' ? '3D' : 'flat'} “${desc}” icon…`);
     try {

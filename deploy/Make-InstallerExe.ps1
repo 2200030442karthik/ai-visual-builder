@@ -1,5 +1,5 @@
 # Single-File Installer Builder for SL Smart Design + AI Visual Builder
-# Produces: Dist_Installer\SL-Smart-Design-Setup.exe (the ONLY file to share with the team)
+# Produces: Dist_Installer\SL-Editor-Setup.exe (the ONLY file to share with the team)
 # And:      deploy\team-keys\activation-keys.csv   (PRIVATE: kept by manager to issue individual keys)
 
 param(
@@ -56,7 +56,7 @@ Write-Host "Compiling single-file installer with Inno Setup ($IssPath)..." -Fore
 & $InnoCompiler $IssPath
 if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }
 
-$OutExe = Join-Path $Root 'Dist_Installer\AI-SL-Smart-Design-Setup.exe'
+$OutExe = Join-Path $Root 'Dist_Installer\SL-Editor-Setup.exe'
 if (Test-Path $OutExe) {
     $fileInfo = Get-Item $OutExe
     $sizeMb = [math]::Round($fileInfo.Length / 1MB, 2)
@@ -72,9 +72,9 @@ if (Test-Path $OutExe) {
     Write-Host '    (Keep activation-keys.csv private - never share that file directly!)' -ForegroundColor Yellow
     Write-Host ''
     Write-Host 'WHAT THE USER EXPERIENCES:' -ForegroundColor Cyan
-    Write-Host ' - User double-clicks AI-SL-Smart-Design-Setup.exe to install.' -ForegroundColor White
-    Write-Host ' - User opens PowerPoint -> "AI SL Smart Design" tab appears.' -ForegroundColor White
-    Write-Host ' - User clicks AI Visual Builder -> Enters their activation code.' -ForegroundColor White
+    Write-Host ' - User double-clicks SL-Editor-Setup.exe to install.' -ForegroundColor White
+    Write-Host ' - User opens PowerPoint -> Home > SL Editor (and the SL Editor tab).' -ForegroundColor White
+    Write-Host ' - User clicks SL Editor -> enters their activation key once.' -ForegroundColor White
     Write-Host " - Features unlock until the expiration date ($Expires)." -ForegroundColor White
 } else {
     throw "Output file $OutExe was not created."

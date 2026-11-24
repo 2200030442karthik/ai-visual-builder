@@ -20,8 +20,9 @@ function friendly(m) {
     .replace(/\s*\(Details:[\s\S]*$/i, '')
     .replace(/\b(?:Napkin AI|Claude AI)(?:'s)?\b/g, 'The AI design service').replace(/\b(?:Napkin|Claude)\b(?:'s)?/g, 'AI')
     .replace(/\brequest\s+\S*…\S*/g, '').replace(/,?\s*variation \d+/g, '').replace(/\bstep [1-5]\b/gi, 'above').replace(/\s{2,}/g, ' ').trim();
-  const parts = s.split(/(?<=[.!?])\s+/);
-  return parts.slice(0, 2).join(' ');
+  // 10.25: what the AI services did, how many requests and checks - not for the user: left out; one short sentence
+  const parts = s.split(/(?<=[.!?])\s+/).filter(p => !/^The AI design service|^AI \(|requests?|accuracy and layout checks|Not offered|Re-check|kept result/i.test(p));
+  return parts.slice(0, 1).join(' ');
 }
 const setStatus0 = setStatus;
 setStatus = function (msg, err) { setStatus0(APP_DEV ? msg : friendly(msg), err); };
@@ -215,7 +216,7 @@ async function appGenerate() {
       APP.list = []; APP.text = text; appRender(); return;
     }
     if (APP.text !== text) { APP.sel = -1; APP.filter = 'All'; }
-    const r = await orchGenerate(text, {}, (msg, partial) => { appStage(msg); if (partial && partial.length) { APP.list = partial; APP.text = text; APP.stale = false; appRender(); } });
+    const r = await orchGenerate(text, {}, (msg, partial) => { appStage(msg); partial = (partial || []).filter(c => !(typeof orchPlain === 'function' && orchPlain(c))); if (partial.length) { APP.list = partial; APP.text = text; APP.stale = false; appRender(); } });
     if (!r) return;
     APP.list = r.list; APP.text = text; APP.stale = false; $('appStale').hidden = true;
     if (APP.sel >= APP.list.length) APP.sel = -1;
@@ -248,13 +249,13 @@ function appRender() {
   $('appHead').hidden = $('appGrid').hidden = !L.length;
   $('appCount').textContent = L.length ? `${L.length} visual${L.length > 1 ? 's' : ''}` : '';
   $('appNote').textContent = L.length ? 'built from your content · best first' : '';
-  $('appChips').hidden = cats.length < 3;
+  $('appChips').hidden = true;      // 10.25: no category filter (Hub and spoke, Cards, ...): the designs speak for themselves
   $('appChips').innerHTML = cats.map(k => `<button type="button" class="${k === APP.filter ? 'sel' : ''}" data-k="${esc(k)}">${esc(k)}</button>`).join('');
   $('appChips').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { APP.filter = b.dataset.k; appRender(); }));
   const run = APP.shown = (APP.shown || 0) + 1;
   $('appGrid').innerHTML = shown.map(([c, i]) => { const [cls, txt] = BADGE(c);
     return `<button type="button" class="gcard${i === APP.sel ? ' sel' : ''}" data-i="${i}" aria-pressed="${i === APP.sel}" aria-label="Design ${i + 1} of ${L.length}: ${esc(appName(c))}"><span class="gnum">${i + 1}</span><div class="gthumb"></div>` +
-      `<div class="gname">${esc(appName(c))}</div><div class="cat">${esc(c.category)}${c.slides > 1 ? ` · ${c.slides} slides` : ''}</div><span class="badge ${cls}">${txt}</span>${srcTag(c)}</button>`; }).join('');
+      `<div class="gname">${esc(appName(c))}</div>${c.slides > 1 ? `<div class="cat">${c.slides} slides</div>` : ''}<span class="badge ${cls}">${txt}</span>${srcTag(c)}</button>`; }).join('');
   $('appGrid').querySelectorAll('.gcard').forEach(b => {
     b.addEventListener('click', () => { hoverHide(); appSelect(+b.dataset.i); });
     // 10.14: resting the pointer (or the keyboard focus) on a design shows it large, without a click
@@ -284,7 +285,7 @@ function hoverShow(card) {
   let el = $('appHover');
   if (!el) { el = document.createElement('div'); el.id = 'appHover'; el.setAttribute('role', 'tooltip'); document.body.appendChild(el); }
   const pics = c.prims.filter(p => p.t === 'image').length;
-  el.innerHTML = thumb(c.prims) + `<div class="ht">${esc(appName(c))}</div><div class="hd">${esc(c.category)} · ${c.edit === 'full' ? 'Fully editable' : `Editable shapes and text; ${pics} icon${pics === 1 ? ' is a picture' : 's are pictures'}`}${c.slides > 1 ? ` · ${c.slides} slides` : ''} · ${esc(orchSource(c).srcName)}</div>`;
+  el.innerHTML = thumb(c.prims) + `<div class="ht">${esc(appName(c))}</div><div class="hd">${c.edit === 'full' ? 'Fully editable' : `Editable shapes and text; ${pics} icon${pics === 1 ? ' is a picture' : 's are pictures'}`}${c.slides > 1 ? ` · ${c.slides} slides` : ''} · ${esc(orchSource(c).srcName)}</div>`;
   const r = card.getBoundingClientRect(), vh = window.innerHeight, w = document.documentElement.clientWidth - 16, h = w * (TEMPLATE.contentArea.h + 24) / (TEMPLATE.contentArea.w + 24) + 52;
   // above the card when it fits there, else below it, else wherever it covers least of it
   const top = r.top - h - 8 >= 4 ? r.top - h - 8 : r.bottom + 8 + h <= vh - 4 ? r.bottom + 8 : Math.max(4, Math.min(vh - h - 4, r.top - h / 2));

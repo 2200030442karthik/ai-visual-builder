@@ -6,13 +6,13 @@
      in the copy this setup installs. The panel is served on this PC by local-ai\server.py (https://localhost:44317). -->
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
   <Id>08d15d9d-8629-4583-b67d-5f80143dde6d</Id>
-  <Version>10.20.1.2</Version>
+  <Version>10.25.0.0</Version>
   <ProviderName>Simplilearn</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="AI SL Smart Design"/>
-  <Description DefaultValue="AI SL Smart Design: AI-powered infographics and smart slide designs in the Simplilearn template."/>
-  <IconUrl DefaultValue="https://localhost:44317/assets/v3/icon-32.png"/>
-  <HighResolutionIconUrl DefaultValue="https://localhost:44317/assets/v3/icon-64.png"/>
+  <DisplayName DefaultValue="SL Editor"/>
+  <Description DefaultValue="SL Editor: AI SL Smart Design (AI infographics, editing, SL Smart Design templates), SL Design and SL Animation in one add-in."/>
+  <IconUrl DefaultValue="https://localhost:44317/assets/v4/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://localhost:44317/assets/v4/icon-64.png"/>
   <SupportUrl DefaultValue="https://2200030442karthik.github.io/ai-visual-builder/"/>
   <AppDomains><AppDomain>https://localhost:44317</AppDomain></AppDomains>
   <Hosts><Host Name="Presentation"/></Hosts>
@@ -278,26 +278,72 @@
                   </Action>
                 </Control>
               </Group>
+              <Group id="SLED.Design">
+                <Label resid="SLEDDesign.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.sldesign.16"/>
+                  <bt:Image size="32" resid="Icon.sldesign.32"/>
+                  <bt:Image size="80" resid="Icon.sldesign.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="SLED.OpenDesign">
+                  <Label resid="SLEDOpenDesign.Label"/>
+                  <Supertip>
+                    <Title resid="SLEDOpenDesign.Label"/>
+                    <Description resid="SLEDOpenDesign.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.sldesign.16"/>
+                    <bt:Image size="32" resid="Icon.sldesign.32"/>
+                    <bt:Image size="80" resid="Icon.sldesign.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>sledOpenDesign</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+              <Group id="SLED.Anim">
+                <Label resid="SLEDAnim.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.slanimation.16"/>
+                  <bt:Image size="32" resid="Icon.slanimation.32"/>
+                  <bt:Image size="80" resid="Icon.slanimation.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="SLED.OpenAnim">
+                  <Label resid="SLEDOpenAnim.Label"/>
+                  <Supertip>
+                    <Title resid="SLEDOpenAnim.Label"/>
+                    <Description resid="SLEDOpenAnim.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.slanimation.16"/>
+                    <bt:Image size="32" resid="Icon.slanimation.32"/>
+                    <bt:Image size="80" resid="Icon.slanimation.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>sledOpenAnimation</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
               <Label resid="Tab.Label"/>
             </CustomTab>
             <OfficeTab id="TabHome">
               <Group id="AISLSD.HomeGroup">
                 <Label resid="Group.AISLSD.Label"/>
                 <Icon>
-                  <bt:Image size="16" resid="Icon.aivb.16"/>
-                  <bt:Image size="32" resid="Icon.aivb.32"/>
-                  <bt:Image size="80" resid="Icon.aivb.80"/>
+                  <bt:Image size="16" resid="Icon.sleditor.16"/>
+                  <bt:Image size="32" resid="Icon.sleditor.32"/>
+                  <bt:Image size="80" resid="Icon.sleditor.80"/>
                 </Icon>
                 <Control xsi:type="Button" id="AIVB10.HomeOpen">
-                  <Label resid="AIVB10Open.Label"/>
+                  <Label resid="SLEDHome.Label"/>
                   <Supertip>
-                    <Title resid="AIVB10Open.Label"/>
-                    <Description resid="AIVB10Open.Tip"/>
+                    <Title resid="SLEDHome.Label"/>
+                    <Description resid="SLEDHome.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="Icon.aivb.16"/>
-                    <bt:Image size="32" resid="Icon.aivb.32"/>
-                    <bt:Image size="80" resid="Icon.aivb.80"/>
+                    <bt:Image size="16" resid="Icon.sleditor.16"/>
+                    <bt:Image size="32" resid="Icon.sleditor.32"/>
+                    <bt:Image size="80" resid="Icon.sleditor.80"/>
                   </Icon>
                   <Action xsi:type="ShowTaskpane">
                     <TaskpaneId>AIVisualBuilderV10Pane</TaskpaneId>
@@ -305,33 +351,33 @@
                   </Action>
                 </Control>
                 <Control xsi:type="Button" id="AIVB10.HomeSlides">
-                  <Label resid="AIVB10Slides.Label"/>
+                  <Label resid="SLEDOpenDesign.Label"/>
                   <Supertip>
-                    <Title resid="AIVB10Slides.Label"/>
-                    <Description resid="AIVB10Slides.Tip"/>
+                    <Title resid="SLEDOpenDesign.Label"/>
+                    <Description resid="SLEDOpenDesign.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="Icon.aivb.16"/>
-                    <bt:Image size="32" resid="Icon.aivb.32"/>
-                    <bt:Image size="80" resid="Icon.aivb.80"/>
+                    <bt:Image size="16" resid="Icon.sldesign.16"/>
+                    <bt:Image size="32" resid="Icon.sldesign.32"/>
+                    <bt:Image size="80" resid="Icon.sldesign.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>aivbOpenSlides</FunctionName>
+                    <FunctionName>sledOpenDesign</FunctionName>
                   </Action>
                 </Control>
                 <Control xsi:type="Button" id="AIVB10.HomeEdit">
-                  <Label resid="AIVB10Edit.Label"/>
+                  <Label resid="SLEDOpenAnim.Label"/>
                   <Supertip>
-                    <Title resid="AIVB10Edit.Label"/>
-                    <Description resid="AIVB10Edit.Tip"/>
+                    <Title resid="SLEDOpenAnim.Label"/>
+                    <Description resid="SLEDOpenAnim.Tip"/>
                   </Supertip>
                   <Icon>
-                    <bt:Image size="16" resid="Icon.aivb.16"/>
-                    <bt:Image size="32" resid="Icon.aivb.32"/>
-                    <bt:Image size="80" resid="Icon.aivb.80"/>
+                    <bt:Image size="16" resid="Icon.slanimation.16"/>
+                    <bt:Image size="32" resid="Icon.slanimation.32"/>
+                    <bt:Image size="80" resid="Icon.slanimation.80"/>
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
-                    <FunctionName>aivbOpenEdit</FunctionName>
+                    <FunctionName>sledOpenAnimation</FunctionName>
                   </Action>
                 </Control>
               </Group>
@@ -342,53 +388,62 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.design.16" DefaultValue="https://localhost:44317/assets/v3/slsd/design-16.png"/>
-        <bt:Image id="Icon.design.32" DefaultValue="https://localhost:44317/assets/v3/slsd/design-32.png"/>
-        <bt:Image id="Icon.design.80" DefaultValue="https://localhost:44317/assets/v3/slsd/design-80.png"/>
-        <bt:Image id="Icon.aivb.16" DefaultValue="https://localhost:44317/assets/v3/icon-16.png"/>
-        <bt:Image id="Icon.aivb.32" DefaultValue="https://localhost:44317/assets/v3/icon-32.png"/>
-        <bt:Image id="Icon.aivb.80" DefaultValue="https://localhost:44317/assets/v3/icon-80.png"/>
-        <bt:Image id="Icon.footer-note.16" DefaultValue="https://localhost:44317/assets/v3/slsd/footer-note-16.png"/>
-        <bt:Image id="Icon.footer-note.32" DefaultValue="https://localhost:44317/assets/v3/slsd/footer-note-32.png"/>
-        <bt:Image id="Icon.footer-note.80" DefaultValue="https://localhost:44317/assets/v3/slsd/footer-note-80.png"/>
-        <bt:Image id="Icon.code-blue.16" DefaultValue="https://localhost:44317/assets/v3/slsd/code-blue-16.png"/>
-        <bt:Image id="Icon.code-blue.32" DefaultValue="https://localhost:44317/assets/v3/slsd/code-blue-32.png"/>
-        <bt:Image id="Icon.code-blue.80" DefaultValue="https://localhost:44317/assets/v3/slsd/code-blue-80.png"/>
-        <bt:Image id="Icon.code-black.16" DefaultValue="https://localhost:44317/assets/v3/slsd/code-black-16.png"/>
-        <bt:Image id="Icon.code-black.32" DefaultValue="https://localhost:44317/assets/v3/slsd/code-black-32.png"/>
-        <bt:Image id="Icon.code-black.80" DefaultValue="https://localhost:44317/assets/v3/slsd/code-black-80.png"/>
-        <bt:Image id="Icon.footer-info.16" DefaultValue="https://localhost:44317/assets/v3/slsd/footer-info-16.png"/>
-        <bt:Image id="Icon.footer-info.32" DefaultValue="https://localhost:44317/assets/v3/slsd/footer-info-32.png"/>
-        <bt:Image id="Icon.footer-info.80" DefaultValue="https://localhost:44317/assets/v3/slsd/footer-info-80.png"/>
-        <bt:Image id="Icon.problem.16" DefaultValue="https://localhost:44317/assets/v3/slsd/problem-16.png"/>
-        <bt:Image id="Icon.problem.32" DefaultValue="https://localhost:44317/assets/v3/slsd/problem-32.png"/>
-        <bt:Image id="Icon.problem.80" DefaultValue="https://localhost:44317/assets/v3/slsd/problem-80.png"/>
-        <bt:Image id="Icon.problem-image.16" DefaultValue="https://localhost:44317/assets/v3/slsd/problem-image-16.png"/>
-        <bt:Image id="Icon.problem-image.32" DefaultValue="https://localhost:44317/assets/v3/slsd/problem-image-32.png"/>
-        <bt:Image id="Icon.problem-image.80" DefaultValue="https://localhost:44317/assets/v3/slsd/problem-image-80.png"/>
-        <bt:Image id="Icon.no-animation.16" DefaultValue="https://localhost:44317/assets/v3/slsd/no-animation-16.png"/>
-        <bt:Image id="Icon.no-animation.32" DefaultValue="https://localhost:44317/assets/v3/slsd/no-animation-32.png"/>
-        <bt:Image id="Icon.no-animation.80" DefaultValue="https://localhost:44317/assets/v3/slsd/no-animation-80.png"/>
-        <bt:Image id="Icon.delete-empty.16" DefaultValue="https://localhost:44317/assets/v3/slsd/delete-empty-16.png"/>
-        <bt:Image id="Icon.delete-empty.32" DefaultValue="https://localhost:44317/assets/v3/slsd/delete-empty-32.png"/>
-        <bt:Image id="Icon.delete-empty.80" DefaultValue="https://localhost:44317/assets/v3/slsd/delete-empty-80.png"/>
-        <bt:Image id="Icon.rename-text.16" DefaultValue="https://localhost:44317/assets/v3/slsd/rename-text-16.png"/>
-        <bt:Image id="Icon.rename-text.32" DefaultValue="https://localhost:44317/assets/v3/slsd/rename-text-32.png"/>
-        <bt:Image id="Icon.rename-text.80" DefaultValue="https://localhost:44317/assets/v3/slsd/rename-text-80.png"/>
-        <bt:Image id="Icon.rename-heading.16" DefaultValue="https://localhost:44317/assets/v3/slsd/rename-heading-16.png"/>
-        <bt:Image id="Icon.rename-heading.32" DefaultValue="https://localhost:44317/assets/v3/slsd/rename-heading-32.png"/>
-        <bt:Image id="Icon.rename-heading.80" DefaultValue="https://localhost:44317/assets/v3/slsd/rename-heading-80.png"/>
+        <bt:Image id="Icon.design.16" DefaultValue="https://localhost:44317/assets/v4/slsd/design-16.png"/>
+        <bt:Image id="Icon.design.32" DefaultValue="https://localhost:44317/assets/v4/slsd/design-32.png"/>
+        <bt:Image id="Icon.design.80" DefaultValue="https://localhost:44317/assets/v4/slsd/design-80.png"/>
+        <bt:Image id="Icon.aivb.16" DefaultValue="https://localhost:44317/assets/v4/icon-16.png"/>
+        <bt:Image id="Icon.aivb.32" DefaultValue="https://localhost:44317/assets/v4/icon-32.png"/>
+        <bt:Image id="Icon.aivb.80" DefaultValue="https://localhost:44317/assets/v4/icon-80.png"/>
+        <bt:Image id="Icon.footer-note.16" DefaultValue="https://localhost:44317/assets/v4/slsd/footer-note-16.png"/>
+        <bt:Image id="Icon.footer-note.32" DefaultValue="https://localhost:44317/assets/v4/slsd/footer-note-32.png"/>
+        <bt:Image id="Icon.footer-note.80" DefaultValue="https://localhost:44317/assets/v4/slsd/footer-note-80.png"/>
+        <bt:Image id="Icon.code-blue.16" DefaultValue="https://localhost:44317/assets/v4/slsd/code-blue-16.png"/>
+        <bt:Image id="Icon.code-blue.32" DefaultValue="https://localhost:44317/assets/v4/slsd/code-blue-32.png"/>
+        <bt:Image id="Icon.code-blue.80" DefaultValue="https://localhost:44317/assets/v4/slsd/code-blue-80.png"/>
+        <bt:Image id="Icon.code-black.16" DefaultValue="https://localhost:44317/assets/v4/slsd/code-black-16.png"/>
+        <bt:Image id="Icon.code-black.32" DefaultValue="https://localhost:44317/assets/v4/slsd/code-black-32.png"/>
+        <bt:Image id="Icon.code-black.80" DefaultValue="https://localhost:44317/assets/v4/slsd/code-black-80.png"/>
+        <bt:Image id="Icon.footer-info.16" DefaultValue="https://localhost:44317/assets/v4/slsd/footer-info-16.png"/>
+        <bt:Image id="Icon.footer-info.32" DefaultValue="https://localhost:44317/assets/v4/slsd/footer-info-32.png"/>
+        <bt:Image id="Icon.footer-info.80" DefaultValue="https://localhost:44317/assets/v4/slsd/footer-info-80.png"/>
+        <bt:Image id="Icon.problem.16" DefaultValue="https://localhost:44317/assets/v4/slsd/problem-16.png"/>
+        <bt:Image id="Icon.problem.32" DefaultValue="https://localhost:44317/assets/v4/slsd/problem-32.png"/>
+        <bt:Image id="Icon.problem.80" DefaultValue="https://localhost:44317/assets/v4/slsd/problem-80.png"/>
+        <bt:Image id="Icon.problem-image.16" DefaultValue="https://localhost:44317/assets/v4/slsd/problem-image-16.png"/>
+        <bt:Image id="Icon.problem-image.32" DefaultValue="https://localhost:44317/assets/v4/slsd/problem-image-32.png"/>
+        <bt:Image id="Icon.problem-image.80" DefaultValue="https://localhost:44317/assets/v4/slsd/problem-image-80.png"/>
+        <bt:Image id="Icon.no-animation.16" DefaultValue="https://localhost:44317/assets/v4/slsd/no-animation-16.png"/>
+        <bt:Image id="Icon.no-animation.32" DefaultValue="https://localhost:44317/assets/v4/slsd/no-animation-32.png"/>
+        <bt:Image id="Icon.no-animation.80" DefaultValue="https://localhost:44317/assets/v4/slsd/no-animation-80.png"/>
+        <bt:Image id="Icon.delete-empty.16" DefaultValue="https://localhost:44317/assets/v4/slsd/delete-empty-16.png"/>
+        <bt:Image id="Icon.delete-empty.32" DefaultValue="https://localhost:44317/assets/v4/slsd/delete-empty-32.png"/>
+        <bt:Image id="Icon.delete-empty.80" DefaultValue="https://localhost:44317/assets/v4/slsd/delete-empty-80.png"/>
+        <bt:Image id="Icon.rename-text.16" DefaultValue="https://localhost:44317/assets/v4/slsd/rename-text-16.png"/>
+        <bt:Image id="Icon.rename-text.32" DefaultValue="https://localhost:44317/assets/v4/slsd/rename-text-32.png"/>
+        <bt:Image id="Icon.rename-text.80" DefaultValue="https://localhost:44317/assets/v4/slsd/rename-text-80.png"/>
+        <bt:Image id="Icon.rename-heading.16" DefaultValue="https://localhost:44317/assets/v4/slsd/rename-heading-16.png"/>
+        <bt:Image id="Icon.rename-heading.32" DefaultValue="https://localhost:44317/assets/v4/slsd/rename-heading-32.png"/>
+        <bt:Image id="Icon.rename-heading.80" DefaultValue="https://localhost:44317/assets/v4/slsd/rename-heading-80.png"/>
+        <bt:Image id="Icon.sldesign.16" DefaultValue="https://localhost:44317/assets/v4/slsd/sldesign-16.png"/>
+        <bt:Image id="Icon.sldesign.32" DefaultValue="https://localhost:44317/assets/v4/slsd/sldesign-32.png"/>
+        <bt:Image id="Icon.sldesign.80" DefaultValue="https://localhost:44317/assets/v4/slsd/sldesign-80.png"/>
+        <bt:Image id="Icon.slanimation.16" DefaultValue="https://localhost:44317/assets/v4/slsd/slanimation-16.png"/>
+        <bt:Image id="Icon.slanimation.32" DefaultValue="https://localhost:44317/assets/v4/slsd/slanimation-32.png"/>
+        <bt:Image id="Icon.slanimation.80" DefaultValue="https://localhost:44317/assets/v4/slsd/slanimation-80.png"/>
+        <bt:Image id="Icon.sleditor.16" DefaultValue="https://localhost:44317/assets/v4/icon-16.png"/>
+        <bt:Image id="Icon.sleditor.32" DefaultValue="https://localhost:44317/assets/v4/icon-32.png"/>
+        <bt:Image id="Icon.sleditor.80" DefaultValue="https://localhost:44317/assets/v4/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
         <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:44317/v10.html"/>
         <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://localhost:44317/v10.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="Tab.Label" DefaultValue="AI SL Smart Design"/>
-        <bt:String id="GetStarted.Title" DefaultValue="AI SL Smart Design is ready"/>
+        <bt:String id="Tab.Label" DefaultValue="SL Editor"/>
+        <bt:String id="GetStarted.Title" DefaultValue="SL Editor is ready"/>
         <bt:String id="SLSDDesign.Label" DefaultValue="Design"/>
         <bt:String id="SLSDAltDesign.Label" DefaultValue="Alternative Design"/>
-        <bt:String id="AIVB10Open.Label" DefaultValue="AI Visual Builder"/>
+        <bt:String id="AIVB10Open.Label" DefaultValue="AI SL Smart Design"/>
         <bt:String id="AIVB10Slides.Label" DefaultValue="Several slides"/>
         <bt:String id="AIVB10Edit.Label" DefaultValue="Edit a visual"/>
         <bt:String id="SLSDTemplates.Label" DefaultValue="SL Templates"/>
@@ -404,10 +459,15 @@
         <bt:String id="SLSDRename.Label" DefaultValue="Shape Rename"/>
         <bt:String id="SLSDRenText.Label" DefaultValue="Text"/>
         <bt:String id="SLSDRenHead.Label" DefaultValue="Heading"/>
-        <bt:String id="Group.AISLSD.Label" DefaultValue="AI SL Smart Design"/>
+        <bt:String id="SLEDDesign.Label" DefaultValue="SL Design"/>
+        <bt:String id="SLEDOpenDesign.Label" DefaultValue="SL Design"/>
+        <bt:String id="SLEDAnim.Label" DefaultValue="SL Animation"/>
+        <bt:String id="SLEDOpenAnim.Label" DefaultValue="SL Animation"/>
+        <bt:String id="Group.AISLSD.Label" DefaultValue="SL Editor"/>
+        <bt:String id="SLEDHome.Label" DefaultValue="SL Editor"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="GetStarted.Description" DefaultValue="Open the AI SL Smart Design tab: AI Visual Builder, Several slides, Edit a visual, Alternative Design and more. If it does not load, run local-ai\Restart AI Visual Builder.bat."/>
+        <bt:String id="GetStarted.Description" DefaultValue="Home &gt; SL Editor opens the panel: AI SL Smart Design, SL Design and SL Animation. If it does not load, run &quot;Restart AI SL Smart Design&quot; from the Start menu."/>
         <bt:String id="SLSDAltDesign.Tip" DefaultValue="Redesign the slide's points (2 to 10, one per line) with a template from the SL Smart Design library."/>
         <bt:String id="AIVB10Open.Tip" DefaultValue="Turn the slide's content into editable infographics designed by AI: generate, preview, insert."/>
         <bt:String id="AIVB10Slides.Tip" DefaultValue="Spread long content over several slides, each with its own editable visual."/>
@@ -422,6 +482,9 @@
         <bt:String id="SLSDDelEmpty.Tip" DefaultValue="Delete the empty text boxes and placeholders on every slide."/>
         <bt:String id="SLSDRenText.Tip" DefaultValue="Name the selected shapes Text_1, Text_2 ... in the order you selected them."/>
         <bt:String id="SLSDRenHead.Tip" DefaultValue="Name the selected shapes T_Text_1, T_Text_2 ... in the order you selected them."/>
+        <bt:String id="SLEDOpenDesign.Tip" DefaultValue="Brand shapes, text boxes, bullets, layout templates, brandlines and speaker notes."/>
+        <bt:String id="SLEDOpenAnim.Tip" DefaultValue="Entrance and exit animations, bulk timing shift, transitions, audio and video export."/>
+        <bt:String id="SLEDHome.Tip" DefaultValue="Open SL Editor: AI SL Smart Design (AI infographics and editing), SL Design and SL Animation."/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>

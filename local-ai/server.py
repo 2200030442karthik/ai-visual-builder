@@ -55,10 +55,12 @@ DATA_DIR = os.environ.get('AIVB_DATA_DIR') or os.path.join(os.environ.get('LOCAL
 STATIC = {'/': ('v10.html', 'text/html; charset=utf-8'), '/v10.html': ('v10.html', 'text/html; charset=utf-8'),
           '/gallery-dialog.html': ('gallery-dialog.html', 'text/html; charset=utf-8'),
           '/slsd-notice.html': ('slsd-notice.html', 'text/html; charset=utf-8'),
-          **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'sections', 'original', 'faithful', 'napkin', 'studio', 'orchestrator', 'app', 'bridge', 'slsd', 'gate', 'antv', 'stylekit')},
+          **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'sections', 'original', 'faithful', 'napkin', 'studio', 'orchestrator', 'app', 'bridge', 'slsd', 'gate', 'antv', 'stylekit', 'sleditor')},
           # the ribbon's icons (manifest-v10.xml), served by this host like the panel itself
           **{f'/assets/icon-{n}.png': (f'assets/icon-{n}.png', 'image/png') for n in (16, 32, 64, 80)},
           # 10.20.1: the SL Smart Design tab's icons (manifest-slsd.xml; made by sl-smart-design/make_icons.py)
+          # 10.25: the 3D picture icons (3dicons v1, CC0) for 'Style the selection' > Replace the selected icon
+          **{f'/assets/3dicons/{n}': (f'assets/3dicons/{n}', 'application/json' if n.endswith('.json') else 'image/png') for n in (os.listdir(os.path.join(HERE, 'assets', '3dicons')) if os.path.isdir(os.path.join(HERE, 'assets', '3dicons')) else []) if n.endswith(('.png', '.json'))},
           **{f'/assets/slsd/{n}': (f'assets/slsd/{n}', 'image/png') for n in (os.listdir(os.path.join(HERE, 'assets', 'slsd')) if os.path.isdir(os.path.join(HERE, 'assets', 'slsd')) else []) if n.endswith('.png')},
           # 10.24: AntV Infographic (MIT, vendor/antv-infographic-LICENSE.txt), served locally - no CDN at run time
           '/vendor/antv-infographic.min.js': ('vendor/antv-infographic-0.2.20.min.js', 'text/javascript; charset=utf-8'),
@@ -676,6 +678,24 @@ SLSD_MACROS = {
     'problem-solution': 'ImportProblemSolutionSection', 'problem-solution-image': 'ImportProblemSolutionImageSection',
     'remove-animations': 'DeleteAllAnimationsAndTransitions', 'delete-empty': 'DeleteEmptyTextBoxesAndPlaceholders',
     'rename-text': 'RenameText', 'rename-heading': 'RenameHeading'}
+# 10.25, SL Editor: the SL Design and SL Animation commands of the company's VBA add-in SL_Audomation.ppam (no licence
+# check), run unchanged like the SL Smart Design ones. A command with a value (an animation ID, a shift, a colour) first
+# runs the add-in's own ribbon setter with that value (its ribbon control argument is not used: Nothing is passed).
+_NUM = r'-?\d{1,6}(?:[.,]\d{1,3})?'
+SLED_MACROS = {
+    **{f'an-{e}-{d}': f'{e}_{d}' for e in ('fade', 'zoom', 'fly', 'peek', 'wipe', 'split', 'circle') for d in ('in', 'out')},
+    'an-motion-line': 'motion_path_line', 'an-spin': 'emphasis_spin', 'an-audio-sync': 'audio_sync',
+    'an-import': 'import_from_resource_library', 'an-adjust-videos': 'Adjust_Animated_Videos', 'an-import-audio': 'Import_and_Update_Audio',
+    'an-shift': 'Shift_All_Animations', 'an-export-video': 'Export_Video_Regular', 'an-transition-times': 'Transition_Timing',
+    'de-rounded-box': 'Create_Rounded_Rectangle', 'de-text-box': 'Create_Rectangle_Text_Box', 'de-source-text': 'Add_Small_Print',
+    'de-adjust-font': 'Adjust_Font', 'de-bullets': 'Create_Rectangle_Bullet_Point_Text_Box',
+    **{f'de-template-{n}': f'Design_Template_0{n}' for n in range(1, 6)},
+    'de-brandline-custom': 'Brandline_University', 'de-brandline-osl': 'Brandline_Simplilearn', 'de-brandline-lvc': 'Brandline_LVC',
+    'de-notes-text': 'ExportNotesText', 'de-notes-vtt': 'ExportNotesVTT'}
+# command -> [(value name, setter Sub, pattern)]
+SLED_VALUES = {'an-import': [('id', 'Animation_ID_Number', r'\d{1,5}')],
+               'an-shift': [('from', 'Shift_Animations_User_Form', _NUM), ('by', 'Shift_By_User_Form', _NUM)],
+               'de-brandline-custom': [('color', 'Brandline_University_ColorCode', r'#?[0-9A-Fa-f]{6}')]}
 SLSD = {'jobs': {}, 'busy': None}
 SLSD_LOCK = threading.Lock()
 
@@ -722,10 +742,53 @@ def _slsd_runner(macro):
 SLSD_RUNNER = _slsd_runner      # replaced by the tests (no PowerPoint)
 
 
+def _sled_runner(macro, pre):
+    if sys.platform != 'win32':
+        raise SlsdUnavailable('On a Mac, use the SL Design and SL Animation tabs of the VBA add-in for this command.')
+    import slsd_com
+    if TEST_NO_PAID:
+        raise slsd_com.MacroError('PowerPoint commands are switched off on a test panel host.')
+    addin = CONFIG.get('sled_addin') if isinstance(CONFIG.get('sled_addin'), str) and re.fullmatch(r'[A-Za-z0-9_. -]{1,100}\.ppam', CONFIG.get('sled_addin')) else 'SL_Audomation.ppam'
+    for setter, v in pre:        # VBA's CDbl reads the PC's own decimal separator
+        if setter in ('Shift_Animations_User_Form', 'Shift_By_User_Form'):
+            v = v.replace('.', _decimal_sep())
+        slsd_com.run_macro(addin, 'Module1', setter, args=(slsd_com.NULL_OBJECT, v), title='SL Editor')
+    slsd_com.run_macro(addin, 'Module1', macro, title='SL Editor')
+
+
+def _decimal_sep():
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Control Panel\International') as k:
+            return str(winreg.QueryValueEx(k, 'sDecimal')[0] or '.')[:1]
+    except OSError:
+        return '.'
+
+
+SLED_RUNNER = _sled_runner      # replaced by the tests (no PowerPoint)
+
+
+def _sled_job(cmd, b):
+    # the setter calls (validated values) and the command's own macro
+    vals = b.get('values') if isinstance(b.get('values'), dict) else {}
+    pre = []
+    for name, setter, pat in SLED_VALUES.get(cmd, []):
+        v = str(vals.get(name, '')).strip()
+        if not re.fullmatch(pat, v):
+            raise NapkinError(f'Enter a valid {name} first.', 400)
+        if setter == 'Brandline_University_ColorCode':
+            v = v.lstrip('#').upper()
+        if name in ('from', 'by'):
+            v = v.replace(',', '.')
+        pre.append((setter, v))
+    return pre
+
+
 def slsd_run(b):
     cmd = str(b.get('cmd') or '')
-    if cmd not in SLSD_MACROS:
+    if cmd not in SLSD_MACROS and cmd not in SLED_MACROS:
         raise NapkinError('Unknown SL Smart Design command.', 400)
+    pre = _sled_job(cmd, b) if cmd in SLED_MACROS else None
     if HOSTED:
         raise NapkinError('SL Smart Design commands run only on the PC with PowerPoint.', 403)
     rid = hashlib.sha256(f'{time.time()}|{os.getpid()}|{cmd}'.encode()).hexdigest()[:16]
@@ -741,7 +804,10 @@ def slsd_run(b):
     def work():
         t0, state, msg = time.time(), 'done', ''
         try:
-            SLSD_RUNNER(SLSD_MACROS[cmd])
+            if pre is None:
+                SLSD_RUNNER(SLSD_MACROS[cmd])
+            else:
+                SLED_RUNNER(SLED_MACROS[cmd], pre)
         except Exception as e:      # MacroError: a plain-language reason; anything else: its type only
             state, msg = 'error', (str(e) if type(e).__name__ == 'MacroError' else f'SL Smart Design could not run the command ({type(e).__name__}).')
         with SLSD_LOCK:

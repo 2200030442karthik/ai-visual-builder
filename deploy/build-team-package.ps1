@@ -2,7 +2,8 @@
 #   - the full desktop app (same server.py, panel, packs, Claude/Napkin integration and checks) and its own Python runtime
 #   - activation-bundle.json: the organization's Claude and Napkin keys, ENCRYPTED; only an activation key unlocks them
 #     (make it once with "python local-ai\activation.py issue ..."; reuse it for later versions so activations are kept)
-#   - nothing of SL Smart Design (no add-in file, no licence), no plain-text key, no certificate, usage or test data
+#   - 10.25: the company's SL Smart Design and SL_Audomation add-ins (addins\, unchanged), for SL Editor's tabs;
+#     no plain-text key, no certificate, usage or test data
 # Usage:
 #   powershell -File deploy\build-team-package.ps1 -Bundle deploy\team-keys\activation-bundle.json
 #     [-RuntimeFrom <folder with python.exe + Lib\site-packages\anthropic>]   (default: the manager pilot's runtime)
@@ -67,6 +68,23 @@ $cfg = Get-Content (Join-Path $La 'config.json') -Raw | ConvertFrom-Json
 $cfg.paid_policy = 'always'               # 10.24: Claude designs for every new text (the owner's choice); keys only work after activation
 [IO.File]::WriteAllText((Join-Path $app 'config.json'), ($cfg | ConvertTo-Json -Depth 4), (New-Object Text.UTF8Encoding $false))
 
+# 2b. 10.25 SL Editor: the company's VBA add-ins (SL Smart Design; SL Design and SL Animation) so one setup gives every
+#     tool. Unchanged originals from this PC (PowerPoint's add-in folder, or the originals an earlier install kept); the
+#     installer (addin_tabs.py) hides their own ribbon tabs in a checked copy and keeps the originals for the uninstaller.
+$ad = Join-Path $Stage 'addins'
+New-Item -ItemType Directory -Force $ad | Out-Null
+foreach ($n in 'SL_Smart_Design_v2_Key_Dec_25', 'SL_Audomation') {
+    $from = @((Join-Path $env:LOCALAPPDATA "AIVisualBuilder\addins-original\$n.ppam"), (Join-Path $env:APPDATA "Microsoft\AddIns\$n.ppam"),
+              (Join-Path $env:LOCALAPPDATA "AIVisualBuilder\slsd-original\$n.ppam")) | Where-Object { Test-Path $_ }
+    $ok = $null
+    foreach ($f in $from) {
+        $st = & python -I -c "import sys,json; sys.path.insert(0, sys.argv[2]); import addin_tabs as A; t = A.tabs(open(sys.argv[1], 'rb').read()); print(json.dumps(t))" $f $La
+        if ($st -and $st -ne 'null' -and $st -match 'true') { $ok = $f; break }        # an original: its tabs visible
+    }
+    if (-not $ok) { throw "No original $n.ppam on this PC (PowerPoint's add-in folder): SL Editor needs it for its tabs." }
+    Copy-Item $ok (Join-Path $ad "$n.ppam")
+}
+
 # 3. Manifest: the ONE SL Smart Design tab (Alternative Design, AI Visual Builder, Several slides, Edit a visual,
 #    SL Templates, Miscellaneous, Shape Rename), the product's own add-in Id; the port is filled in by the installer
 $mf = Join-Path $Stage 'manifest-slsd.template.xml'
@@ -89,7 +107,7 @@ foreach ($f in 'common.ps1', 'Install.ps1', 'Uninstall.ps1', 'Restart.ps1', 'Act
 }
 
 # 6. Safety: nothing secret, licensed or private in the package
-$bad = Get-ChildItem $Stage -Recurse -File | Where-Object {
+$bad = Get-ChildItem $Stage -Recurse -File | Where-Object { -not ($_.DirectoryName -eq $ad -and $_.Name -match '^(SL_Smart_Design_v2_Key_Dec_25|SL_Audomation)\.ppam$') -and
     $_.Name -match '^(napkin|claude|activation|access)\.json$|\.pem$|\.pfx$|usage\.json$|^AIVB-keys\.json$|activation-keys\.csv$|\.bas$|\.frm$|\.frx$|\.pptm$|\.ppam$|\.pptx$' }
 if ($bad) { throw "Private or licensed files in the package: $($bad.FullName -join ', ')" }
 $scan = Get-ChildItem $Stage -Recurse -File -Include *.py, *.pyw, *.js, *.html, *.json, *.ps1, *.txt, *.xml, *.bat | Where-Object { $_.FullName -notlike "$rt\*" }

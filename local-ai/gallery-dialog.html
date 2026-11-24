@@ -4,7 +4,7 @@
      sends the user's choice back to the panel (Office messageParent), which inserts it into PowerPoint. It reads the
      designs from the panel host with the key in its address (server.py gallery_get) and never talks to PowerPoint. -->
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Choose a design</title>
+<title>SL Editor - designs</title>
 <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 <style>
   :root { --ink: #262626; --mute: #5f5f5f; --line: #dcdcdc; --sel: #1f6fb2; --bg: #f6f6f6; --card: #fff; }
@@ -104,14 +104,14 @@
     // 10.24: where the designs come from (Built-in, Claude, Napkin): a second filter when more than one source gave designs
     const srcs = [...new Set(L.map(c => c.srcName).filter(Boolean))];
     if (G.src !== 'All' && !srcs.includes(G.src)) G.src = 'All';
-    $('chips').innerHTML = (cats.length > 2 ? cats.map(k => `<button type="button" class="${k === G.filter ? 'sel' : ''}" data-k="${esc(k)}">${esc(k)}</button>`).join('') : '') +
+    $('chips').innerHTML = '' +      // 10.25: no category filter; only where the designs come from
       (srcs.length > 1 ? '<span class="sep">From</span>' + ['All'].concat(srcs).map(k => `<button type="button" class="src${k === G.src ? ' sel' : ''}" data-s="${esc(k)}">${esc(k)}${k === 'All' ? '' : ` <i>${L.filter(c => c.srcName === k).length}</i>`}</button>`).join('') : '');
     $('chips').querySelectorAll('button[data-k]').forEach(b => b.addEventListener('click', () => { G.filter = b.dataset.k; render(); }));
     $('chips').querySelectorAll('button[data-s]').forEach(b => b.addEventListener('click', () => { G.src = b.dataset.s; render(); }));
     const shown = L.filter(c => (G.filter === 'All' || c.category === G.filter) && (G.src === 'All' || c.srcName === G.src));
     $('empty').hidden = !!L.length; if (!L.length) $('empty').textContent = 'No designs yet. Press Generate visuals in the panel.';
     $('grid').innerHTML = shown.map(c => `<button type="button" class="card${c.i === G.sel ? ' sel' : ''}" data-i="${c.i}" aria-pressed="${c.i === G.sel}" aria-label="Design ${c.i + 1} of ${L.length}: ${esc(c.name)}">` +
-      `<span class="no">${c.i + 1}</span><div class="t">${c.svg}</div><div class="n">${esc(c.name)}</div><div class="m">${esc(c.category)}${c.slides > 1 ? ` · ${c.slides} slides` : ''}` +
+      `<span class="no">${c.i + 1}</span><div class="t">${c.svg}</div><div class="n">${esc(c.name)}</div><div class="m">${c.slides > 1 ? `${c.slides} slides · ` : ''}` +
       ` <span class="tag${c.edit === 'full' ? '' : ' part'}">${c.edit === 'full' ? 'Editable' : 'Partly editable'}</span>${c.srcName ? `<span class="tag src ${esc(c.src)}" title="${esc(c.srcWhy || '')}">${esc(c.srcName)}</span>` : c.ai ? '<span class="tag ai">AI-designed</span>' : ''}</div></button>`).join('');
     $('grid').querySelectorAll('.card').forEach(b => {
       b.addEventListener('click', () => pick(+b.dataset.i));
@@ -124,7 +124,7 @@
   function pick(i) { G.sel = i; document.querySelectorAll('.card').forEach(b => { const on = +b.dataset.i === i; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on); }); buttons(); send({ action: 'select', i }); }
   function insert() { if (G.sel < 0 || (G.d && G.d.busy)) return; send({ action: 'insert', i: G.sel }); $('note').textContent = 'Inserting…'; }
   function hover(b) { clearTimeout(G.hoverT); G.hoverT = setTimeout(() => { const c = G.d.items.find(x => x.i === +b.dataset.i); if (!c) return;
-    $('big').innerHTML = `<div class="t">${c.svg}</div><div class="n">${esc(c.name)}</div><div class="m">${esc(c.category)} · ${c.edit === 'full' ? 'every shape and text editable in PowerPoint' : 'editable shapes and text; some icons are pictures'}${c.srcWhy ? ' · ' + esc(c.srcWhy) : c.ai ? ' · designed by AI' : ''}</div>`;
+    $('big').innerHTML = `<div class="t">${c.svg}</div><div class="n">${esc(c.name)}</div><div class="m">${c.edit === 'full' ? 'every shape and text editable in PowerPoint' : 'editable shapes and text; some icons are pictures'}${c.srcWhy ? ' · ' + esc(c.srcWhy) : c.ai ? ' · designed by AI' : ''}</div>`;
     const r = b.getBoundingClientRect(), big = $('big');
     // beside the card when there is room, so the card stays visible; else centred
     big.style.left = r.left + r.width / 2 < innerWidth / 2 ? Math.min(innerWidth - big.offsetWidth / 2 - 10, r.right + 14 + big.offsetWidth / 2) + 'px' : Math.max(big.offsetWidth / 2 + 10, r.left - 14 - big.offsetWidth / 2) + 'px';

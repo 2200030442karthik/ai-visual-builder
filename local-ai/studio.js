@@ -390,7 +390,15 @@ async function selectedVisual(context) {
     if (o.some(t => !t.isNullObject)) throw Object.assign(new Error('original'), { original: true });
     throw Object.assign(new Error('notours'), { notours: true });
   }
-  return { slide, id };
+  // 10.25: one point's shapes selected (its texts carry AIVB_F "<point id>|L/D"): that point is edited on its own
+  let focus = '';
+  try {
+    const ft = sel.items.map(s => { const t = s.tags.getItemOrNullObject('AIVB_F'); t.load('value'); return t; });
+    await context.sync();
+    const ids = [...new Set(ft.filter(t => !t.isNullObject).map(t => String(t.value || '').split('|')[0]).filter(Boolean))];
+    if (ids.length === 1 && cnt.value <= 4) focus = ids[0];
+  } catch (e) { /* the whole visual */ }
+  return { slide, id, focus };
 }
 /* The visual's shapes on the slide (top level) and its texts (inside groups too), as PowerPoint has them now. */
 async function visualParts(context, slide, id) {
@@ -425,7 +433,7 @@ async function editLoad() {
   try {
     let E = null;
     await PowerPoint.run(async context => {
-      const { slide, id } = await selectedVisual(context), rec = await readBlob(context, slide, 'AIVB_R_' + id);
+      const { slide, id, focus } = await selectedVisual(context), rec = await readBlob(context, slide, 'AIVB_R_' + id);
       if (!rec) throw new Error('this visual has no edit record (it was inserted on another PC whose record PowerPoint did not keep on the slide), so it cannot be changed here safely');
       const parts = await visualParts(context, slide, id);
       if (!parts.tops.length) throw new Error("the visual's shapes are no longer on this slide");
@@ -436,7 +444,7 @@ async function editLoad() {
         const [iid, f] = t.field.split('|'), it = rec.plan.items.find(i => i.id === iid), want = f === 'T' ? rec.plan.title : it ? (f === 'L' ? it.label : it.detail) : null;
         if (want != null && normText(t.text) !== normText(want)) hand.push({ iid, f, from: want, to: normText(t.text) });
       });
-      E = { slideId: slide.id, id, rec, hand, texts: parts.texts, prev: await readBlob(context, slide, 'AIVB_P_' + id), moved: parts.bbox && rec.bbox ? Math.hypot(parts.bbox.x - rec.bbox.x, parts.bbox.y - rec.bbox.y) > 2 : false };
+      E = { focus: rec.kind === 'plan' && rec.plan.items.some(i => i.id === focus) ? focus : '', slideId: slide.id, id, rec, hand, texts: parts.texts, prev: await readBlob(context, slide, 'AIVB_P_' + id), moved: parts.bbox && rec.bbox ? Math.hypot(parts.bbox.x - rec.bbox.x, parts.bbox.y - rec.bbox.y) > 2 : false };
     });
     ST.edit = E;
     renderEdit();
@@ -547,29 +555,30 @@ function renderEdit() {
   let h = '';
   if (E.rec.kind === 'plan') {
     const hand = (iid, f) => (E.hand.find(x => x.iid === iid && x.f === f) || {}).to;
-    h += `<div class="small"><b>Points</b> (label, description, icon)</div>` + P.items.map((it, k) => `<div class="edrow" data-k="${k}" style="border-top:1px solid var(--line);padding:4px 0">` +
-      `<input type="text" class="edL" value="${esc(hand(it.id, 'L') || it.label)}" aria-label="Label of point ${k + 1}" style="width:100%">` +
-      `<textarea class="edD" rows="2" aria-label="Description of point ${k + 1}" style="width:100%;height:auto;font:inherit">${esc(hand(it.id, 'D') != null ? hand(it.id, 'D') : it.detail || '')}</textarea>` +
-      `<div style="display:flex;align-items:center;gap:6px;margin-top:3px">` +
-      `<select class="edI" aria-label="Icon of point ${k + 1}" style="flex:1">${icons.map(x => `<option value="${esc(x)}"${x === (it.icon || 'none') ? ' selected' : ''}>${esc(typeof CMP_NAMES === 'object' && CMP_NAMES[x] ? CMP_NAMES[x] + ' (' + x + ')' : x)}</option>`).join('')}</select>` +
-      `<button type="button" class="btnAiIcon" data-k="${k}" title="Describe the icon below: library matches first, then Claude designs one" hidden>✨ Find or design icon</button>` +
-      `</div>` +
-      `<div class="aiIconPromptWrap" id="aiIconPrompt_${k}" style="display:block;margin-top:5px;padding:6px 8px;background:#f5f7fd;border:1px solid #dfe4f2;border-radius:8px">` +
-        `<div style="font-size:11px;font-weight:600;margin-bottom:4px;color:var(--ink,#222)">Icon of point ${k + 1}: describe what it should show</div>` +
-        `<div style="display:flex;gap:4px">` +
-          `<input type="text" class="aiIconInput" id="aiIconInput_${k}" placeholder="e.g. car with sensors, handshake, rocket" style="flex:1;font-size:11px;padding:3px 6px">` +
-          `<button type="button" class="aiIconSubmit" data-k="${k}" style="padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;background:#3645A9;color:#fff;border:none;border-radius:6px">Design icon</button>` +
-          `<button type="button" class="aiIconCancel" hidden data-k="${k}" style="padding:3px 6px;font-size:11px;cursor:pointer;border:1px solid #ccc;background:#fff;border-radius:3px">✕</button>` +
-        `</div>` +
+    // 10.25: each point is a card - its label, description and icon (the icon shown, a box to describe a new one, the
+    // library behind a small list); with one point selected on the slide only that point is shown (E.focus)
+    const thumbOf = key => { try { return key && key !== 'none' && CMP[key] ? toSVG(comp(key, 3, 3, 34, accent(0)), 40, 40) : ''; } catch (e) { return ''; } };
+    const fk = E.focus ? P.items.findIndex(i => i.id === E.focus) : -1;
+    h += (fk >= 0 ? `<div class="edfocus">Editing point ${fk + 1} of ${P.items.length} (the part you selected) <button type="button" id="stEdAll">Edit the whole visual</button></div>`
+      : `<div class="small"><b>Points</b> - change a text or an icon, then press Preview change</div>`) +
+      P.items.map((it, k) => `<div class="edrow edcard${fk >= 0 && k !== fk ? ' edhide' : ''}" data-k="${k}">` +
+      `<div class="edhead"><span class="ednum">${k + 1}</span><input type="text" class="edL" value="${esc(hand(it.id, 'L') || it.label)}" aria-label="Label of point ${k + 1}"></div>` +
+      `<textarea class="edD" rows="2" aria-label="Description of point ${k + 1}">${esc(hand(it.id, 'D') != null ? hand(it.id, 'D') : it.detail || '')}</textarea>` +
+      `<div class="edicon"><span class="edthumb" id="aiIconThumb_${k}" title="The icon now">${thumbOf(it.icon)}</span>` +
+        `<div class="edicwrap" id="aiIconPrompt_${k}"><div class="edictitle">Icon</div>` +
+        `<div class="edicrow"><input type="text" class="aiIconInput" id="aiIconInput_${k}" placeholder="Describe it: handshake, rocket, shield…">` +
+          `<button type="button" class="aiIconSubmit" data-k="${k}">Design icon</button>` +
+          `<button type="button" class="aiIconCancel" hidden data-k="${k}">✕</button></div>` +
+        `<details class="ediclib"><summary>or pick from the icon library</summary><select class="edI" aria-label="Icon of point ${k + 1}">${icons.map(x => `<option value="${esc(x)}"${x === (it.icon || 'none') ? ' selected' : ''}>${esc(typeof CMP_NAMES === 'object' && CMP_NAMES[x] ? CMP_NAMES[x] : x)}</option>`).join('')}</select></details>` +
+        `<button type="button" class="btnAiIcon" data-k="${k}" hidden></button>` +
         `<div class="aiIconLib" id="aiIconLib_${k}"></div>` +
-        `<div class="aiIconStatus" id="aiIconStatus_${k}" style="font-size:11px;color:var(--muted,#555);margin-top:4px" hidden></div>` +
-      `</div>` +
+        `<div class="aiIconStatus" id="aiIconStatus_${k}" hidden></div></div></div>` +
       `</div>`).join('');
     const st = E.rec.style || {};
-    h += `<div class="viewrow" style="margin-top:6px"><label>Layout <select id="stEdLayout"></select></label></div>` +
+    h += `<div class="edglobal"${fk >= 0 ? ' hidden' : ''}><div class="viewrow" style="margin-top:6px"><label>Layout <select id="stEdLayout"></select></label></div>` +
       `<div class="viewrow"><label>Colours <select id="stEdColour">${PLAN_COLOUR_NAMES.map((c, i) => `<option value="${i}"${i === (st.accent | 0) % 10 ? ' selected' : ''}>start with ${c}</option>`).join('')}</select></label>` +
       `<label>Spacing <select id="stEdSpacing"><option value="fill"${st.spacing !== 'open' ? ' selected' : ''}>fill the area</option><option value="open"${st.spacing === 'open' ? ' selected' : ''}>more white space</option></select></label></div>` +
-      `<div class="viewrow"><label>Text <select id="stEdDensity"><option value="full"${E.rec.density !== 'names' ? ' selected' : ''}>labels and descriptions</option><option value="names"${E.rec.density === 'names' ? ' selected' : ''}>point names only</option></select></label></div>`;
+      `<div class="viewrow"><label>Text <select id="stEdDensity"><option value="full"${E.rec.density !== 'names' ? ' selected' : ''}>labels and descriptions</option><option value="names"${E.rec.density === 'names' ? ' selected' : ''}>point names only</option></select></label></div></div>`;
     if (E.hand.length) h += `<div class="small">Changed by hand in PowerPoint (kept): ${esc(E.hand.map(x => `“${x.from}” → “${x.to}”`).join('; '))}</div>`;
   } else {
     h += `<div class="small"><b>Texts</b> of the visual (each stays in its own shape and size; a text that would no longer fit at its size is refused)</div>` +
@@ -578,6 +587,8 @@ function renderEdit() {
   }
   if (E.moved) h += '<div class="small">The visual was moved on the slide; the edit is drawn where it is now.</div>';
   box.innerHTML = h; box.hidden = false;
+  if (document.getElementById('stEdAll')) document.getElementById('stEdAll').addEventListener('click', () => { E.focus = ''; renderEdit(); });
+  box.querySelectorAll('.edI').forEach((s, k) => s.addEventListener('change', () => { const th = document.getElementById('aiIconThumb_' + k); if (th) { try { th.innerHTML = s.value !== 'none' && CMP[s.value] ? toSVG(comp(s.value, 3, 3, 34, accent(0)), 40, 40) : ''; } catch (e) { /* none */ } } }));
   if (stEl('EdLayout')) fillLayouts();
   box.querySelectorAll('input:not(.aiIconInput),textarea,select').forEach(x => x.addEventListener('change', () => { if (x.id !== 'stEdLayout') fillLayouts(); stEl('EditPreview').hidden = true; }));
 
@@ -610,6 +621,7 @@ function renderEdit() {
   const useIcon = (k, key) => {
     const sel = box.querySelectorAll('.edI')[+k];
     if (sel) { if (![...sel.options].some(o => o.value === key)) sel.insertAdjacentHTML('beforeend', `<option value="${esc(key)}">${esc((CMP_NAMES && CMP_NAMES[key]) || key)}</option>`); sel.value = key; }
+    const th = document.getElementById('aiIconThumb_' + k); if (th) th.innerHTML = iconThumb(key);
     if (P && P.items && P.items[k]) P.items[k].icon = key;
     fillLayouts(); editPreview();
   };

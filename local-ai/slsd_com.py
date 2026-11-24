@@ -153,6 +153,8 @@ class Dispatch:
                 v.vt, v.u.lVal = VT_I4, a
             elif isinstance(a, str):
                 v.vt, v.u.ptr = VT_BSTR, _oleaut32.SysAllocString(a)
+            elif a is NULL_OBJECT:                       # 10.25: Nothing, for a ribbon callback's unused control argument
+                v.vt, v.u.ptr = VT_DISPATCH, None
             else:
                 raise TypeError(f'unsupported argument type {type(a).__name__}')
         dp = DISPPARAMS(argv if n else None, None, n, 0)
@@ -265,7 +267,10 @@ def loaded_addins(app):
     return out
 
 
-def run_macro(addin_file, module, macro, progid='PowerPoint.Application'):
+NULL_OBJECT = object()      # passed as VBA's Nothing (an object argument the macro does not use)
+
+
+def run_macro(addin_file, module, macro, progid='PowerPoint.Application', args=(), title='SL Smart Design'):
     """PowerPoint's Application.Run on '<addin_file>!<module>.<macro>' (the documented form). Returns when the macro
     has finished - for Alternative Design, when its Select Template window is closed."""
     init = init_thread()
@@ -278,14 +283,14 @@ def run_macro(addin_file, module, macro, progid='PowerPoint.Application'):
             stem = addin_file.rsplit('.', 1)[0].lower()
             state = [l for n, l in loaded_addins(app) if n.lower() in (stem, addin_file.lower())]
             if not state:
-                raise MacroError('The SL Smart Design add-in is not installed in PowerPoint (File > Options > Add-ins > PowerPoint Add-ins).')
+                raise MacroError(f'The {title} add-in is not installed in PowerPoint (File > Options > Add-ins > PowerPoint Add-ins).')
             if not state[0]:
-                raise MacroError('The SL Smart Design add-in is installed but not loaded (File > Options > Add-ins > PowerPoint Add-ins > Go: tick it).')
+                raise MacroError(f'The {title} add-in is installed but not loaded (File > Options > Add-ins > PowerPoint Add-ins > Go: tick it).')
             try:
-                app.call('Run', f'{addin_file}!{module}.{macro}')
+                app.call('Run', f'{addin_file}!{module}.{macro}', *args)
             except COMError as e:
                 if e.hr in BUSY:
                     raise MacroError('PowerPoint is busy (a dialog may be open). Close it and try again.') from e
-                raise MacroError('SL Smart Design reported a problem: ' + (e.text or 'the command did not finish.')) from e
+                raise MacroError(f'{title} reported a problem: ' + (e.text or 'the command did not finish.')) from e
     finally:
         done_thread(init)

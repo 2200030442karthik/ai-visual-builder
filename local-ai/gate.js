@@ -21,11 +21,11 @@
     if (document.getElementById('aivbGate')) return;
     const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
     const g = document.createElement('div'); g.id = 'aivbGate'; g.setAttribute('role', 'dialog'); g.setAttribute('aria-modal', 'true');
-    g.innerHTML = '<h1>Activate AI Visual Builder</h1><p>Enter the activation key your manager gave you. You only do this once on this PC.</p>' +
+    g.innerHTML = '<h1>Activate SL Editor</h1><p>Enter the activation key your manager gave you. You only do this once on this PC.</p>' +
       '<form autocomplete="off"><label for="aivbKey">Activation key</label>' +
       '<input id="aivbKey" placeholder="AIVB-XXXXX-XXXXX-XXXXX-XXXXX" spellcheck="false" maxlength="40" required>' +
       '<button type="submit">Activate</button></form><div class="m" role="status" aria-live="polite"></div>' +
-      '<p class="s">No key? Ask your manager. The SL Smart Design commands work without it.</p>';
+      '<p class="s">No key? Ask your manager. The SL Smart Design, SL Design and SL Animation commands work without it.</p>';
     document.body.appendChild(g);
     const msg = g.querySelector('.m'), btn = g.querySelector('button'), inp = g.querySelector('input');
     const say = (t, c) => { msg.textContent = t; msg.className = 'm ' + (c || ''); };
@@ -39,7 +39,7 @@
         const j = await r.json();
         if (j.ok) { say('Activated' + (j.label ? ' for ' + j.label : '') + (j.expires ? ', valid until ' + j.expires : '') + '.', 'ok'); setTimeout(() => location.reload(), 800); }
         else { say(j.message || j.error || 'The key was not accepted.', 'bad'); btn.disabled = false; inp.select(); }
-      } catch (err) { say('AI Visual Builder is not running on this PC. Run "Restart AI Visual Builder" and try again.', 'bad'); btn.disabled = false; }
+      } catch (err) { say('SL Editor is not running on this PC. Restart the PC (or run its service from the Start menu) and try again.', 'bad'); btn.disabled = false; }
     });
     setTimeout(() => inp.focus(), 50);
   }

@@ -18,10 +18,44 @@ if (Test-Path $TemplateXml) {
     [IO.File]::WriteAllText($ManifestXml, $content, (New-Object Text.UTF8Encoding $false))
 }
 
+# 1b. 10.25 SL Editor: earlier AI Visual Builder / SL Smart Design web add-in registrations go (they would show their own
+#     tabs next to SL Editor). Each one removed is recorded in previous-registrations.json first, so it can be put back.
+$ProductId = '2f01d600-c9ec-4d94-ade9-69b8b6f0bfa7'
+$prev = [ordered]@{ at = (Get-Date).ToString('s'); developer = @{}; catalogs = @{} }
+$Wef = 'HKCU:\Software\Microsoft\Office\16.0\WEF'
+$dev = Get-ItemProperty "$Wef\Developer" -ErrorAction SilentlyContinue
+if ($dev) {
+    foreach ($pr in $dev.PSObject.Properties | Where-Object { $_.Name -notmatch '^PS' -and $_.Name -ne $ProductId }) {
+        if ("$($pr.Value)" -match 'manifest-slsd|manifest-v10|AIVisualBuilder|SLSmartDesign|ai-visual-builder') {
+            $prev.developer[$pr.Name] = "$($pr.Value)"; Remove-ItemProperty -Path "$Wef\Developer" -Name $pr.Name -ErrorAction SilentlyContinue
+        }
+    }
+}
+Get-ChildItem "$Wef\TrustedCatalogs" -ErrorAction SilentlyContinue | ForEach-Object {
+    $u = (Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue).Url
+    if ("$u" -match 'SLSD|AIVisualBuilder|SLSmartDesign|AIVB') { $prev.catalogs[$_.PSChildName] = "$u"; Remove-Item $_.PSPath -Recurse -Force -ErrorAction SilentlyContinue }
+}
+$startup = [Environment]::GetFolderPath('Startup')
+Get-ChildItem $startup -Filter '*.lnk' -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'AI ?Visual ?Builder|AIVisualBuilder|SLSmartDesign' } | ForEach-Object {
+    $prev["startup_$($_.Name)"] = $_.FullName; Remove-Item $_.FullName -Force -ErrorAction SilentlyContinue }
+foreach ($old in 'AIVisualBuilder', 'SLSmartDesign', 'AIVisualBuilderTeam') {
+    $od = Join-Path $env:LOCALAPPDATA "Programs\$old"
+    if ((Test-Path $od) -and ((Resolve-Path $od).Path -ne (Resolve-Path $AppDir).Path)) { $prev["folder_$old"] = $od; Remove-Item $od -Recurse -Force -ErrorAction SilentlyContinue }
+}
+if ($prev.developer.Count -or $prev.catalogs.Count -or $prev.Keys.Count -gt 3) {
+    [IO.File]::WriteAllText((Join-Path $DataDir 'previous-registrations.json'), ($prev | ConvertTo-Json -Depth 4), (New-Object Text.UTF8Encoding $false))
+}
+
+# 1c. The company's add-ins behind SL Editor's tabs: installed with their own ribbon tabs hidden (originals kept)
+$py = Join-Path $AppDir 'runtime\python.exe'
+$tabsPy = Join-Path $AppDir 'app\addin_tabs.py'
+if ((Test-Path $py) -and (Test-Path $tabsPy)) {
+    & $py $tabsPy install --src (Join-Path $AppDir 'addins') --data $DataDir | Out-File (Join-Path $DataDir 'addin-tabs.log') -Encoding utf8
+}
+
 # 2. Register in PowerPoint (WEF Developer sideloading)
 $Office = 'HKCU:\Software\Microsoft\Office\16.0'
 $WefKey = "$Office\WEF\Developer"
-$ProductId = '2f01d600-c9ec-4d94-ade9-69b8b6f0bfa7'
 if (-not (Test-Path $WefKey)) { New-Item -Path $WefKey -Force | Out-Null }
 New-ItemProperty -Path $WefKey -Name $ProductId -Value $ManifestXml -PropertyType String -Force | Out-Null
 

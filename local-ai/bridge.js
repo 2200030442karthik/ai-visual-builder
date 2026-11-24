@@ -15,7 +15,10 @@
   async function show(view) {
     try { if (Office.addin && typeof Office.addin.showAsTaskpane === 'function') await Office.addin.showAsTaskpane(); }
     catch (e) { console.warn('showAsTaskpane failed', e); }
-    if (view === 'slides' || view === 'edit') { if (typeof appStudio === 'function') appStudio(view); }
+    // 10.25 SL Editor: its SL Design and SL Animation tabs; everything else is on the AI SL Smart Design tab
+    if (window.__sled) window.__sled.show(view === 'design' ? 'design' : view === 'anim' ? 'anim' : 'ai');
+    if (view === 'design' || view === 'anim') { /* the tab is shown */ }
+    else if (view === 'slides' || view === 'edit') { if (typeof appStudio === 'function') appStudio(view); }
     else { const st = document.getElementById('stPanel'); if (st) st.classList.remove('open'); const c = document.getElementById('content'); if (c) c.focus(); }
     BRIDGE.last = view;
   }
@@ -43,6 +46,8 @@
       Office.actions.associate('aivbOpenGenerate', fn('generate'));
       Office.actions.associate('aivbOpenSlides', fn('slides'));
       Office.actions.associate('aivbOpenEdit', fn('edit'));
+      Office.actions.associate('sledOpenDesign', fn('design'));
+      Office.actions.associate('sledOpenAnimation', fn('anim'));
     }
     BRIDGE.on = true;
     poll();
