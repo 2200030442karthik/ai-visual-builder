@@ -81,6 +81,7 @@ PLAN_LAYOUTS = ['platform', 'stack3d', 'scene', 'capmap', 'swimlanes', 'planes',
                 'roadmap', 'pillars', 'quadrant', 'spotlight', 'storyboard', 'callout', 'journey', 'topicspot', 'topicband', 'cylsteps', 'arrowcards', 'badgecards',
                 'avcylinders', 'avarrowrow', 'aviconline', 'avcirclearrows', 'avfunnel', 'avpyramid',
                 'avstairsfront', 'avpucks', 'avdiamonds', 'avrise', 'avascending', 'avsnake', 'avtimeline', 'avring', 'avquarter',
+                'avletters', 'avletterscompact', 'avgrouprows',
                 'learnmap', 'herobanner', 'bridge', 'iconrows', 'badges', 'splitpanels', 'poster', 'ribbon', 'colortiles',
                 'concepttiles', 'orbit', 'honeycomb', 'isostack', 'bento', 'keystatement',
                 'numcards', 'chevrons', 'zigzag', 'contrast']
@@ -157,7 +158,19 @@ Design:
   (a hero card for the topic, a bracket, the items as icon tiles in a panel), orbit (the topic as a hub, the items as
   object discs around it), honeycomb (the items in hexagons along a zigzag), isostack (isometric slabs, one per
   section or item), bento (a bento grid: the topic as the large tile, the items as tiles of different sizes),
-  keystatement (the topic in large type with what it does as pills, the items as a row of objects). Prefer the richer, more visual compositions when they fit the content. Never a composition that implies something the text does not say
+  keystatement (the topic in large type with what it does as pills, the items as a row of objects), cylsteps (rising
+  2.5D cylinders, numbered, an icon badge over each - steps or growth), arrowcards (bordered icon cards joined by
+  arrows - steps), badgecards (bordered white cards with a coloured round icon badge - the reference course style, any
+  list), topicspot / topicband (the topic and its description, its named sections as bordered icon cards, the outcome
+  as a bar - a topic with sections and an outcome). Premium structures (drawn by AntV Infographic, 3D where named):
+  avcylinders (3D cylinders rising), avstairsfront (3D stacked steps), avpucks (3D pucks on a zigzag), avdiamonds (3D
+  diamonds on a path), avarrowrow (an arrow timeline with icon badges above and below), aviconline (a coloured line
+  with icon badges), avrise (a rising arrow with the steps along it), avascending (ascending steps), avsnake (a snake
+  line with icons), avtimeline (a vertical timeline), avring (a ring cycle), avcirclearrows (circular arrows), avfunnel,
+  avpyramid, avquarter (exactly four points as a quarter circle), avletters / avletterscompact (2-4 named groups as
+  letter-headed cards - e.g. SWOT), avgrouprows (2-4 named groups as rows of their points). QUALITY FIRST: choose the most premium, most
+  visual structures that truly fit - the av* structures, cylsteps, arrowcards, badgecards and topicspot first - and
+  plain grids, rows or columns only when nothing richer suits. Never a composition that implies something the text does not say
   (an order for independent ideas, a hierarchy for a list).
 - custom: a composition of your own when the content suggests one the list lacks, else zones []. The area is a grid of
   12 columns x 6 rows; each zone: id, label (a group's name or ""), items (item ids), col, row, w, h (whole cells, inside
@@ -191,7 +204,12 @@ Design:
   size per line; no text overlaps another text, an object or a line; nothing outside the area; leave 12 pt between
   unrelated elements. Flat design: no gradients, shadows, outlines around filled shapes or dashed lines. Make it
   polished and engaging for learners: one clear focal element, a hierarchy of sizes, an object for every item,
-  generous spacing, balanced colour."""
+  generous spacing, balanced colour. Professional discipline (the reference course slides): build on a strict grid -
+  equal card sizes in a row, aligned tops and baselines, equal gaps of 16-24 pt, margins of 24 pt; cards white with a
+  coloured border (a coloured shape with a white one 2 pt inside it) or a light panel; each item's object on a coloured
+  round badge (an ellipse in an accent colour, the object inside it); at most 3 accent colours used with intent; one
+  focal element; never tiny objects (an object is at least 48 x 48 pt), never text smaller than the template sizes,
+  never empty decorative areas larger than the content."""
 _S = {'type': 'string'}
 _I = {'type': 'integer'}
 _N = {'type': 'number'}

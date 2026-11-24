@@ -23,8 +23,12 @@
     <div class="skrow" role="radiogroup" aria-label="What to colour">
       ${[['fill', 'Shape fill'], ['text', 'Text'], ['line', 'Outline'], ['icon', 'Icon']].map(([k, n]) => `<button type="button" class="sktgt${k === 'fill' ? ' sel' : ''}" data-t="${k}" role="radio" aria-checked="${k === 'fill'}">${n}</button>`).join('')}
     </div>
-    <div class="skswatches">${swatches.map(c => `<button type="button" class="sksw" data-c="${c}" title="${c}" style="background:${c}"></button>`).join('')}
-      <label class="skcustom" title="Any colour"><input type="color" id="skPick" value="#62B7E4">+</label></div>
+    <div class="skrow skcolrow"><button type="button" id="skColourBtn" class="skcolbtn" aria-haspopup="true" aria-expanded="false"><span id="skDot" class="skdot" style="background:#62B7E4"></span>Colour <span aria-hidden="true">▾</span></button>
+      <button type="button" id="skReapply" title="Apply the chosen colour again to the selection">Apply</button>
+      <div id="skPop" class="skpop" role="dialog" aria-label="Colours" hidden>
+        <div class="skpoptitle">Template colours</div>
+        <div class="skswatches">${swatches.map(c => `<button type="button" class="sksw" data-c="${c}" title="${c}" style="background:${c}"></button>`).join('')}</div>
+        <label class="skcustom2">Any colour <input type="color" id="skPick" value="#62B7E4"></label></div></div>
     <div class="skrow"><label>Text size <select id="skSize"><option value="">keep</option><option>22</option><option>24</option><option>28</option><option>32</option><option>40</option></select></label>
       <button type="button" id="skBold">Bold on / off</button></div>
     <div class="sksub">Replace the selected icon</div>
@@ -88,8 +92,16 @@
       await context.sync();
     });
   }
-  box.querySelectorAll('.sksw').forEach(b => b.addEventListener('click', () => { SK.colour = b.dataset.c; colour(b.dataset.c); }));
-  document.getElementById('skPick').addEventListener('change', e => { SK.colour = e.target.value.toUpperCase(); colour(SK.colour); });
+  // 10.24: one colour button; its pop-up holds every template colour and any other colour
+  const pop = document.getElementById('skPop'), cbtn = document.getElementById('skColourBtn');
+  const openPop = on => { pop.hidden = !on; cbtn.setAttribute('aria-expanded', on); };
+  const choose = c => { SK.colour = c; document.getElementById('skDot').style.background = c; openPop(false); colour(c); };
+  cbtn.addEventListener('click', e => { e.stopPropagation(); openPop(pop.hidden); });
+  document.addEventListener('click', e => { if (!pop.hidden && !pop.contains(e.target)) openPop(false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') openPop(false); });
+  box.querySelectorAll('.sksw').forEach(b => b.addEventListener('click', () => choose(b.dataset.c)));
+  document.getElementById('skPick').addEventListener('change', e => choose(e.target.value.toUpperCase()));
+  document.getElementById('skReapply').addEventListener('click', () => colour(SK.colour || TEMPLATE.accents[0]));
   document.getElementById('skSize').addEventListener('change', e => {
     const v = +e.target.value; if (!v) return;
     run(`Text set to ${v} pt.`, async context => { const { leaves } = await selection(context); leaves.forEach(s => { try { s.textFrame.textRange.font.size = v; } catch (er) { /* no text */ } }); await context.sync(); });
@@ -109,10 +121,10 @@
     await run(`Icon replaced by “${label}”.`, async context => {
       const { top } = await selection(context);
       const x = Math.min(...top.map(s => s.left)), y = Math.min(...top.map(s => s.top)), r = Math.max(...top.map(s => s.left + s.width)), b = Math.max(...top.map(s => s.top + s.height));
-      const D = Math.min(r - x, b - y), c = SK.colour || TEMPLATE.accents[0];
+      const D = Math.max(Math.min(r - x, b - y), 56), c = SK.colour || TEMPLATE.accents[0];   // never smaller than a readable icon
       const slides = context.presentation.getSelectedSlides(); slides.load('items/id'); await context.sync();
       const slide = slides.items[0];
-      const prims = comp(key, x + (r - x - D) / 2, y + (b - y - D) / 2, D, c);
+      const prims = comp(key, (x + r) / 2 - D / 2, (y + b) / 2 - D / 2, D, c);
       await drawOnSlide(context, slide, prims, label, null);
       top.forEach(s => s.delete());
       await context.sync();

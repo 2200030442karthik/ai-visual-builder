@@ -30,6 +30,10 @@ const ANTV_LAYOUTS = [
   ['avtimeline', 'sequence-timeline-simple', 'Vertical timeline', 'sequence', 3, 6, 'sequence'],
   ['avring', 'sequence-circular-simple', 'Ring cycle', 'cycle', 3, 6, 'sequence'],
   ['avquarter', 'quadrant-quarter-circular', 'Quarter circle', 'list', 4, 4, 'list'],
+  // grouped content (2-4 named groups, e.g. SWOT, service models / deployment / benefits): min and max are groups
+  ['avletters', 'compare-hierarchy-row-letter-card-rounded-rect-node', 'Letter cards', 'groups', 2, 4, 'grouped'],
+  ['avletterscompact', 'compare-hierarchy-row-letter-card-compact-card', 'Letter cards, compact', 'groups', 3, 4, 'grouped'],
+  ['avgrouprows', 'hierarchy-structure', 'Grouped rows', 'groups', 2, 4, 'grouped'],
   ['aviconline', 'list-row-horizontal-icon-line', 'Icon line', 'any', 3, 6, 'list'],
 ];
 const ANTV_NS = 'http://www.w3.org/2000/svg';
@@ -41,7 +45,7 @@ function antvParse(v) {
 }
 const antvLight = c => !!c && typeof luminance === 'function' && luminance(c) > 0.85;
 /* The live SVG made convertible: HTML labels as SVG text lines, icon slots as the catalogue's shapes. */
-function antvNative(svg, icons) {
+function antvNative(svg, flatOf) {
   svg.querySelectorAll('[data-element-type^="btn"]').forEach(e => e.remove());       // the library's editor buttons
   svg.style.visibility = ''; svg.removeAttribute('visibility');                     // shown once its icons load: ours are drawn here
   // 1. labels: each foreignObject -> <text> with one tspan per laid-out line (positions in the parent's coordinates)
@@ -74,7 +78,9 @@ function antvNative(svg, icons) {
   });
   // 2. icon slots: the point's object, as shapes
   [...svg.querySelectorAll('[data-element-type="item-icon"]')].forEach(u => {
-    const i = parseInt(u.getAttribute('data-indexes'), 10) || 0, key = icons[i] && CMP[icons[i]] ? icons[i] : 'none';
+    // the point the slot belongs to ("2", or "1,0" for the first point of the second group); a group's own slot: no object
+    const i = flatOf(String(u.getAttribute('data-indexes') || '0'));
+    if (i < 0) { u.remove(); return; }
     const x = parseFloat(u.getAttribute('x')) || 0, y = parseFloat(u.getAttribute('y')) || 0, w = parseFloat(u.getAttribute('width')) || 0, h = parseFloat(u.getAttribute('height')) || 0;
     if (!w || !h) { u.remove(); return; }
     const own = antvParse(u.getAttribute('fill')) || antvParse(getComputedStyle(u).color), s = Math.min(w, h), c = TEMPLATE.accents[i % TEMPLATE.accents.length];
@@ -107,6 +113,23 @@ const antvTheme = () => {
   return { palette: acc, colorPrimary: acc[0], colorBg: '#FFFFFF', base: { text: { 'font-family': 'Open Sans', fill: ink } },
     item: { label: { 'font-weight': 'bold', 'font-family': 'Open Sans' }, desc: { 'font-family': 'Open Sans', fill: ink } } };
 };
+/* The library's data: the points (label, description, object), or for grouped content the groups with their points
+   as children (comparisons, SWOT, hierarchies). */
+function antvData(P) {
+  const pt = it => ({ label: it.label, desc: it.detail || '', icon: 'aivb:' + (it.icon || 'none') }), G = planGroups(P);
+  return { title: '', lists: G.length ? G.map(x => ({ label: x.g.name, children: x.items.map(pt) })) : P.items.map(pt) };
+}
+/* data-indexes -> the point's position in P.items (-1: a group's own slot) */
+function antvFlat(P) {
+  const G = planGroups(P);
+  return s => {
+    const ix = s.split(',').map(n => parseInt(n, 10) || 0);
+    if (!G.length) return ix[0] < P.items.length ? ix[0] : -1;
+    if (ix.length < 2) return -1;
+    const it = (G[ix[0]] || { items: [] }).items[ix[1]];
+    return it ? P.items.indexOf(it) : -1;
+  };
+}
 /* The library's drawing for the points at canvas width cw (cached: the same content redrawn for another height reuses it) */
 function antvSvg(P, tpl, cw) {
   const A = window.AntVInfographic;
@@ -119,10 +142,10 @@ function antvSvg(P, tpl, cw) {
   let text = null;
   try {
     const ig = new A.Infographic({ container: host, width: Math.round(cw), height: ch, template: tpl, themeConfig: antvTheme(), svg: { background: false },
-      data: { title: '', lists: P.items.map(it => ({ label: it.label, desc: it.detail || '', icon: 'aivb:' + (it.icon || 'none') })) } });
+      data: antvData(P) });
     ig.render();
     const svg = host.querySelector('svg');
-    if (svg) { antvNative(svg, P.items.map(i => i.icon)); text = new XMLSerializer().serializeToString(svg); }
+    if (svg) { antvNative(svg, antvFlat(P)); text = new XMLSerializer().serializeToString(svg); }
     try { ig.destroy && ig.destroy(); } catch (e) { /* gone with its host */ }
   } catch (e) { text = null; }
   finally { host.remove(); }
@@ -168,6 +191,7 @@ function antvDraw(P, tpl, R, o) {
   if (small < PLAN_DS * 0.9) return planNo(`its text would be ${Math.round(small)} pt`);
   const norm = s => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase(), want = new Map();
   P.items.forEach(it => { want.set(norm(it.label), it.label); if (it.detail) want.set(norm(it.detail), it.detail); });
+  planGroups(P).forEach(x => want.set(norm(x.g.name), x.g.name));
   const prims = conv.prims.flatMap(p => {
     // an icon slot: the point's object as native shapes, centred where the design put it, its size
     if (isMark(p)) {
@@ -197,7 +221,13 @@ registerPack('antv', '10.24.0', () => {
   ANTV_LAYOUTS.forEach(([key, tpl, name, rel, lo, hi, kind]) => {
     const why = P => {
       if (!window.AntVInfographic) return 'the infographic library is not loaded';
-      if (planGroups(P).length) return 'not for grouped content';
+      const G = planGroups(P);
+      if (rel === 'groups') {
+        if (G.length < lo || G.length > hi || !planAllGrouped(P)) return `works for ${lo} to ${hi} named groups`;
+        if (G.some(x => x.items.length < 1 || x.items.length > 4)) return 'each group needs 1 to 4 points';
+        return '';
+      }
+      if (G.length) return 'not for grouped content';
       if (P.items.length < lo || P.items.length > hi) return `works for ${lo} to ${hi} points`;
       const seq = typeof planSeq === 'function' && planSeq(P);
       if (rel === 'sequence' && !seq) return 'only for steps in a stated order';
@@ -208,7 +238,7 @@ registerPack('antv', '10.24.0', () => {
       if (P.statement) return 'not for one statement';
       return '';
     };
-    regPlan(key, { name, family: key, kind, appeal: 6, lenient: true, antv: tpl, suits: P => !why(P), needs: why,
+    regPlan(key, { name, family: key, kind, appeal: 6, lenient: true, antv: tpl, groups: rel === 'groups', suits: P => !why(P), needs: why,
       opts: [{ c: 0.66 }, { c: 0.56 }, { c: 0.48 }, { c: 0.42 }], build: (P, R, o) => antvDraw(P, tpl, R, o) });
   });
 });

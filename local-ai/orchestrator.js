@@ -456,7 +456,7 @@ function orchConceptDesigns(key, plan) {
     if (!r.ok) { orchNote(`${key} concept "${c.name}" not offered: ${r.why}`); return; }
     const cat = orchCategory(c.name + ' ' + c.idea);
     out.push({ id: `${key}:c:${i}:${hashText(JSON.stringify(c.elements)).slice(0, 10)}`, engine: key, own: true, title: c.name, family: 'ai-concept-' + i,
-      category: cat === 'Infographic' ? 'AI concept' : cat, prims: r.prims, edit: 'full', complete: true, slides: 1, rich: true, base: 90, concept: true,   // 10.17: above the built-in scenes (base up to 82)
+      category: cat === 'Infographic' ? 'AI concept' : cat, prims: r.prims, edit: 'full', complete: true, slides: 1, rich: true, base: 76, concept: true,   // 10.24: Claude's reading in the premium layouts ranks above its freehand compositions   // 10.17: above the built-in scenes (base up to 82)
       why: 'designed by AI' + (c.idea ? ': ' + c.idea : '') + ' - drawn as editable shapes',
       fit: orchFits(orchPlanBuild(plan, 'ai:' + i, r.style, 'full')),
       insert: async () => { ST.designs = [{ r, plan, full: plan, density: 'full', from: 'AI design' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });

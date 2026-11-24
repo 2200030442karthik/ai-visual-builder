@@ -466,7 +466,23 @@ function saveCustomIcon(key, iconData) {
   } catch (e) { console.warn('Could not save custom icon', e); }
 }
 
+/* 10.24: an AI icon fills its box: Claude may draw in a small part of its 100 x 100 grid, so the parts are scaled
+   together (proportions kept) to fill 6..94 and centred - the icon then grows with the design it is placed in. */
+function fitAIIcon(elements) {
+  const els = (elements || []).filter(e => e && typeof e === 'object');
+  const pts = [];
+  els.forEach(e => { if (e.shape === 'line' || e.x1 !== undefined) pts.push([+e.x1, +e.y1], [+e.x2, +e.y2]); else pts.push([+e.x, +e.y], [+e.x + +e.w, +e.y + +e.h]); });
+  const ok = pts.filter(p => isFinite(p[0]) && isFinite(p[1]));
+  if (!ok.length) return els;
+  const x0 = Math.min(...ok.map(p => p[0])), y0 = Math.min(...ok.map(p => p[1])), x1 = Math.max(...ok.map(p => p[0])), y1 = Math.max(...ok.map(p => p[1]));
+  const k = 88 / Math.max(x1 - x0, y1 - y0, 1), ox = 50 - (x0 + x1) / 2 * k, oy = 50 - (y0 + y1) / 2 * k;
+  if (k < 1.04 && k > 0.96) return els;
+  return els.map(e => e.shape === 'line' || e.x1 !== undefined
+    ? Object.assign({}, e, { x1: ox + e.x1 * k, y1: oy + e.y1 * k, x2: ox + e.x2 * k, y2: oy + e.y2 * k, lineW: (e.lineW || 2) * k })
+    : Object.assign({}, e, { x: ox + e.x * k, y: oy + e.y * k, w: e.w * k, h: e.h * k }));
+}
 function makeAIIconFn(elements) {
+  elements = fitAIIcon(elements);
   return function (x, y, s, c) {
     const resolveCol = col => {
       if (!col || col === 'none') return null;
@@ -569,11 +585,11 @@ function renderEdit() {
   box.querySelectorAll('.btnAiIcon').forEach(btn => {
     btn.addEventListener('click', () => {
       const k = btn.dataset.k;
-      const wrap = stEl('aiIconPrompt_' + k);
+      const wrap = document.getElementById('aiIconPrompt_' + k);
       if (wrap) {
         wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
         if (wrap.style.display !== 'none') {
-          const inp = stEl('aiIconInput_' + k), lab = box.querySelectorAll('.edL')[+k];
+          const inp = document.getElementById('aiIconInput_' + k), lab = box.querySelectorAll('.edL')[+k];
           if (inp && !inp.value && lab) inp.value = lab.value.trim();   // 10.24: the point's own words to start from
           if (inp) { inp.focus(); inp.select(); }
         }
@@ -584,7 +600,7 @@ function renderEdit() {
   box.querySelectorAll('.aiIconCancel').forEach(btn => {
     btn.addEventListener('click', () => {
       const k = btn.dataset.k;
-      const wrap = stEl('aiIconPrompt_' + k);
+      const wrap = document.getElementById('aiIconPrompt_' + k);
       if (wrap) wrap.style.display = 'none';
     });
   });
@@ -600,7 +616,7 @@ function renderEdit() {
   const iconThumb = key => { try { return toSVG(comp(key, 2, 2, 36, accent(0)), 40, 40); } catch (e) { return ''; } };
   box.querySelectorAll('.aiIconSubmit').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const k = btn.dataset.k, inp = stEl('aiIconInput_' + k), stat = stEl('aiIconStatus_' + k), lib = stEl('aiIconLib_' + k);
+      const k = btn.dataset.k, inp = document.getElementById('aiIconInput_' + k), stat = document.getElementById('aiIconStatus_' + k), lib = document.getElementById('aiIconLib_' + k);
       const desc = (inp ? inp.value : '').trim();
       const say = (t, err) => { if (stat) { stat.textContent = t; stat.hidden = false; stat.style.color = err ? 'var(--warn,#a4262c)' : ''; } };
       if (!desc) { say('Describe the icon first (e.g. "vehicle").', true); return; }
