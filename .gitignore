@@ -41,3 +41,4 @@ activation-bundle.json
 Dist_Installer/
 sample for claude.pptx
 *.exe
+local-ai/tests/.edge-profile-*/

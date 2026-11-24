@@ -59,6 +59,7 @@ New-Item -ItemType Directory -Force $app | Out-Null
 Get-ChildItem $La -File | Where-Object { $_.Extension -in '.py', '.js', '.html' } | Copy-Item -Destination $app
 Copy-Item (Join-Path $La 'packs') (Join-Path $app 'packs') -Recurse
 Copy-Item (Join-Path $La 'assets') (Join-Path $app 'assets') -Recurse
+Copy-Item (Join-Path $La 'vendor') (Join-Path $app 'vendor') -Recurse          # 10.24: AntV Infographic (MIT), served locally
 Remove-Item (Join-Path $app 'packs\README.txt') -ErrorAction SilentlyContinue
 Copy-Item (Join-Path $Src 'run_server.pyw') $app
 Copy-Item $Bundle (Join-Path $app 'activation-bundle.json')

@@ -41,6 +41,7 @@ const appSay = (msg, err) => { setStatus0(msg, err); if (typeof galPublish === '
     body.simple h1::before { content:''; width:22px; height:22px; border-radius:6px; background:linear-gradient(135deg,#3645A9,#62B7E4); flex:none; }
     body.simple .panel { border-radius:12px; border-color:#e3e7f0; box-shadow:0 1px 2px rgba(20,30,60,.04); }
     body.simple textarea { font:13px/1.5 "Segoe UI",Aptos,Arial,sans-serif; height:120px; }
+    .appclaude { font-size:12px; margin:8px 2px 0; color:var(--ink); }
     .appgen { margin-top:0 !important; padding:12px !important; font-size:14px; border-radius:10px !important; display:flex; align-items:center; justify-content:center; gap:8px; }
     .appstage { display:flex; align-items:center; gap:6px; margin-top:10px; color:var(--muted); font-size:12.5px; }
     .appempty { margin-top:10px; padding:16px 12px; border:1px dashed #cfd6e4; border-radius:10px; color:var(--muted); font-size:12.5px; text-align:center; background:#fafbfe; }
@@ -72,6 +73,18 @@ const appSay = (msg, err) => { setStatus0(msg, err); if (typeof galPublish === '
     .iconPick:hover { border-color:#3645A9; box-shadow:0 0 0 2px #c9cff0; }
     .iconPick svg { width:36px; height:36px; }
     .iconPick span { max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .skbox { margin:8px 0; padding:9px 10px; border:1px solid #dfe4f2; border-radius:10px; background:#fafbff; }
+    .sktitle { font-weight:600; font-size:12.5px; margin-bottom:6px; } .sktitle .small { font-weight:400; margin-left:4px; }
+    .sksub { font-weight:600; font-size:12px; margin:8px 0 4px; }
+    .skrow { display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin:4px 0; font-size:12px; }
+    .skrow button, .skrow select { padding:3px 8px; border:1px solid #d8deea; border-radius:7px; background:#fff; font-size:11.5px; }
+    .sktgt.sel { background:#3645A9 !important; border-color:#3645A9 !important; color:#fff; }
+    .skgo { background:#3645A9 !important; border-color:#3645A9 !important; color:#fff; font-weight:600; }
+    .skswatches { display:flex; flex-wrap:wrap; gap:5px; margin:6px 0; }
+    .sksw { width:24px; height:24px; border-radius:6px; border:1px solid #cfd6e4; padding:0; }
+    .sksw:hover { box-shadow:0 0 0 2px #c9cff0; }
+    .skcustom { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:6px; border:1px dashed #9aa6c4; font-weight:700; color:#3645A9; position:relative; overflow:hidden; cursor:pointer; }
+    .skcustom input { position:absolute; inset:0; opacity:0; cursor:pointer; }
     .appbig { margin-top:10px; }
     .appbig .preview { border-radius:10px; }
     .appbig h3 { font-size:13.5px; margin:8px 0 2px; }
@@ -118,7 +131,8 @@ const appSay = (msg, err) => { setStatus0(msg, err); if (typeof galPublish === '
     <div id="appGrid" class="grid appgrid" hidden></div>
     <div id="appBig" class="appbig" hidden><div class="preview" id="appPv"></div><h3 id="appPvT"></h3><p id="appPvD"></p>
       <label class="check" id="appReviewWrap" hidden><input type="checkbox" id="appReviewed"> <span id="appReviewText"></span></label></div>
-    <div class="appacts" id="appActs" hidden><button type="button" id="appMore">More visuals</button><button type="button" id="appSlides">Several slides</button><button type="button" id="appEdit">Edit a visual</button></div>`;
+    <div class="appacts" id="appActs" hidden><button type="button" id="appMore">More visuals</button><button type="button" id="appSlides">Several slides</button><button type="button" id="appEdit">Edit a visual</button></div>
+    <label class="check appclaude" id="appClaudeRow"><input type="checkbox" id="appClaude"> <span>Also design with <b>Claude AI</b> on every Generate (paid service; its designs are marked “Claude”)</span></label>`;
   contentPanel.parentNode.insertBefore(main, contentPanel.nextSibling);
   // the insert bar (the footer keeps V10.12.2's own controls for the developer mode)
   const foot = document.querySelector('footer'), af = document.createElement('div');
@@ -259,7 +273,7 @@ function hoverShow(card) {
   let el = $('appHover');
   if (!el) { el = document.createElement('div'); el.id = 'appHover'; el.setAttribute('role', 'tooltip'); document.body.appendChild(el); }
   const pics = c.prims.filter(p => p.t === 'image').length;
-  el.innerHTML = thumb(c.prims) + `<div class="ht">${esc(appName(c))}</div><div class="hd">${esc(c.category)} · ${c.edit === 'full' ? 'Fully editable' : `Editable shapes and text; ${pics} icon${pics === 1 ? ' is a picture' : 's are pictures'}`}${c.slides > 1 ? ` · ${c.slides} slides` : ''} · ${esc(orchSource(c).srcWhy)}</div>`;
+  el.innerHTML = thumb(c.prims) + `<div class="ht">${esc(appName(c))}</div><div class="hd">${esc(c.category)} · ${c.edit === 'full' ? 'Fully editable' : `Editable shapes and text; ${pics} icon${pics === 1 ? ' is a picture' : 's are pictures'}`}${c.slides > 1 ? ` · ${c.slides} slides` : ''} · ${esc(orchSource(c).srcName)}</div>`;
   const r = card.getBoundingClientRect(), vh = window.innerHeight, w = document.documentElement.clientWidth - 16, h = w * (TEMPLATE.contentArea.h + 24) / (TEMPLATE.contentArea.w + 24) + 52;
   // above the card when it fits there, else below it, else wherever it covers least of it
   const top = r.top - h - 8 >= 4 ? r.top - h - 8 : r.bottom + 8 + h <= vh - 4 ? r.bottom + 8 : Math.max(4, Math.min(vh - h - 4, r.top - h / 2));
@@ -386,6 +400,10 @@ function appStudio(tab) {
   st.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 $('appGen').addEventListener('click', appGenerate);
+// 10.24: Claude on every Generate, chosen here and kept on this PC (an administrator's paid_policy "never" still wins)
+try { $('appClaude').checked = localStorage.getItem('aivb.paidPolicy') === 'always'; } catch (e) { /* not kept */ }
+$('appClaude').addEventListener('change', e => { try { if (e.target.checked) localStorage.setItem('aivb.paidPolicy', 'always'); else localStorage.removeItem('aivb.paidPolicy'); } catch (er) { /* not kept */ }
+  appSay(e.target.checked ? 'Claude AI will design for every new text from now on.' : 'Claude AI is asked only when the built-in designs are not enough.'); });
 $('appMore').addEventListener('click', appMore);
 $('appSlides').addEventListener('click', () => appStudio('slides'));
 $('appEdit').addEventListener('click', () => appStudio('edit'));

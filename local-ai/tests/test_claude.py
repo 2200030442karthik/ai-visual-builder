@@ -182,7 +182,10 @@ def visual_tests(fails, tmp):
         if 'Object.assign(CMP, {' in src:
             blk = src[src.index('Object.assign(CMP, {'):]
             objs |= set(re.findall(r'^\s{4}([a-zA-Z0-9]+): \(x, y, s, c\)', blk[:blk.index('  });')], re.M))
-    if sorted(re.findall(r"regPlan\('([a-z0-9]+)'", js)) != sorted(C.PLAN_LAYOUTS) or [k for k in C.PICTORIALS if k not in objs]:
+    # 10.24: the AntV structures (antv.js) are registered from its ANTV_LAYOUTS list
+    antv = open(os.path.join(HERE, '..', 'antv.js'), encoding='utf-8').read()
+    keys = re.findall(r"regPlan\('([a-z0-9]+)'", js) + re.findall(r"^\s{2}\['(av[a-z0-9]+)',", antv, re.M)
+    if sorted(keys) != sorted(C.PLAN_LAYOUTS) or [k for k in C.PICTORIALS if k not in objs]:
         fails.append(f'design lists out of step with the panel: families {sorted(set(re.findall(chr(114) + "egPlan", js)))[:3]}, objects missing {[k for k in C.PICTORIALS if k not in objs]}')
     for bad_answer, why in (('not json at all', 'no valid JSON'), (json.dumps({'items': [{'id': 'a'}]}), 'fewer than 2 items')):
         fc = FakeClient(lambda kw, a=bad_answer: msg(a))

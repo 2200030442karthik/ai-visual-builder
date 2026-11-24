@@ -29,7 +29,9 @@ const ORCH = { engines: [], memo: new Map(), run: 0, last: null, log: [] };
 const PAID_STORE = 'aivb.paid.v1';
 function registerEngine(e) { ORCH.engines = ORCH.engines.filter(x => x.id !== e.id).concat([Object.assign({ kind: 'native', order: 50 }, e)]).sort((a, b) => a.order - b.order); }
 const orchPolicy = () => { let v = ''; try { v = localStorage.getItem('aivb.paidPolicy') || ''; } catch (e) { /* none */ }
-  v = v || (state.svc && state.svc.orchestrate && state.svc.orchestrate.paid) || 'when-needed';
+  const admin = state.svc && state.svc.orchestrate && state.svc.orchestrate.paid;
+  if (admin === 'never') return 'never';                     // 10.24: the administrator's "never" always wins
+  v = v || admin || 'when-needed';
   return ['never', 'when-needed', 'always'].includes(v) ? v : 'when-needed'; };
 /* Which AI service first for this content (the other is the fallback), or the administrator's fixed order. */
 function orchOrder(ctx) {
@@ -38,6 +40,7 @@ function orchOrder(ctx) {
   const P = ctx && ctx.memo && ctx.memo.free.plan, sc = state.sec && state.sec.scene;
   const tech = !!P && (planRoles(P).supports.length > 0 || planGroups(P).length >= 2 || P.items.length >= 7 || P.items.some(i => /source|component|output/.test(i.role || '')));
   if (ctx) ctx.route = tech && !(sc && sc.prose) ? 'technical structure' : 'concepts';
+  // with no order set by the administrator (config.json paid_order): Claude for technical structure, else Napkin first
   return tech && !(sc && sc.prose) ? ['claude', 'napkin'] : ['napkin', 'claude'];
 }
 const orchNote = (what, o) => { ORCH.log.push(Object.assign({ at: new Date().toISOString().slice(11, 19), what }, o || {})); if (ORCH.log.length > 200) ORCH.log.shift(); };
@@ -309,7 +312,7 @@ async function orchDesigns(ctx, max) {
   }
   const packOf = r => PLAN_LAYOUTS[r.key] && PLAN_LAYOUTS[r.key].pack || '';
   const out = list.map(r => ({ id: 'd:' + planDesignKey(r), engine: 'designs', title: r.name + (planStyleName(r.style) ? ' · ' + planStyleName(r.style) : ''), family: r.family, category: orchCategory(r.family + ' ' + r.key),
-    prims: r.prims, edit: 'full', complete: m.d.density === 'full' && !orchMissing(r.prims, orchFacts(m.plan)).length, slides: 1, rich: /modern|pro|showcase|learning|concepts|scenes/.test(packOf(r)),
+    prims: r.prims, edit: r.prims.some(p => p.t === 'image') ? 'partial' : 'full', complete: m.d.density === 'full' && !orchMissing(r.prims, orchFacts(m.plan)).length, slides: 1, rich: /modern|pro|showcase|learning|concepts|scenes|antv|infographics/.test(packOf(r)),
     relevant: orchRelevance(r.key, m.d.plan) >= 30,
     base: 62 + orchPackBonus(r.key) + orchAppeal(r.key) + orchRelevance(r.key, m.d.plan) + orchVariety(ctx.text, r.family) - (m.d.density === 'names' ? 6 : 0) - (sec && !/learning|concepts|scenes/.test(packOf(r)) && orchRelevance(r.key, m.d.plan) <= 0 ? 8 : 0), why: r.kind,
     fit: orchFits(orchPlanBuild(m.plan, r.key, r.style, m.d.density)),
@@ -349,7 +352,7 @@ async function orchDesigns(ctx, max) {
         if (!ok) return;
         added++;
         out.push({ id: `d${n}:` + planDesignKey(r1), engine: 'designs', title: `${r1.name} · ${n} slides`, family: r1.family + ':' + n, category: orchCategory(r1.family + ' ' + r1.key),
-          prims: r1.prims, nextPrims: rest.map(r => r.prims), edit: 'full', complete: true, slides: n, rich: /modern|pro|showcase|learning|concepts|scenes/.test(packOf(r1)),
+          prims: r1.prims, nextPrims: rest.map(r => r.prims), edit: 'full', complete: true, slides: n, rich: /modern|pro|showcase|learning|concepts|scenes|antv|infographics/.test(packOf(r1)),
           base: 50 + orchPackBonus(r1.key) + orchAppeal(r1.key) - 2 * (n - 2), why: `every point and description, on ${n} slides`,   // one-slide designs first
           insert: async () => { ST.designs = [{ r: r1, parts, plan: m.split[0], full: m.plan, density: 'full', from: 'your text' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });
       });
@@ -359,7 +362,7 @@ async function orchDesigns(ctx, max) {
       planMoreDesigns(m.names, ctx.R, m.seenN, Math.max(0, target + 2 - out.filter(c => c.complete).length)).forEach(r => {
         if (out.some(c => c.slides === 1 && c.family === r.family) || orchMissing(r.prims, orchFacts(m.plan)).length) return;
         out.push({ id: 'dn:' + planDesignKey(r), engine: 'designs', title: r.name + ' · names only', family: r.family, category: orchCategory(r.family + ' ' + r.key),
-          prims: r.prims, edit: 'full', complete: true, condensed: true, slides: 1, rich: /modern|pro|showcase|learning|concepts|scenes/.test(packOf(r)),
+          prims: r.prims, edit: 'full', complete: true, condensed: true, slides: 1, rich: /modern|pro|showcase|learning|concepts|scenes|antv|infographics/.test(packOf(r)),
           base: 54 + orchPackBonus(r.key) + orchAppeal(r.key), why: 'condensed: every point name, without the descriptions',
           insert: async () => { ST.designs = [{ r, plan: m.names, full: m.plan, density: 'names', from: 'your text' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });
       });
@@ -376,8 +379,8 @@ const orchVariety = (text, fam) => { let h = 2166136261; for (const ch of String
 /* 10.21.1: relevance before decoration. A design whose composition shows the relation the text states (a cycle drawn
    as a cycle, a comparison side by side, steps in order, levels as levels) ranks above the general compositions, which
    otherwise topped every gallery whatever the content said. Nothing changes for content that states no relation. */
-const ORCH_SHAPES = { cycle: /^(cycle|cyclewheel|orbit|mirrorlinks)$/, funnel: /^(funnel)$/, layers: /^(pyramid|isostack|stack3d|layers|stair|cylsteps)$/, comparison: /^(versus|contrast|splitpanel|splitpanels)$/,
-  sequence: /^(pipeline|timeline|chevrons|zigzag|stair|roadmap|journey|scene|numcards|steps|cylsteps|arrowcards)$/ };
+const ORCH_SHAPES = { cycle: /^(cycle|cyclewheel|orbit|mirrorlinks|avcirclearrows|avring)$/, funnel: /^(funnel|avfunnel)$/, layers: /^(pyramid|isostack|stack3d|layers|stair|cylsteps|avpyramid)$/, comparison: /^(versus|contrast|splitpanel|splitpanels)$/,
+  sequence: /^(pipeline|timeline|chevrons|zigzag|stair|roadmap|journey|scene|numcards|steps|cylsteps|arrowcards|avcylinders|avarrowrow|avstairsfront|avpucks|avdiamonds|avrise|avascending|avsnake|avtimeline)$/ };
 /* 10.24: compositions that claim a relation of their own - a centre the points hang from, layers on top of each other,
    two sides - mislead when the text states a different one (steps drawn as spokes of a hub); they rank far below */
 const ORCH_CLAIMS = /^(hub|hubcorners|ecosystem|orbit|callout|callouts|devicelinks|isostack|stack3d|layers|pyramid|quadrant|quadcircle|versus|contrast|target)$/;
@@ -392,13 +395,38 @@ function orchRelevance(k, P) {
   if (rel !== 'sequence' && ORCH_SHAPES.sequence.test(fam) && planSeq(P)) return 8;      // a cycle or a funnel is also an order
   return rel && ORCH_CLAIMS.test(fam) ? -20 : -6;
 }
-const orchPackBonus = k => { const p = (PLAN_LAYOUTS[k] && PLAN_LAYOUTS[k].pack) || ''; return /scenes/.test(p) ? 12 : /learning|concepts/.test(p) ? 10 : /showcase/.test(p) ? 8 : /modern/.test(p) ? 4 : /pro/.test(p) ? 2 : 0; };
+const orchPackBonus = k => { const p = (PLAN_LAYOUTS[k] && PLAN_LAYOUTS[k].pack) || ''; return /scenes|antv/.test(p) ? 12 : /learning|concepts/.test(p) ? 10 : /showcase/.test(p) ? 8 : /modern/.test(p) ? 4 : /pro/.test(p) ? 2 : 0; };
 /* A provider's result as candidates: its designs as native, editable objects first (never the picture by default). */
 function orchProvider(key) {
   return { id: key, kind: 'paid', order: key === 'napkin' ? 60 : 70,
     available: () => !!(PANELS[key] && PANELS[key].auto && PANELS[key].auto.available()),
-    cached: async ctx => { const R = await PANELS[key].auto.cached(ctx.text); return R ? orchFrom(key, R) : null; },
-    run: async () => { const R = await PANELS[key].auto.request(4); return R ? orchFrom(key, R) : []; } };
+    cached: async ctx => { const R = await PANELS[key].auto.cached(ctx.text); if (R && key === 'claude') await orchClaudeIcons(R, ctx && ctx.text, false); return R ? orchFrom(key, R) : null; },
+    run: async ctx => { const R = await PANELS[key].auto.request(4); if (R && key === 'claude') await orchClaudeIcons(R, ctx && ctx.text, true); return R ? orchFrom(key, R) : []; } };
+}
+/* 10.24: Claude's own icon for every point of its plan (one more request, with the plan's: the points it read), each
+   an editable drawing of simple shapes (studio.js registerCustomIcon). Kept on this PC for the text, so the same text
+   never asks again; a point Claude gives no usable icon for keeps the catalogue's object. */
+const CLAUDE_ICONS_FOR = 'aivb.claude_icons_for.v1';
+async function orchClaudeIcons(R, text, ask) {
+  const plan = R.items && (R.items.plan || (R.items.find(i => i.plan) || {}).plan);
+  if (!plan || !Array.isArray(plan.items) || !plan.items.length || typeof registerCustomIcon !== 'function') return;
+  const h = hashText(String(text || '') + '|' + plan.items.map(i => i.label).join('|'));
+  let kept = {};
+  try { kept = JSON.parse(localStorage.getItem(CLAUDE_ICONS_FOR) || '{}'); } catch (e) { kept = {}; }
+  let keys = kept[h];
+  if (!keys && ask) {
+    try {
+      const res = await api('/api/claude/icons', { items: plan.items.map(i => ({ label: i.label, detail: i.detail || '' })) }, 120000);
+      if (res && res.ok && Array.isArray(res.icons)) {
+        keys = res.icons.map(ic => { if (!ic) return null; const k = registerCustomIcon(ic); if (k) saveCustomIcon(k, ic); return k; });
+        kept[h] = keys;
+        const all = Object.keys(kept); if (all.length > 200) delete kept[all[0]];
+        try { localStorage.setItem(CLAUDE_ICONS_FOR, JSON.stringify(kept)); } catch (e) { /* not kept */ }
+        orchNote(`claude icons: ${keys.filter(Boolean).length} of ${keys.length}`);
+      } else orchNote('claude icons: ' + ((res && res.error) || 'none'));
+    } catch (e) { orchNote('claude icons failed: ' + errText(e)); }
+  }
+  (keys || []).forEach((k, i) => { if (k && CMP[k] && plan.items[i]) plan.items[i].icon = k; });
 }
 function orchFrom(key, R) {
   const A = PANELS[key].auto, out = [];
@@ -448,10 +476,14 @@ function orchPlanDesigns(key, plan) {
 /* 10.24: where a design comes from, shown on every card: Claude (its own composition, or its reading of the text drawn
    in a layout), Napkin (its design, rebuilt as editable shapes) or Built-in (this add-in's layouts, made locally). */
 function orchSource(c) {
-  if (c.engine === 'claude') return c.concept ? { src: 'claude', srcName: 'Claude design', srcWhy: 'Composed by Claude for this text, drawn as editable shapes' }
-    : { src: 'claude', srcName: 'Claude', srcWhy: 'Claude read the text; drawn in a built-in layout' };
-  if (c.engine === 'napkin') return { src: 'napkin', srcName: 'Napkin', srcWhy: 'Designed by Napkin, rebuilt as editable shapes' };
-  return { src: 'builtin', srcName: 'Built-in', srcWhy: 'Made on this PC from your text (no AI service)' };
+  // 10.24: in detail - which service designed it, and how it reached the slide
+  const pack = (PLAN_LAYOUTS[c.family] && PLAN_LAYOUTS[c.family].pack) || '';
+  if (c.engine === 'claude') return c.concept ? { src: 'claude', srcName: 'Claude · own design', srcWhy: 'Composed by Claude for this text (its own layout), drawn as editable shapes' }
+    : { src: 'claude', srcName: /antv/.test(pack) ? 'Claude · AntV structure' : 'Claude · plan', srcWhy: 'Claude read the text (points, order, groups, icons); drawn in ' + (/antv/.test(pack) ? 'an AntV Infographic structure' : 'a built-in layout') + ' as editable shapes' };
+  if (c.engine === 'napkin') return /:origedit$/.test(c.id) ? { src: 'napkin', srcName: 'Napkin · original', srcWhy: 'Napkin’s own design, drawn as editable shapes and text' }
+    : { src: 'napkin', srcName: 'Napkin · rebuilt', srcWhy: 'Designed by Napkin, rebuilt in the template as editable shapes' };
+  if (/antv/.test(pack)) return { src: 'builtin', srcName: 'Built-in · AntV', srcWhy: 'An AntV Infographic structure, made on this PC from your text (no AI service)' };
+  return { src: 'builtin', srcName: c.engine === 'builtin' ? 'Built-in · SL Smart Design' : 'Built-in · design pack', srcWhy: 'Made on this PC from your text by the add-in’s own layouts (no AI service)' };
 }
 registerEngine(orchProvider('napkin'));
 registerEngine(orchProvider('claude'));

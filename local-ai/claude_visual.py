@@ -79,6 +79,8 @@ Answer with the SVG only: start with <svg and end with </svg>, no explanation an
 PLAN_LAYOUTS = ['platform', 'stack3d', 'scene', 'capmap', 'swimlanes', 'planes', 'ecosystem', 'modules', 'pyramid', 'cycle', 'cyclewheel', 'funnel', 'versus',
                 'architecture', 'layers', 'capability', 'tree', 'pipeline', 'timeline', 'stair', 'hub', 'grid', 'columns', 'rows',
                 'roadmap', 'pillars', 'quadrant', 'spotlight', 'storyboard', 'callout', 'journey', 'topicspot', 'topicband', 'cylsteps', 'arrowcards', 'badgecards',
+                'avcylinders', 'avarrowrow', 'aviconline', 'avcirclearrows', 'avfunnel', 'avpyramid',
+                'avstairsfront', 'avpucks', 'avdiamonds', 'avrise', 'avascending', 'avsnake', 'avtimeline', 'avring', 'avquarter',
                 'learnmap', 'herobanner', 'bridge', 'iconrows', 'badges', 'splitpanels', 'poster', 'ribbon', 'colortiles',
                 'concepttiles', 'orbit', 'honeycomb', 'isostack', 'bento', 'keystatement',
                 'numcards', 'chevrons', 'zigzag', 'contrast']
@@ -481,7 +483,13 @@ def _match_fallback_icon(description, generic=True):
     }
 
 
-def generate_icon(s, description, timeout_s=30, client=None):
+ICON_STYLES = {
+    'flat': 'Style: flat - one plane, solid shapes, no depth faces.',
+    '3d': 'Style: 3D (2.5D isometric) - give the main object a lighter top face ("tint") and a darker side face ("shade") so it reads as a solid object, like a premium 3D icon.',
+}
+
+
+def generate_icon(s, description, timeout_s=30, client=None, style='flat'):
     """Generates a custom corporate icon representing `description` using Claude API.
     Falls back to smart vector templates if API key is not configured or on connection failure.
     """
@@ -499,7 +507,7 @@ def generate_icon(s, description, timeout_s=30, client=None):
             client = client or anthropic.Anthropic(api_key=key, timeout=timeout_s, max_retries=0)
             with client.messages.stream(
                     model=model, max_tokens=2000, system=ICON_SYSTEM,
-                    messages=[{'role': 'user', 'content': f'Design a corporate slide icon for: {desc}'}]) as stream:
+                    messages=[{'role': 'user', 'content': f'Design a corporate slide icon for: {desc}\n' + ICON_STYLES.get(style, ICON_STYLES['flat'])}]) as stream:
                 msg = stream.get_final_message()
             text = ''.join(b.text for b in msg.content if b.type == 'text')
             m = re.search(r'\{[\s\S]*\}', text)
@@ -519,6 +527,44 @@ def generate_icon(s, description, timeout_s=30, client=None):
     fb = _match_fallback_icon(desc, generic=False)
     return {'ok': bool(fb), 'source': 'template', 'icon': fb, 'error': '' if fb else 'Claude is not set up on this PC; choose one of the library icons.'}
 
+
+
+ICONS_SYSTEM = ICON_SYSTEM.split('4. Return format:')[0] + """5. Depth (2.5D, like premium 3D icons): where it helps, give the main object a lighter top face ("tint") and a darker
+   side face ("shade") so it reads as a solid object; keep it simple and centred.
+6. You get several points of one slide; draw one icon for each, in the same style, each clearly about its own point.
+Return ONLY JSON: {"icons": [{"name": "snake_case", "label": "Title", "elements": [ ...as above... ]}, ...]} - one per point, in order."""
+
+
+def generate_icons(s, items, timeout_s=60, client=None, style='3d'):
+    """10.24: one Claude request designs an icon for every point of a slide (label and description given); returns
+    {'ok', 'source': 'claude', 'icons': [icon or None per point]}. Never a stand-in: without Claude, ok is False."""
+    pts = [{'label': str(i.get('label') or '')[:80], 'detail': str(i.get('detail') or '')[:160]} for i in (items or [])[:8] if isinstance(i, dict) and i.get('label')]
+    if not pts:
+        raise ValueError('No points given.')
+    key = s.get('key') if isinstance(s, dict) else ''
+    if not (isinstance(s, dict) and s.get('enabled') and key and anthropic is not None):
+        return {'ok': False, 'source': 'off', 'error': 'Claude is not set up on this PC.', 'icons': [None] * len(pts)}
+    try:
+        client = client or anthropic.Anthropic(api_key=key, timeout=timeout_s, max_retries=0)
+        listing = '\n'.join(f'{n + 1}. {p["label"]}' + (f' - {p["detail"]}' if p['detail'] else '') for n, p in enumerate(pts))
+        with client.messages.stream(model=s.get('model') or DEFAULT_MODEL, max_tokens=8000, system=ICONS_SYSTEM,
+                                    messages=[{'role': 'user', 'content': 'Design one slide icon for each of these points:\n' + listing + '\n' + ICON_STYLES.get(style, ICON_STYLES['3d'])}]) as stream:
+            msg = stream.get_final_message()
+        text = ''.join(b.text for b in msg.content if b.type == 'text')
+        m = re.search(r'\{[\s\S]*\}', text)
+        data = json.loads(m.group(0)) if m else {}
+        out = []
+        for n, ic in enumerate((data.get('icons') if isinstance(data, dict) else None) or []):
+            if n >= len(pts):
+                break
+            els = _clean_icon_elements(ic.get('elements')) if isinstance(ic, dict) else []
+            name = re.sub(r'[^a-z0-9_]+', '', str((ic or {}).get('name') or pts[n]['label']).lower().replace(' ', '_'))[:30] or f'icon_{n}'
+            out.append({'name': name, 'label': str((ic or {}).get('label') or pts[n]['label'])[:40], 'elements': els} if els else None)
+        out += [None] * (len(pts) - len(out))
+        usage = getattr(msg, 'usage', None)
+        return {'ok': any(out), 'source': 'claude', 'icons': out, 'usage': {'input_tokens': getattr(usage, 'input_tokens', 0), 'output_tokens': getattr(usage, 'output_tokens', 0)}}
+    except Exception as e:
+        return {'ok': False, 'source': 'claude', 'error': f'Claude could not design the icons ({type(e).__name__}).', 'icons': [None] * len(pts)}
 
 ICON_SHAPES = {'rect', 'roundRect', 'ellipse', 'triangle', 'trapezoid', 'diamond', 'cube', 'pill', 'chevron', 'can', 'cloud', 'foldedCorner',
                'gear6', 'hexagon', 'shield', 'blockArc', 'tab', 'donut', 'plus', 'star5', 'rtTriangle', 'parallelogram', 'line'}

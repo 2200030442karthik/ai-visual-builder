@@ -9,7 +9,7 @@
 <script>
 const out = document.getElementById('out'), errors = [], wait = ms => new Promise(r => setTimeout(r, ms));
 const STYLE = 'EHH64S9R64R64C9DCMSKCSHD6GTPADHDC4SKJC1D68WP6CK66DJ32RV4CGVG';
-const loaded = async (F, path) => { for (let i = 0; i < 300; i++) { try { if (F.contentWindow.location.pathname === '/v10.html' && F.contentDocument.readyState === 'complete' && F.contentWindow.__app) return; } catch (e) {} await wait(100); } throw new Error('the panel did not load: ' + path); };
+const loaded = async (F, path) => { for (let i = 0; i < 300; i++) { try { if (F.contentWindow.location.pathname === '/v10.html' && (!/^\?/.test(path) || F.contentWindow.location.search === path) && F.contentDocument.readyState === 'complete' && F.contentWindow.__app) return; } catch (e) {} await wait(100); } throw new Error('the panel did not load: ' + path); };
 async function run() {
   const F = document.getElementById('f');
   await loaded(F, '/v10.html');
@@ -61,8 +61,8 @@ async function run() {
     const L = await gen(samples['ML workflow (5 stages, intro)']);
     const sigs = L.map(c => ev('p => signature(p)')(c.prims));
     res.gen.ml = { n: L.length, cats: [...new Set(L.map(c => c.category))], families: L.map(c => c.family), uniqueLayouts: new Set(sigs).size === sigs.length, analysed: ev('state.sections.length') > 0 && ev('state.runText') === samples['ML workflow (5 stages, intro)'].trim(),
-      analyseClicked: d.getElementById('analyse').textContent !== 'Analyze content' ? 'analysis ran (button text changed)' : 'not run', cards: d.querySelectorAll('#appGrid .gcard').length, thumbs: 0, editable: L.filter(c => c.edit === 'full').length,
-      selected: d.querySelectorAll('#appGrid .gcard.sel').length, status: status().slice(0, 160), timingsVisible: vis('perfBox'), providerWords: /Napkin|Claude|request|token|credit/i.test(d.getElementById('appMain').textContent), paid: paidCalls() };
+      analyseClicked: d.getElementById('analyse').textContent !== 'Analyze content' ? 'analysis ran (button text changed)' : 'not run', cards: d.querySelectorAll('#appGrid .gcard').length, thumbs: 0, editable: L.filter(c => c.edit === 'full' || /^av/.test(c.family)).length,   // 10.24: an AntV 3D structure keeps its 3D bodies as pictures (said on its card)
+      selected: d.querySelectorAll('#appGrid .gcard.sel').length, status: status().slice(0, 160), timingsVisible: vis('perfBox'), providerWords: /request|token|credit/i.test(d.getElementById('appMain').textContent), paid: paidCalls() };
     await wait(400); res.gen.ml.thumbs = d.querySelectorAll('#appGrid .gcard .gthumb svg').length;
     d.querySelectorAll('#appGrid .gcard')[3].click();
     // 10.15: no separate preview area (the hover popup is the preview); the insert button names the chosen design
@@ -390,7 +390,7 @@ async function run() {
     fresh(); W.__cfg.policy = 'always'; await gate();
     L = await gen(eduT);
     const nk = L.filter(c => c.engine === 'napkin');
-    res.paid.always = { paid: paidCalls(), napkin: nk.length, total: L.length, editable: nk.every(c => c.prims.some(p => p.t === 'text')), status: status().slice(0, 200), providerNamed: /Napkin|Claude/.test(status()), srcShown: [...d.querySelectorAll('#appGrid .badge.src.napkin')].some(b => b.textContent === 'Napkin') };
+    res.paid.always = { paid: paidCalls(), napkin: nk.length, total: L.length, editable: nk.every(c => c.prims.some(p => p.t === 'text')), status: status().slice(0, 200), providerNamed: /Napkin|Claude/.test(status()), srcShown: [...d.querySelectorAll('#appGrid .badge.src.napkin')].some(b => /^Napkin/.test(b.textContent)) };
     // the same text again: no new request (reused in this session)
     W.__calls = []; L = await gen(eduT + ' '); res.paid.again = { paid: paidCalls(), n: L.length };
     // a new session on the same text: the kept result is reused (free) - and without it, the 24-hour guard stops a resend

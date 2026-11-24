@@ -615,8 +615,12 @@ function planRender0(P, key, R) {
     try { prims = L.build(P, R, o); } catch (e) { why = 'could not be drawn (' + e.message + ')'; continue; } finally { PLAN_ICONSTYLE = ''; }
     if (!prims) { why = PLAN_WHY ? `${PLAN_WHY} at ${o.s} pt` : `too much text for this layout at ${o.s} pt`; continue; }
     prims = roundCorners(brandPrims(prims));
-    const q = visualQuality(qualityItems(prims), R), texts = new Set(prims.filter(p => p.text).map(p => String(p.text)));
-    const lost = P.items.filter(it => !texts.has(it.label) || (it.detail && !texts.has(it.detail)));
+    // 10.24: a text drawn over several lines (a converted design keeps its own line breaks) is the same words
+    const sp = t => String(t).replace(/\s+/g, ' ').trim(), q = visualQuality(qualityItems(prims), R), texts = new Set(prims.filter(p => p.text).map(p => sp(p.text)));
+    const lost = P.items.filter(it => !texts.has(sp(it.label)) || (it.detail && !texts.has(sp(it.detail))));
+    // 10.24: a lenient family (packs/antv: a converted design) is blocked by overlapping labels and text outside the
+    // area; its 3D parts beside a number or its connectors are the design
+    if (L.lenient) { const b = q.block.filter(x => /overlap|outside/.test(x)); q.block = b; q.excluded = b.length > 0; }
     if (q.excluded || lost.length) { why = q.block[0] || `"${lost[0].label}" is not fully shown`; first = first || why; continue; }   // the next size repairs it, or the layout is not offered
     return { ok: true, key, name: L.name, family: L.family || key, kind: L.kind || 'list', pack: L.pack || '', prims, quality: q };
   }

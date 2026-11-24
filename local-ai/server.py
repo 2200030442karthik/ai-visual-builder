@@ -55,11 +55,13 @@ DATA_DIR = os.environ.get('AIVB_DATA_DIR') or os.path.join(os.environ.get('LOCAL
 STATIC = {'/': ('v10.html', 'text/html; charset=utf-8'), '/v10.html': ('v10.html', 'text/html; charset=utf-8'),
           '/gallery-dialog.html': ('gallery-dialog.html', 'text/html; charset=utf-8'),
           '/slsd-notice.html': ('slsd-notice.html', 'text/html; charset=utf-8'),
-          **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'sections', 'original', 'faithful', 'napkin', 'studio', 'orchestrator', 'app', 'bridge', 'slsd', 'gate')},
+          **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'sections', 'original', 'faithful', 'napkin', 'studio', 'orchestrator', 'app', 'bridge', 'slsd', 'gate', 'antv', 'stylekit')},
           # the ribbon's icons (manifest-v10.xml), served by this host like the panel itself
           **{f'/assets/icon-{n}.png': (f'assets/icon-{n}.png', 'image/png') for n in (16, 32, 64, 80)},
           # 10.20.1: the SL Smart Design tab's icons (manifest-slsd.xml; made by sl-smart-design/make_icons.py)
           **{f'/assets/slsd/{n}': (f'assets/slsd/{n}', 'image/png') for n in (os.listdir(os.path.join(HERE, 'assets', 'slsd')) if os.path.isdir(os.path.join(HERE, 'assets', 'slsd')) else []) if n.endswith('.png')},
+          # 10.24: AntV Infographic (MIT, vendor/antv-infographic-LICENSE.txt), served locally - no CDN at run time
+          '/vendor/antv-infographic.min.js': ('vendor/antv-infographic-0.2.20.min.js', 'text/javascript; charset=utf-8'),
           # design packs (packs/*.js): layout families added without changing the application
           **{f'/packs/{n}': (f'packs/{n}', 'text/javascript; charset=utf-8') for n in os.listdir(os.path.join(HERE, 'packs')) if n.endswith('.js')}}
 MAX_BODY = 256 * 1024
@@ -559,6 +561,16 @@ def claude_create(b, who=None):
     return {'id': rid, 'status': 'pending', 'format': fmt, 'model': s['model']}
 
 
+def claude_icons(b, who=None):
+    """10.24: Claude designs an icon for every point of a visual (one request); off under paid_policy "never"."""
+    items = b.get('items') if isinstance(b.get('items'), list) else []
+    if not items:
+        raise NapkinError('No points given.', 400)
+    if TEST_NO_PAID or CONFIG['paid_policy'] == 'never':
+        return {'ok': False, 'source': 'off', 'error': 'Claude is switched off by the administrator.', 'icons': [None] * min(8, len(items))}
+    return C.generate_icons(C.settings(DATA_DIR), items, timeout_s=max(60, CONFIG.get('claude_timeout_s', 30)), style=str(b.get('style') or '3d'))
+
+
 def claude_icon(b, who=None):
     desc = str(b.get('description') or b.get('prompt') or '').strip()
     if not desc:
@@ -571,7 +583,7 @@ def claude_icon(b, who=None):
         return {'ok': False, 'source': 'off', 'error': 'Claude is switched off by the administrator; choose one of the library icons.'}
     s = C.settings(DATA_DIR)
     try:
-        return C.generate_icon(s, desc, timeout_s=CONFIG.get('claude_timeout_s', 30))
+        return C.generate_icon(s, desc, timeout_s=CONFIG.get('claude_timeout_s', 30), style=str(b.get('style') or 'flat'))
     except Exception as e:
         log(f'claude_icon failed: {e}')
         raise NapkinError(f'Icon generation failed: {e}', 500)
@@ -596,7 +608,7 @@ def gallery_put(b):
     if len(GALLERY) >= 20 and k not in GALLERY:
         GALLERY.pop(min(GALLERY, key=lambda x: GALLERY[x]['at']))
     items = [{'i': int(x.get('i', 0)), 'name': str(x.get('name') or '')[:120], 'category': str(x.get('category') or '')[:60], 'edit': str(x.get('edit') or '')[:20],
-              'slides': int(x.get('slides') or 1), 'ai': bool(x.get('ai')), 'src': str(x.get('src') or '')[:12], 'srcName': str(x.get('srcName') or '')[:30], 'srcWhy': str(x.get('srcWhy') or '')[:120], 'svg': str(x.get('svg') or '')} for x in (b.get('items') or [])[:60] if isinstance(x, dict)]
+              'slides': int(x.get('slides') or 1), 'ai': bool(x.get('ai')), 'src': str(x.get('src') or '')[:12], 'srcName': str(x.get('srcName') or '')[:30], 'srcWhy': str(x.get('srcWhy') or '')[:200], 'svg': str(x.get('svg') or '')} for x in (b.get('items') or [])[:60] if isinstance(x, dict)]
     GALLERY[k] = {'at': now, 'data': {'v': int(b.get('v') or 0), 'items': items, 'sel': int(b.get('sel', -1)), 'note': str(b.get('note') or '')[:400],
                                       'err': bool(b.get('err')), 'busy': bool(b.get('busy')), 'open': b.get('open', True) is not False}}
     return {'ok': True}
@@ -945,6 +957,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/claude/visual':
                 who = self.authorized()
                 return who and self.send(200, claude_create(b, who))
+            if path == '/api/claude/icons':
+                who = self.authorized()
+                return who and self.send(200, claude_icons(b, who))
             if path == '/api/claude/icon':
                 who = self.authorized()
                 return who and self.send(200, claude_icon(b, who))

@@ -34,3 +34,7 @@ rising 2.5D cylinders, icon cards with arrows, icon cards - ideas from the MIT-l
 in the brand standard; more catalogue terms for everyday business words).
 10.24: the gallery no longer offers isostack, poster and ecosystem (orchestrator.js ORCH_RETIRED); every card names its
 source: Built-in, Claude or Napkin (orchestrator.js orchSource).
+antv@10.24.0 (../antv.js, with vendor/antv-infographic-0.2.20.min.js - AntV Infographic, MIT): structures drawn by the
+library and made native (labels as text, icons from the catalogue or Claude, svg2ppt.js svgToPrims): 3D cylinders,
+arrow timeline with icons, icon line, circular arrows, funnel, pyramid with cards. Families with lenient: true are
+blocked by overlapping labels and lost words (plan.js planRender0), not by their 3D parts beside a number.

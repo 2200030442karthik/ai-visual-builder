@@ -444,8 +444,8 @@ async function editLoad() {
       (E.hand.length ? ` ${E.hand.length} text${E.hand.length > 1 ? 's were' : ' was'} changed by hand in PowerPoint and ${E.hand.length > 1 ? 'are' : 'is'} kept in the form.` : ''));
   } catch (e) {
     ST.edit = null; renderEdit();
-    setStatus(e.original ? 'The selected object is an original design as the provider returned it, inserted as one picture: it is kept exactly as designed and is not changed here. In PowerPoint, right-click › Convert to Shape makes its parts editable shapes; or insert the editable version of the same variation and edit that here.'
-      : e.notours ? 'The selected object was not inserted by AI Visual Builder 10.12 or later (visuals inserted before 10.12 carry no edit record), so it is not changed here. Edit it directly in PowerPoint, or insert it again from the panel.'
+    setStatus(e.original ? 'This is the provider’s original design, one picture. In PowerPoint, right-click › Convert to Shape makes it shapes; then “Style the selection” above recolours them and replaces their icons.'
+      : e.notours ? 'This visual has no redesign record (inserted before 10.12, or not by this panel). Use “Style the selection” above: it changes the colours, text and icons of any visual.'
       : 'Edit: ' + errText(e), true);
   }
   finally { ST.busy = false; studioButtons(); }
@@ -536,14 +536,14 @@ function renderEdit() {
       `<textarea class="edD" rows="2" aria-label="Description of point ${k + 1}" style="width:100%;height:auto;font:inherit">${esc(hand(it.id, 'D') != null ? hand(it.id, 'D') : it.detail || '')}</textarea>` +
       `<div style="display:flex;align-items:center;gap:6px;margin-top:3px">` +
       `<select class="edI" aria-label="Icon of point ${k + 1}" style="flex:1">${icons.map(x => `<option value="${esc(x)}"${x === (it.icon || 'none') ? ' selected' : ''}>${esc(typeof CMP_NAMES === 'object' && CMP_NAMES[x] ? CMP_NAMES[x] + ' (' + x + ')' : x)}</option>`).join('')}</select>` +
-      `<button type="button" class="btnAiIcon" data-k="${k}" title="Find a matching library icon, or have Claude design one">✨ Find or design icon</button>` +
+      `<button type="button" class="btnAiIcon" data-k="${k}" title="Describe the icon below: library matches first, then Claude designs one" hidden>✨ Find or design icon</button>` +
       `</div>` +
-      `<div class="aiIconPromptWrap" id="aiIconPrompt_${k}" style="display:none;margin-top:5px;padding:6px 8px;background:var(--panel,#f5f7fa);border:1px solid var(--line,#ccd);border-radius:4px">` +
-        `<div style="font-size:11px;font-weight:600;margin-bottom:4px;color:var(--ink,#222)">What should the icon show?</div>` +
+      `<div class="aiIconPromptWrap" id="aiIconPrompt_${k}" style="display:block;margin-top:5px;padding:6px 8px;background:#f5f7fd;border:1px solid #dfe4f2;border-radius:8px">` +
+        `<div style="font-size:11px;font-weight:600;margin-bottom:4px;color:var(--ink,#222)">Icon of point ${k + 1}: describe what it should show</div>` +
         `<div style="display:flex;gap:4px">` +
-          `<input type="text" class="aiIconInput" id="aiIconInput_${k}" placeholder="Describe icon (e.g. vehicle, drone, robot)..." style="flex:1;font-size:11px;padding:3px 6px">` +
-          `<button type="button" class="aiIconSubmit" data-k="${k}" style="padding:3px 8px;font-size:11px;cursor:pointer;background:var(--accent,#0066cc);color:#fff;border:none;border-radius:3px">Find</button>` +
-          `<button type="button" class="aiIconCancel" data-k="${k}" style="padding:3px 6px;font-size:11px;cursor:pointer;border:1px solid #ccc;background:#fff;border-radius:3px">✕</button>` +
+          `<input type="text" class="aiIconInput" id="aiIconInput_${k}" placeholder="e.g. car with sensors, handshake, rocket" style="flex:1;font-size:11px;padding:3px 6px">` +
+          `<button type="button" class="aiIconSubmit" data-k="${k}" style="padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;background:#3645A9;color:#fff;border:none;border-radius:6px">Design icon</button>` +
+          `<button type="button" class="aiIconCancel" hidden data-k="${k}" style="padding:3px 6px;font-size:11px;cursor:pointer;border:1px solid #ccc;background:#fff;border-radius:3px">✕</button>` +
         `</div>` +
         `<div class="aiIconLib" id="aiIconLib_${k}"></div>` +
         `<div class="aiIconStatus" id="aiIconStatus_${k}" style="font-size:11px;color:var(--muted,#555);margin-top:4px" hidden></div>` +
@@ -615,7 +615,7 @@ function renderEdit() {
       btn.disabled = true;
       say(`${found.length ? found.length + ' library icon' + (found.length > 1 ? 's' : '') + ' found. ' : ''}Asking Claude to design “${desc}”…`);
       try {
-        const res = await api('/api/claude/icon', { description: desc });
+        const res = await api('/api/claude/icon', { description: desc, style: typeof AIVB_ICON_STYLE === 'function' ? AIVB_ICON_STYLE() : 'flat' }, 90000);
         if (!res || !res.ok || !res.icon) { say(((res && res.error) || 'Claude could not design this icon.') + (found.length ? ' Pick a library icon above.' : ''), !found.length); return; }
         const iconKey = registerCustomIcon(res.icon);
         saveCustomIcon(iconKey, res.icon);
@@ -710,7 +710,16 @@ async function replaceVisual(E, t) {
     const rect = editRect(E, parts.bbox), mine = new Set(parts.tops.map(s => s.id));
     if (rect.x < -1 || rect.y < -1 || rect.x + rect.w > SLIDE.w + 1 || rect.y + rect.h > SLIDE.h + 1) throw new Error('the visual has been moved partly off the slide; move it back first');
     const info = await readSlide(context, slide);
-    const blockers = info.filter(x => !mine.has(x.id) && !x.isTitle && !x.removable && x.width * x.height < 0.6 * SLIDE.w * SLIDE.h && overlaps(x, rect));
+    // 10.24: a text box above the visual (the slide's own text, its frame reaching into the area) is not in the way: the
+    // part its text uses ends above the visual, so the area starts below it instead of the edit being refused
+    const used = x => x.text && typeof textUsedHeight === 'function' ? Object.assign({}, x, { height: Math.min(x.height, textUsedHeight(x.text, x.width, 24)) }) : x;
+    const b = parts.bbox;
+    info.filter(x => !mine.has(x.id) && !x.isTitle && !x.removable && overlaps(x, rect)).map(used).forEach(x => {
+      const bottom = x.top + x.height;
+      if (b && bottom <= b.y + 6 && bottom > rect.y) { const y2 = bottom + 8; rect.h -= y2 - rect.y; rect.y = y2; }
+    });
+    if (rect.h < 120) throw new Error('there is too little room under the text above the visual; move the visual down or shorten that text, then try again. Nothing was changed');
+    const blockers = info.filter(x => !mine.has(x.id) && !x.isTitle && !x.removable && x.width * x.height < 0.6 * SLIDE.w * SLIDE.h).map(used).filter(x => overlaps(x, rect));
     if (blockers.length) throw new Error(`other objects now overlap the visual's area (${blockers.slice(0, 3).map(x => x.name || x.type).join(', ')}); move them or the visual, then try again. Nothing was changed`);
     const before = new Set(await shapeIds(context, slide));
     let got;
