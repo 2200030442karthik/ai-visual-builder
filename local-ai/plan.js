@@ -28,14 +28,24 @@ function planText(it, x, y, w, s, o) {
   if (it.detail) out.push(label(x, y + h1 - 6, w, planTH(it.detail, w, PLAN_DS), it.detail, { size: PLAN_DS, color: col, align: al, valign: 'top', grp: o.grp }));
   return out;
 }
-/* The item's object on a disc (white on pale cards, pale on white). */
+/* The item's object on a disc (white on pale cards, pale on white).
+   10.21.1: P.style.icons 'iso' - 2.5D: the object on the front face of a tile (a native cube: PowerPoint shades its top
+   and side faces from the fill), a soft shadow under it. Every part stays an editable shape of the icon's group. */
+let PLAN_ICONSTYLE = '';
 function planIcon(key, x, y, D, col, bg, grp) {
   if (!D) return [];
+  if (PLAN_ICONSTYLE === 'iso') {
+    const d = D * 0.25, f = !bg || /^#?F{6}$/i.test(bg) ? '#EEF1F6' : bg, s = (D - d) * 0.72;
+    return [box('ellipse', x - D * 0.02, y + D * 0.86, D * 1.04, D * 0.18, { fill: '#E2E5EC', grp, decor: true }),
+      box('cube', x, y, D, D, { fill: f, line: col, lineW: 0.75, grp })]
+      .concat(comp(key || 'none', x + (D - d - s) / 2, y + d + (D - d - s) / 2, s, col).map(q => Object.assign(q, { grp })));
+  }
   return [box('ellipse', x, y, D, D, { fill: bg, grp })].concat(comp(key || 'none', x + D * 0.19, y + D * 0.19, D * 0.62, col).map(q => Object.assign(q, { grp })));
 }
 /* A step number on a rounded square (22 pt needs at least 40 pt of width). */
 // a step's number: P.start continues the numbering of a sequence split across slides (V10.12)
-let PLAN_NUM0 = 0;
+let PLAN_NUM0 = 0, PLAN_OPT_ONLY = -1, PLAN_WHY_LAST = '';
+const PLAN_SIZE_HINT = new Map();     // 10.26: library families - the size that fitted, per layout, holder, mark and content
 const planN = i => String(i + 1 + PLAN_NUM0);
 const planNum = (i, x, y, D, col, grp) => box('roundRect', x, y, D, D, { fill: col, text: planN(i), size: PLAN_DS, bold: true, color: textOn(col), align: 'center', valign: 'middle', grp });
 const planGrp = (out, g, name) => { out.forEach(p => { if (!p.grp) p.grp = g; }); if (out[0]) out[0].grpName = name; return out; };
@@ -45,7 +55,7 @@ const planItem = (P, id) => P.items.find(i => i.id === id);
 const planFlow = P => (P.flow || []).map(id => planItem(P, id)).filter(Boolean);
 const planSupport = it => /^support/.test(it.role || '');
 // a sequence only when nothing in it applies across the others: cross-cutting functions never go on a timeline
-const planSeq = P => !P.items.some(planSupport) && (P.relation === 'sequence' || (planFlow(P).length === P.items.length && P.items.length >= 3 && !/independent|categories|hub/.test(P.relation)));
+const planSeq = P => !P.items.some(planSupport) && (P.relation === 'sequence' || (planFlow(P).length === P.items.length && P.items.length >= 3 && !/independent|categories|hub|comparison/.test(P.relation)));
 const planOrder = P => { const f = planFlow(P); return f.length === P.items.length ? f : P.items; };
 const planGroups = P => (P.groups || []).map(g => ({ g, items: P.items.filter(i => i.group === g.id) })).filter(x => x.items.length);
 const planAllGrouped = P => P.items.every(i => i.group && (P.groups || []).some(g => g.id === i.group));
@@ -73,8 +83,10 @@ function planSemantics(P) {
   const sup = P.items.filter(planSupport), stages = P.items.filter(i => i.role === 'stage'), outs = P.items.filter(i => i.role === 'output');
   // a flow with functions across it: the stages in their order, then what they serve; otherwise the roles are dropped
   // (a list of independent ideas has no stages)
-  if (sup.length && stages.length >= 2) {
-    if (P.relation === 'sequence' || !P.relation || P.relation === 'independent') P.relation = 'pipeline_with_support';
+  // 10.21.1: only a flow the content gives (a sequence, or a plan that says so) - an unordered list of principles that
+  // happens to include "Monitoring" or "Encryption" stays a list of equals
+  if (sup.length && stages.length >= 2 && (P.relation === 'sequence' || !P.relation || P.relation === 'pipeline_with_support')) {
+    if (P.relation === 'sequence' || !P.relation) P.relation = 'pipeline_with_support';
     const f = planFlow(P).filter(i => i.role === 'stage' || i.role === 'output');
     P.flow = (f.length >= 2 ? f : stages.concat(outs)).map(i => i.id);
   } else if (!(P.relation === 'pipeline_with_support' && stages.length >= 2)) P.items.forEach(i => { if (i.role !== 'component' && i.role !== 'source') i.role = sup.length ? i.role : 'concept'; });
@@ -482,6 +494,64 @@ PLAN_LAYOUTS.capability.name = 'Grouped columns';
 /* ---------- choosing and checking the layouts ---------- */
 /* Layouts to try, best first: the provider's recommendation, then the ones the structure suits. */
 const PLAN_UPGRADE = { architecture: 'platform', layers: 'stack3d', capability: 'capmap' };
+/* ---------- Claude's own compositions (V10.16) ----------
+   A concept is Claude's complete design for the content area (1079 x 435 pt): shapes from PowerPoint's presets, texts,
+   catalogue objects and connector lines, in colour tokens (a1-a10 the template's accents, panel, rule, line, white,
+   ink). It is drawn here as native shapes - nothing is rasterised - and then checked like every layout (planRender0):
+   approved colours and 22 pt (brandPrims), overlaps, clipping and the content area (visualQuality), and every item's
+   label and description on the slide. A text box Claude made too small for its words is made taller (never smaller
+   text); a concept that still fails is not offered, with the reason. Scaled to a smaller free area when needed. */
+const CONCEPT_COL = { panel: '#F2F2F2', rule: '#D9D9D9', line: '#7F7F7F', white: '#FFFFFF', ink: '#404040' };
+const conceptCol = t => { const m = /^a(\d{1,2})$/.exec(t || ''); return m ? TEMPLATE.accents[(+m[1] + 9) % 10] : CONCEPT_COL[t] || null; };
+function planConceptFamily(P, i) {
+  const c = (P.concepts || [])[i];
+  if (!c) return null;
+  return { name: c.name, family: 'ai-concept', kind: 'ai', pack: 'claude', needs: () => '', opts: [{ s: PLAN_DS }],
+    build: (P0, R) => {
+      const sx = R.w / 1079, sy = R.h / 435, out = [], num = v => (isFinite(+v) ? +v : 0);
+      for (const e of c.elements) {
+        const x = R.x + num(e.x) * sx, y = R.y + num(e.y) * sy, w = Math.max(1, num(e.w) * sx), h = Math.max(1, num(e.h) * sy), col = conceptCol(e.color);
+        const size = Math.max(PLAN_DS, Math.min(48, Math.round(num(e.size) || PLAN_DS))), txt = planClean(e.text || ''), al = e.align === 'left' ? 'left' : 'center';
+        if (e.kind === 'line') { out.push(seg(x, y, R.x + num(e.x2) * sx, R.y + num(e.y2) * sy, col || '#7F7F7F', 2.5)); continue; }
+        if (e.kind === 'object') { const D = Math.min(w, h); out.push(...comp(CMP[e.object] ? e.object : 'none', x + (w - D) / 2, y + (h - D) / 2, D, col && col !== '#FFFFFF' ? col : accent(0))); continue; }
+        if (e.kind === 'text') { if (txt) out.push(label(x, y, w, Math.max(h, linesAt(txt, w * 0.95, size) * size * 1.2 + 8), txt, { size, bold: !!e.bold, color: INK, align: al, valign: 'top' })); continue; }
+        out.push(box(GEO[e.shape] ? e.shape : 'roundRect', x, y, w, h, Object.assign({ fill: col || PANEL }, txt ? { text: txt, size, bold: !!e.bold, color: INK, align: al, valign: 'middle' } : {})));
+      }
+      return out;
+    } };
+}
+/* 10.18: a composition with a caption band - the topic (a statement's subject) and the heading (what it is or does)
+   above it, the composition drawn in the space below. For compositions that do not show those facts themselves (a
+   definition such as "Generative AI is a branch of artificial intelligence that creates ..."), so they are complete
+   instead of left out. A real layout key ("cap:<family>"): inserting redraws exactly what the preview shows. The topic
+   line is left out when the composition already shows the topic (no duplicated heading). */
+function planCaptionFamily(base) {
+  const B = PLAN_LAYOUTS[base];
+  if (!B || /^cap:/.test(base)) return null;
+  // 10.19: LVC sizes (24 pt headings); a paragraph read as sections (sections.js paragraphRead) is captioned with its topic
+  const topic = P => P.statement ? (P.short || P.statement.subject) : P.paragraph ? P.title : '';
+  const lines = (P, withShort) => [withShort && topic(P) ? { t: topic(P), s: 24, b: true } : null,
+    P.sectionName ? { t: P.sectionName, s: 24 } : null].filter(Boolean);
+  return { key: 'cap:' + base, name: B.name, family: B.family || base, kind: B.kind || 'list', pack: B.pack || '', groups: B.groups, appeal: B.appeal,
+    needs: P => B.needs(P) || (P.sectionName || P.statement || P.paragraph ? '' : 'nothing to caption'),
+    opts: B.opts,
+    build: (P, R, o) => {
+      for (const withShort of [true, false]) {
+        const L = lines(P, withShort);
+        if (!L.length || L.some(l => !planWords(l.t, R.w, l.s) || linesAt(l.t, R.w * 0.95, l.s) > 2)) return planNo('the caption does not fit');
+        const hs = L.map(l => planLH(l.t, R.w, l.s)), h = hs.reduce((a, b) => a + b, 0);
+        const R2 = { x: R.x, y: R.y + h + 20, w: R.w, h: R.h - h - 20 };
+        if (R2.h < 240) return planNo('no room under the caption');
+        const inner = B.build(P, R2, o);
+        if (!inner) return null;
+        const short = withShort && P.statement ? String(P.short || P.statement.subject) : '';
+        if (short && inner.some(p => p.text && String(p.text) === short)) continue;       // the composition shows the topic itself
+        let y = R.y; const cap = L.map((l, i) => { const p = label(R.x, y, R.w, hs[i], l.t, { size: l.s, bold: !!l.b, color: INK, align: 'left', valign: 'top', grp: 'caption' }); y += hs[i] - (i ? 0 : 4); return p; });
+        return cap.concat([rule(R.x + 4, y + 6, 120, 5, accent(1))], inner);
+      }
+      return null;
+    } };
+}
 function planCandidates(P) {
   const G = planGroups(P), grouped = G.length >= 2 && planAllGrouped(P), seq = planSeq(P), f = planFlow(P), r = planRoles(P);
   const support = r.supports.length > 0 && r.stages.length >= 2, arch = f.length >= 2 && P.items.some(i => !(P.flow || []).includes(i.id));
@@ -493,14 +563,20 @@ function planCandidates(P) {
     grouped ? ['capmap', 'stack3d', 'tree', 'capability', 'layers', 'swimlanes'] : [],
     seq ? ['pipeline', 'scene', 'timeline', 'stair'] : [],
     !seq && !support ? ['ecosystem', 'modules'] : [],
+    // 10.13: families of later packs say which content they suit (suits(P)); they come before the general ones
+    Object.values(PLAN_LAYOUTS).filter(L => L.suits && !L.hidden && (() => { try { return L.suits(P); } catch (e) { return false; } })()).map(L => L.key),
     ['hub', 'grid', 'columns', 'rows']);
   // Claude's own composition first, then its ranking (a core layout by its V10.11 successor), then what the structure suits
   const up = k => (PLAN_UPGRADE[k] && base.includes(PLAN_UPGRADE[k]) ? PLAN_UPGRADE[k] : k);
-  return [...new Set((P.custom ? ['custom'] : []).concat((P.layouts || []).map(up).filter(k => PLAN_LAYOUTS[k] && base.includes(k)), base))].filter(k => k === 'custom' || PLAN_LAYOUTS[k]);
+  const all = [...new Set((P.custom ? ['custom'] : []).concat((P.layouts || []).map(up).filter(k => PLAN_LAYOUTS[k] && base.includes(k)), base))].filter(k => k === 'custom' || PLAN_LAYOUTS[k]);
+  // 10.15: named sections ("What you learn" / "Best for") only in layouts that show each section under its name; never
+  // as levels, lanes or a flow they do not have
+  return grouped && P.sections ? all.filter(k => k === 'custom' || PLAN_LAYOUTS[k].groups || ['capmap', 'tree', 'capability'].includes(k) || (k === 'versus' && rel === 'comparison')) : all;
 }
 /* V10.12: a plan's style applies while it is drawn: P.style.accent = the approved colour the palette starts at (a colour
    variant), P.style.spacing 'open' = more white space around the layout; P.start = the first step number. */
 const PLAN_OPEN = { x: 0.045, y: 0.07 };
+const PLAN_COMPACT = [0.6, 0.72, 0.86];       // 10.22: heights tried before the full area (planRender)
 function planArea(P, R) {
   if (!(P.style && P.style.spacing === 'open')) return R;
   const dx = R.w * PLAN_OPEN.x, dy = R.h * PLAN_OPEN.y;
@@ -510,26 +586,63 @@ function planRender(P, key, R) {
   const st = P.style || {}, n = TEMPLATE.accents.length;
   ACCENT_SHIFT = (((st.accent | 0) % n) + n) % n; PLAN_NUM0 = P.start | 0;
   try {
-    const r = planRender0(P, key, planArea(P, R));
-    r.style = { accent: ACCENT_SHIFT, spacing: st.spacing === 'open' ? 'open' : 'fill' };
+    // 10.22: compact, as in the reference decks - the smallest height (from the top of the area) at which the layout
+    // still passes every check at the template's text sizes; the full area only when nothing smaller does.
+    // "More white space" (spacing 'open') keeps the whole area.
+    const A = planArea(P, R), F = PLAN_LAYOUTS[key];
+    let r = null;
+    // 10.26: a library family (packs/library-10.26.js) keeps its largest size that fits: each size at the smallest
+    // height first, then the next smaller size
+    if (F && F.sizeFirst && !(st.spacing === 'open') && A.h > 200) {
+      // the variants of a layout with the same holder and mark fit the same way: the size found first is tried first
+      const sig = (F.hintKey ? F.hintKey() : key) + '|' + P.items.map(i => i.label + '/' + (i.detail || '')).join('|') + '|' + (P.title || '') + '|' + A.w + 'x' + A.h;
+      const hint = PLAN_SIZE_HINT.get(sig), Fs = PLAN_COMPACT.concat([1]);
+      if (hint === 'fail') return { ok: false, key, name: F.name, why: 'does not fit the content area at 22 pt' };
+      const need = F.needs(P);
+      if (need) return { ok: false, key, name: F.name, why: need };
+      const tries = hint ? [[hint.k, hint.f]] : [];
+      // compact first (the reference decks: visuals sit compactly under the title), each size largest first; then taller
+      for (const band of [Fs.filter(f => f <= 0.72), Fs.filter(f => f > 0.72)])
+        for (let k = 0; k < F.opts.length; k++) for (const f of band) if (!hint || k !== hint.k || f !== hint.f) tries.push([k, f]);
+      for (const [k, f] of tries) {
+        PLAN_OPT_ONLY = k;
+        try { const c = planRender0(P, key, { x: A.x, y: A.y, w: A.w, h: Math.round(A.h * f) }); if (c.ok) { r = c; PLAN_SIZE_HINT.set(sig, { k, f }); break; } }
+        finally { PLAN_OPT_ONLY = -1; }
+      }
+      if (!r) { if (PLAN_SIZE_HINT.size > 5000) PLAN_SIZE_HINT.clear(); PLAN_SIZE_HINT.set(sig, 'fail'); return { ok: false, key, name: F.name, why: 'does not fit the content area at 22 pt' }; }
+    }
+    if (!r && !(st.spacing === 'open') && A.h > 200) {
+      for (const f of PLAN_COMPACT) {
+        const c = planRender0(P, key, { x: A.x, y: A.y, w: A.w, h: Math.round(A.h * f) });
+        if (c.ok) { r = c; break; }
+      }
+    }
+    r = r || planRender0(P, key, A);
+    r.style = Object.assign({ accent: ACCENT_SHIFT, spacing: st.spacing === 'open' ? 'open' : 'fill' }, st.icons ? { icons: st.icons } : {});   // 10.21.1: the icon style goes with the design (insertion draws it again)
     return r;
   } finally { ACCENT_SHIFT = 0; PLAN_NUM0 = 0; }
 }
 /* One layout in R: the first size that passes every check; { ok, prims, ... } or { ok: false, why }. */
 function planRender0(P, key, R) {
-  const L = key === 'custom' ? (P.custom && planZoneFamily(Object.assign({ key: 'custom', name: P.custom.name || "Claude's composition", kind: 'custom', items: true }, P.custom))) : PLAN_LAYOUTS[key];
+  const L = key === 'custom' ? (P.custom && planZoneFamily(Object.assign({ key: 'custom', name: P.custom.name || "Claude's composition", kind: 'custom', items: true }, P.custom)))
+    : /^ai:\d$/.test(key) ? planConceptFamily(P, +key.slice(3)) : /^cap:/.test(key) ? planCaptionFamily(key.slice(4)) : PLAN_LAYOUTS[key];
   if (!L) return { ok: false, key, why: 'unknown layout' };
   const need = L.needs(P);
+  PLAN_WHY_LAST = need || '';
   if (need) return { ok: false, key, name: L.name, why: need };
   let why = 'does not fit the content area at 22 pt', first = '';
-  for (const o of L.opts) {
+  for (const o of (PLAN_OPT_ONLY >= 0 && L.opts[PLAN_OPT_ONLY] ? [L.opts[PLAN_OPT_ONLY]] : L.opts)) {
     let prims;
-    PLAN_WHY = '';
-    try { prims = L.build(P, R, o); } catch (e) { why = 'could not be drawn (' + e.message + ')'; continue; }
+    PLAN_WHY = ''; PLAN_ICONSTYLE = (P.style && P.style.icons) || '';
+    try { prims = L.build(P, R, o); } catch (e) { why = 'could not be drawn (' + e.message + ')'; continue; } finally { PLAN_ICONSTYLE = ''; }
     if (!prims) { why = PLAN_WHY ? `${PLAN_WHY} at ${o.s} pt` : `too much text for this layout at ${o.s} pt`; continue; }
     prims = roundCorners(brandPrims(prims));
-    const q = visualQuality(qualityItems(prims), R), texts = new Set(prims.filter(p => p.text).map(p => String(p.text)));
-    const lost = P.items.filter(it => !texts.has(it.label) || (it.detail && !texts.has(it.detail)));
+    // 10.24: a text drawn over several lines (a converted design keeps its own line breaks) is the same words
+    const sp = t => String(t).replace(/\s+/g, ' ').trim(), q = visualQuality(qualityItems(prims), R), texts = new Set(prims.filter(p => p.text).map(p => sp(p.text)));
+    const lost = P.items.filter(it => !texts.has(sp(it.label)) || (it.detail && !texts.has(sp(it.detail))));
+    // 10.24: a lenient family (packs/antv: a converted design) is blocked by overlapping labels and text outside the
+    // area; its 3D parts beside a number or its connectors are the design
+    if (L.lenient) { const b = q.block.filter(x => /overlap|outside/.test(x)); q.block = b; q.excluded = b.length > 0; }
     if (q.excluded || lost.length) { why = q.block[0] || `"${lost[0].label}" is not fully shown`; first = first || why; continue; }   // the next size repairs it, or the layout is not offered
     return { ok: true, key, name: L.name, family: L.family || key, kind: L.kind || 'list', pack: L.pack || '', prims, quality: q };
   }
@@ -561,13 +674,14 @@ function planVariations(P, R, max, o) {
 const planClean = t => String(t == null ? '' : t).replace(/\s+/g, ' ').replace(/^\s*(?:\d{1,2}[.)]|[-•*])\s*/, '').replace(/\s*[:;,]\s*$/, '').trim();
 /* Objects for the items: the catalogue's best match for the provider's hint and the item's own words, each object once. */
 function planIcons(items) {
-  const used = new Set();
-  items.forEach(it => {
-    const sc = conceptScores(it.label, [it.hint, it.detail].filter(Boolean).join(' ')).concat(it.hint ? conceptScores(it.hint, '') : []);
-    const pick = sc.find(x => x.score >= 3 && !used.has(x.key)) || sc.find(x => x.score >= 3);
-    it.icon = pick ? pick.key : 'none';
-    if (pick) used.add(pick.key);
+  // 10.24: chosen for the whole set at once (gallery.js iconAssign): the strongest match anywhere first
+  const lists = items.map(it => {
+    const m = new Map();
+    conceptScores(it.label, [it.hint, it.detail].filter(Boolean).join(' ')).concat(it.hint ? conceptScores(it.hint, '') : [])
+      .forEach(x => { const o = m.get(x.key); if (!o || x.score > o.score) m.set(x.key, x); });
+    return [...m.values()].sort((a, b) => b.score - a.score || a.order - b.order);
   });
+  iconAssign(lists, 3).forEach((pick, i) => { items[i].icon = pick ? pick.key : 'none'; });
 }
 /* Claude's plan (the JSON of claude_visual.py PLAN_SCHEMA) -> a checked plan; problems name what was repaired. */
 function planFromClaude(raw) {
@@ -593,6 +707,18 @@ function planFromClaude(raw) {
     else problems.push("Claude's own composition was not usable (zones outside the grid or without items)");
   }
   const plan = planSemantics({ title: planClean(raw && raw.title), relation: String(raw && raw.relation || 'independent'), items, groups, flow, layouts, custom, from: 'claude' });
+  // 10.14: the slide's message for learners (the showcase pack's headline and takeaway) and the topic's own object
+  plan.headline = planClean(raw && raw.headline) || plan.title;
+  plan.takeaway = planClean(raw && raw.takeaway).replace(/\.$/, '');
+  plan.hero = raw && raw.hero && CMP[raw.hero] ? String(raw.hero) : '';
+  // 10.15: labelled sections ("What you learn" / "Best for") as Claude grouped them: drawn under their names
+  plan.short = planClean(raw && raw.short);
+  // 10.16: Claude's own compositions ("concepts"): drawn as native shapes by planRender under the keys ai:0 .. ai:3
+  plan.concepts = (Array.isArray(raw && raw.concepts) ? raw.concepts : []).filter(c => c && Array.isArray(c.elements) && c.elements.length >= 3).slice(0, 6)
+    .map(c => ({ name: planClean(c.name) || 'AI concept', idea: planClean(c.idea), elements: c.elements }));
+  if (typeof sectionKind === 'function' && groups.length >= 2 && groups.some(g => sectionKind(g.name) !== 'other')) {
+    plan.sections = true; groups.forEach(g => { g.kind = sectionKind(g.name); });
+  }
   return { plan, problems };
 }
 /* A provider's drawing (napkinStructure) -> a plan of its items, in the user's order for a sequence. */
@@ -685,8 +811,15 @@ function planZoneFamily(spec) {
      with an optional overview of all point names first. Every label and description stays on a slide (planCoverage). */
 const PLAN_STYLES = [{ accent: 0, spacing: 'fill' }, { accent: 3, spacing: 'fill' }, { accent: 0, spacing: 'open' }, { accent: 6, spacing: 'fill' }, { accent: 3, spacing: 'open' }, { accent: 6, spacing: 'open' }];
 const PLAN_COLOUR_NAMES = ['blue', 'orange', 'green', 'violet', 'coral', 'gold', 'steel blue', 'pink', 'brown', 'lilac'];
-const planDesignKey = r => `${r.family}|${r.style ? r.style.accent : 0}|${r.style ? r.style.spacing : 'fill'}`;
-const planStyleName = st => [st && st.accent ? `colours from ${PLAN_COLOUR_NAMES[st.accent % 10]}` : '', st && st.spacing === 'open' ? 'more white space' : ''].filter(Boolean).join(', ');
+const planDesignKey = r => `${r.family}|${r.style ? r.style.accent : 0}|${r.style ? r.style.spacing : 'fill'}${r.style && r.style.icons ? '|' + r.style.icons : ''}`;
+const planStyleName = st => [st && st.accent ? `colours from ${PLAN_COLOUR_NAMES[st.accent % 10]}` : '', st && st.spacing === 'open' ? 'more white space' : ''].filter(Boolean).join(', ');   // 2.5D icons: said in the design's own name
+/* 10.21.1: the 2.5D-icon version of designs that show objects on discs (drawn by planIcon); null when it looks the same */
+function planIsoVariant(P, r, R) {
+  if (!r || !r.prims || !r.prims.some(p => p.cmp && p.cmp !== 'none')) return null;
+  const x = planRender(Object.assign({}, P, { style: Object.assign({}, r.style, { icons: 'iso' }) }), r.key, R);
+  if (!x.ok || !x.prims.some(p => p.g === 'cube' && p.grp)) return null;
+  return Object.assign(x, { name: x.name + ' with 2.5D icons', family: x.family + '-25d' });   // its own design in the gallery (not a duplicate of the flat one)
+}
 function planMoreDesigns(P, R, seen, max) {
   max = max || 4;
   const out = [], fams = new Set(), kinds = new Set(), cands = planCandidates(P), failed = {}, a0 = (P.style && P.style.accent) | 0;
@@ -788,6 +921,109 @@ function planSlides(P, R, o) {
 function planCoverage(P, rendered) {
   const texts = new Set(rendered.filter(x => !x.overview).flatMap(x => x.prims.filter(p => p.text).map(p => String(p.text))));
   return P.items.flatMap(i => [i.label].concat(i.detail ? [i.detail] : [])).filter(t => !texts.has(t));
+}
+/* 10.21.1: the relation a text STATES between its points - read from its structure first, then from wording that is
+   about the whole set (title, introduction, closing line: never a point's own description), with technical phrases that
+   only look like cues left out ("for loop", "continuous integration", "high levels of"). Nothing is inferred from the
+   number or the look of the points.
+   doc = { title, full, items: [{ label, detail }], groups: [names], groupItems: [[labels], [labels]], ordered }
+   -> { relation: 'comparison' | 'funnel' | 'cycle' | 'layers' | 'timeline' | 'sequence' | '', ordered, why, evidence: [] } */
+const REL_PAIRS = [[/^pros?\b/i, /^cons?\b/i], [/^advantages?/i, /^disadvantages?/i], [/^benefits?/i, /^(risks?|drawbacks?|challenges?|limitations?|costs?)\b/i],
+  [/^before\b/i, /^after\b/i], [/^do'?s?\b/i, /^(don'?t|do not)/i], [/^strengths?/i, /^weaknesses?/i], [/^myths?/i, /^facts?/i],
+  [/^(traditional|legacy|old|manual|conventional)\b/i, /^(modern|new|automated|ai|digital)\b/i], [/^(on-?prem\w*|on premises?)\b/i, /^cloud\b/i]];
+// phrases that contain a cue word but name a thing, not the relation between the points
+const REL_NOT = new RegExp([
+  String.raw`\b(?:for|while|do[- ]while|event|nested|infinite|render|game|main|inner|outer|training)[- ]loops?\b`,
+  String.raw`\bloop (?:statements?|variables?|counters?|body)\b`,
+  String.raw`\bcontinuous (?:integration|delivery|deployment|testing|monitoring|learning|improvement|variables?|data|values?|distribution)\b`,
+  String.raw`\biterations? (?:of training|per epoch)\b`,
+  String.raw`\b(?:high|low|higher|lower|greater|increased|reduced|significant|varying|different|various|several|multiple|access|logging|log|privilege|skill|experience|confidence|noise|stress)\s+levels?\b`,
+  String.raw`\blevels? of (?:accuracy|security|risk|detail|service|confidence|access|abstraction|support|performance|quality|protection|automation|experience)\b`,
+  String.raw`\b(?:pricing|service|support|subscription|storage|free|premium) tiers?\b`,
+  String.raw`\bcycle time\b`, String.raw`\bclock cycles?\b`].join('|'), 'gi');
+const REL_ORDINAL = /^(?:step|phase|stage)\s*\d+\b|^(?:first(?:ly)?|second(?:ly)?|third(?:ly)?|then|next|finally|lastly|afterwards?)\b/i;
+const REL_LEVEL = /^(?:level|tier|layer)\s*\d+\b/i;
+const REL_DATE = /\b(?:(?:19|20)\d{2}|q[1-4]\s*(?:19|20)\d{2})\b/i;
+const relNum = t => { const m = /(?:^|\s)(\d[\d,]*(?:\.\d+)?)\s*(%|k\b|m\b|million\b)?/i.exec(String(t || '')); if (!m) return null;
+  let v = parseFloat(m[1].replace(/,/g, '')); if (/^k$/i.test(m[2] || '')) v *= 1e3; if (/^(m|million)$/i.test(m[2] || '')) v *= 1e6; return v; };
+const relWords = t => String(t || '').toLowerCase().replace(/[^a-z0-9\s-]/g, ' ').split(/\s+/)
+  .filter(w => w.length > 3 && !/^(with|from|that|this|their|they|into|more|less|than|have|each|over|uses?|used|using|data)$/.test(w));
+function planRelation(doc) {
+  doc = doc || {};
+  const items = (doc.items || []).filter(i => i && i.label), n = items.length, G = (doc.groups || []).map(g => String(g || '').trim()).filter(Boolean);
+  const lab = items.map(i => String(i.label).trim()), det = items.map(i => String(i.detail || '').trim());
+  // the scope: what the text says about the whole set - its title and the sentences that are not one of its points
+  const keyOf = t => String(t).toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 40);
+  const keys = lab.map(keyOf).filter(k => k.length >= 3);
+  const sentences = String(doc.full || '').split(/\n+|(?<=[.!?])\s+/).map(x => x.trim()).filter(Boolean);
+  const norm = s => s.toLowerCase().replace(/^[\s\-*•\d.)]+/, '').replace(/\s+/g, ' ').trim();
+  const dets = det.map(norm).filter(d => d.length > 8);
+  // a sentence that is one point (it starts with the point, or is its description) is the point's own text, not about the
+  // set; a sentence that lists several points ("collect, train, evaluate, then repeat") keeps its words around the list
+  const scopeParts = [String(doc.title || '')], listParts = [];
+  sentences.forEach(s => {
+    const t = norm(s), at = keys.map(k => t.indexOf(k)).filter(i => i >= 0);
+    if (keys.some(k => t.startsWith(k)) && at.length < Math.min(3, n)) return;
+    if (dets.some(d => d.includes(t) || t.includes(d))) return;
+    if (at.length >= 3 && n >= 3) { const last = keys.filter(k => t.includes(k)).map(k => t.lastIndexOf(k) + k.length), part = t.slice(0, Math.min(...at)) + ' … ' + t.slice(Math.max(...last)); scopeParts.push(part); listParts.push(part); }
+    else scopeParts.push(s);
+  });
+  const scope = scopeParts.join('\n').replace(REL_NOT, ' ');
+  const head = (String(doc.title || '') + '\n' + (scopeParts[1] || '')).replace(REL_NOT, ' ');
+  const ev = { comparison: [], funnel: [], cycle: [], layers: [], timeline: [], sequence: [] }, add = (k, w, why) => ev[k].push({ w, why });
+  // comparison: two named sides that are a known pair, or say "vs", or describe the same attributes side by side
+  if (G.length === 2) {
+    if (REL_PAIRS.some(([a, b]) => (a.test(G[0]) && b.test(G[1])) || (a.test(G[1]) && b.test(G[0])))) add('comparison', 3, `the two sections are “${G[0]}” and “${G[1]}”`);
+    const vs = /\b(vs\.?|versus|compared (?:to|with)|comparison of|differences? between|contrast(?:ed|ing)? with)(?=\s|$)/i.exec(scope + '\n' + G.join(' '));
+    if (vs) add('comparison', 2, `the text says “${vs[0]}”`);
+    if (doc.groupItems && doc.groupItems.length === 2) {
+      const [A, B] = doc.groupItems.map(L => L.map(relWords)), shared = A.filter(a => B.some(b => b.some(w => a.includes(w)))).length;
+      if (A.length >= 2 && B.length >= 2 && shared >= Math.ceil(Math.min(A.length, B.length) * 0.6)) add('comparison', 2, `both sections describe the same ${shared} attributes`);
+    }
+  }
+  if (n >= 3) {
+    // order: numbered or ordinal points, dates in order, "steps / process" said about the set
+    if (doc.ordered) add('sequence', 2, 'the points are numbered or written as a chain');
+    if (lab.filter(t => REL_ORDINAL.test(t)).length >= Math.ceil(n * 0.6)) add('sequence', 2, 'the points start with step words (first, then, step 1…)');
+    const dates = lab.map((t, i) => REL_DATE.exec(t) || REL_DATE.exec(det[i])).map(m => m ? parseInt(String(m[0]).replace(/\D/g, '').slice(-4), 10) : null), dd = dates.filter(x => x);
+    if (dd.length >= Math.ceil(n * 0.6) && dd.every((x, i) => !i || x >= dd[i - 1])) add('timeline', 3, 'the points carry dates in order');
+    const proc = /\b(steps?|stages?|phases?|process|workflow|procedure|pipeline|how to|lifecycle|life cycle)\b/i.exec(head);
+    if (proc) add('sequence', 1, `the title says “${proc[0]}”`);
+    // cycle: said about the set, or the last point leads back to the first
+    // "iterative" / "then repeat" only where the sentence lists the points themselves ("is iterative: collect, train, …")
+    // every cue found, the strongest first ("lifecycle" alone names stages; it does not say they return)
+    const allOf = (re, t) => [...t.matchAll(re)];
+    const cues = allOf(/\b(cycle|cyclical|cyclic|life ?cycle|loops? back|feedback loop|iterative (?:process|cycle|loop)|repeats? (?:the|this|these|from)|repeated (?:until|for)|back to (?:the )?(?:start|beginning|first (?:step|stage|phase))|starts? (?:over|again)|pdca|plan[, ]+do[, ]+check[, ]+act)\b/gi, scope)
+      .concat(allOf(/\b(iterative|(?:then|and) repeat(?:s|ed)?)\b/gi, listParts.join('\n').replace(REL_NOT, ' ')));
+    const cyc = cues.find(m => !/life ?cycle/i.test(m[0])) || cues[0] || null;
+    if (cyc && n <= 8) add('cycle', /life ?cycle/i.test(cyc[0]) ? 1 : 3, `the text says “${cyc[0].trim()}”`);
+    const lastT = (lab[n - 1] + ' ' + det[n - 1]).toLowerCase(), firstW = relWords(lab[0])[0];
+    if (n <= 8 && /\b(repeat|again|back to|loop back|restart|next cycle|next iteration)\b/.test(lastT) && (!firstW || lastT.includes(firstW) || /\b(repeat|next cycle|next iteration)\b/.test(lastT)))
+      add('cycle', 3, 'the last point leads back to the start');
+    // funnel: said about the set, the AIDA stages, or counts that narrow stage by stage
+    const fun = /\b(funnel|narrows? (?:down|to)|narrowing|shortlist(?:ed|ing)?|conversion (?:funnel|stages?)|filters? down)\b/i.exec(scope);
+    if (fun && n <= 6) add('funnel', 3, `the text says “${fun[0]}”`);
+    if (n <= 6 && /\bawareness\b[\s\S]*\binterest\b[\s\S]*\b(desire|decision|consideration)\b[\s\S]*\b(action|purchase|conversion)\b/i.test(lab.join('\n'))) add('funnel', 3, 'the points are the AIDA stages');
+    const nums = lab.map((t, i) => relNum(t) != null ? relNum(t) : relNum(det[i]));
+    if (n <= 6 && fun && nums.every(x => x != null) && nums.every((x, i) => !i || x < nums[i - 1])) add('funnel', 1, 'the counts get smaller stage by stage');
+    // layers: levels or tiers said about the set, or points named Level 1 / Tier 2…
+    const lay = /\b(hierarch(?:y|ies|ical)|pyramid|maslow|(?:\d+|two|three|four|five|six) (?:levels|layers|tiers)\b|levels? of (?:the |a )?(?:hierarchy|pyramid|needs|maturity)|tiered|from the (?:base|bottom) (?:to|up to) the top|foundation(?:al)? (?:layer|level))/i.exec(scope);
+    if (lay && n <= 6) add('layers', 3, `the text says “${lay[0]}”`);
+    if (n <= 6 && lab.filter(t => REL_LEVEL.test(t)).length >= n - 1) add('layers', 3, 'the points are named by level');
+  }
+  const score = k => ev[k].reduce((a, x) => a + x.w, 0);
+  // a stated shape (comparison, cycle, funnel, levels, timeline) wins over a plain sequence: a cycle is ordered as well
+  const pick = ['comparison', 'cycle', 'funnel', 'layers', 'timeline'].filter(k => score(k) >= 2).sort((a, b) => score(b) - score(a))[0] || (score('sequence') >= 2 ? 'sequence' : '');
+  // a cycle, a funnel or a timeline keeps the order; levels keep it only when it was given
+  const ordered = (!!pick && !/^(comparison|layers)$/.test(pick)) || score('sequence') >= 2;
+  return { relation: pick, ordered, why: pick ? ev[pick].map(x => x.why).join('; ') : '',
+    evidence: Object.entries(ev).filter(([, v]) => v.length).map(([k, v]) => `${k}: ${v.map(x => x.why).join('; ')}`) };
+}
+/* 10.21 interface (kept): the relation only, from the whole text (first line its title) and the section names. */
+function planTextRelation(text, n, groupNames) {
+  const lines = String(text || '').split(/\n+/).map(t => t.trim()).filter(Boolean);
+  const r = planRelation({ title: lines[0] || '', full: lines.slice(1).join('\n'), items: lines.slice(1).slice(-Math.max(0, n)).map(t => ({ label: t.replace(/^[-*•\d.)\s]+/, '') })), groups: groupNames || [] });
+  return /^(comparison|funnel|cycle|layers)$/.test(r.relation) ? r.relation : '';
 }
 /* A plan from a list of points (built-in suggestions, edits): the same semantics as every other plan. */
 function planFromItems(title, points, ordered) {

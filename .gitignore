@@ -16,3 +16,33 @@ local-ai/tests/.access-probe.json
 /git_diff_*.txt
 local-ai/tests/run_after_fix.json
 local-ai/tests/last-run-studio.json
+local-ai/tests/last-run-original.json
+local-ai/tests/last-run-faithful.json
+local-ai/tests/last-run-app.json
+
+# generated pilot manifests (deploy/make-pilot-manifest.py)
+deploy/out/
+
+# manager pilot package build output (deploy/build-manager-package.ps1) and local AI evaluation outputs: kept on disk, never committed
+Manager_Pilot_Package/
+evaluation/
+
+# unified SL Smart Design package build output (deploy/build-slsd-package.ps1): kept on disk, never committed
+SLSD_Unified_Package/
+
+# V10.22 team package build output and activation keys: never committed
+Team_Package/
+Team_Pilot_Package/
+deploy/team-keys/
+activation-keys.csv
+activation-bundle.json
+
+# 10.24: the single-file installers carry the activation bundle and the course sample is internal: never in the (public) repository
+Dist_Installer/
+sample for claude.pptx
+*.exe
+local-ai/tests/.edge-profile-*/
+
+# 10.26: installer staging (deploy/build-stage.ps1) and the Windows Python runtime it reuses: never committed
+Build_Stage/
+deploy/runtime-win/

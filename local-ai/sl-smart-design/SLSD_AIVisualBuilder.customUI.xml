@@ -1,0 +1,16 @@
+<customUI xmlns="http://schemas.microsoft.com/office/2006/01/customui" xmlns:sl="Simplilearn.SLSmartDesign">
+  <ribbon>
+    <tabs>
+      <tab idQ="sl:Template_Selector" label="SL Smart Design">
+        <group idQ="sl:Template_id" label="Design">
+          <button id="SLSD_AIVB_Open" label="AI Visual Builder" size="large" onAction="SLSD_AIVB_Generate" imageMso="SmartArtInsert"
+                  screentip="AI Visual Builder" supertip="Turn the slide's content into 20+ editable infographics designed by AI: generate, preview, insert on this slide." />
+          <button id="SLSD_AIVB_Slides" label="Several slides" size="normal" onAction="SLSD_AIVB_Slides" imageMso="SlideNew"
+                  screentip="Several slides" supertip="Spread long content over several slides, each with its own editable visual." />
+          <button id="SLSD_AIVB_Edit" label="Edit a visual" size="normal" onAction="SLSD_AIVB_Edit" imageMso="ObjectEditPoints"
+                  screentip="Edit a visual" supertip="Change the texts, icons, colours or layout of a visual AI Visual Builder inserted." />
+        </group>
+      </tab>
+    </tabs>
+  </ribbon>
+</customUI>

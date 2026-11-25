@@ -25,7 +25,8 @@ import threading
 import time
 import urllib.request
 
-POLICY_PATH = os.environ.get('AIVB_ACCESS') or os.path.join(os.environ.get('ProgramData') or r'C:\ProgramData', 'AIVisualBuilder', 'access.json')
+POLICY_PATH = os.environ.get('AIVB_ACCESS') or (os.path.expanduser('~/Library/Application Support/AIVisualBuilder/access.json') if os.sys.platform == 'darwin'   # 10.21: macOS (per user)
+               else os.path.join(os.environ.get('ProgramData') or r'C:\ProgramData', 'AIVisualBuilder', 'access.json'))
 # The approved template, read from LVC_Template.pptx (30 Oct 2026) and confirmed in PowerPoint Desktop: the content layout
 # is named "Content_Slide" (1280 x 720 pt slide) and carries three shapes of its own, all read through PowerPoint's API
 # for the selected slide (fingerprint): its content placeholder, its heading placeholder above it, and the strip of

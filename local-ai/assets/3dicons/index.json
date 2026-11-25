@@ -1,0 +1,577 @@
+[
+{
+"slug": "3d",
+"name": "3d",
+"cat": "a"
+},
+{
+"slug": "3d-coin",
+"name": "3d Coin",
+"cat": "money-coin"
+},
+{
+"slug": "at",
+"name": "At",
+"cat": "at"
+},
+{
+"slug": "axe",
+"name": "Axe",
+"cat": "misc"
+},
+{
+"slug": "back",
+"name": "Back",
+"cat": "player"
+},
+{
+"slug": "backward",
+"name": "Backward",
+"cat": "player"
+},
+{
+"slug": "bag",
+"name": "Bag",
+"cat": "finance"
+},
+{
+"slug": "battery",
+"name": "Battery",
+"cat": "misc"
+},
+{
+"slug": "bookmark",
+"name": "Bookmark",
+"cat": "user"
+},
+{
+"slug": "bookmark-fav",
+"name": "Bookmark Fav",
+"cat": "user"
+},
+{
+"slug": "boy",
+"name": "Boy",
+"cat": "user"
+},
+{
+"slug": "brush",
+"name": "Brush",
+"cat": "art"
+},
+{
+"slug": "bucket",
+"name": "Bucket",
+"cat": "art"
+},
+{
+"slug": "bulb",
+"name": "Bulb",
+"cat": "misc"
+},
+{
+"slug": "calculator",
+"name": "Calculator",
+"cat": "misc"
+},
+{
+"slug": "calender",
+"name": "Calender",
+"cat": "misc"
+},
+{
+"slug": "camera",
+"name": "Camera",
+"cat": "media"
+},
+{
+"slug": "can",
+"name": "Can",
+"cat": "misc"
+},
+{
+"slug": "card",
+"name": "Card",
+"cat": "finance"
+},
+{
+"slug": "chart",
+"name": "Chart",
+"cat": "finance"
+},
+{
+"slug": "chat",
+"name": "Chat",
+"cat": "user"
+},
+{
+"slug": "chat-bubble",
+"name": "Chat Bubble",
+"cat": "user"
+},
+{
+"slug": "chat-text",
+"name": "Chat Text",
+"cat": "user"
+},
+{
+"slug": "chess",
+"name": "Chess",
+"cat": "content"
+},
+{
+"slug": "circle",
+"name": "Circle",
+"cat": "content"
+},
+{
+"slug": "clock",
+"name": "Clock",
+"cat": "social"
+},
+{
+"slug": "color-palette",
+"name": "Color Palette",
+"cat": "art"
+},
+{
+"slug": "computer",
+"name": "Computer",
+"cat": "media"
+},
+{
+"slug": "copy",
+"name": "Copy",
+"cat": "content"
+},
+{
+"slug": "cube",
+"name": "Cube",
+"cat": "content"
+},
+{
+"slug": "cup",
+"name": "Cup",
+"cat": "social"
+},
+{
+"slug": "dollar",
+"name": "Dollar",
+"cat": "money-coin"
+},
+{
+"slug": "euro",
+"name": "Euro",
+"cat": "money-coin"
+},
+{
+"slug": "explorer",
+"name": "Explorer",
+"cat": "social"
+},
+{
+"slug": "eyedropper",
+"name": "Eyedropper",
+"cat": "art"
+},
+{
+"slug": "fav-folder",
+"name": "Fav Folder",
+"cat": "document"
+},
+{
+"slug": "file",
+"name": "File",
+"cat": "document"
+},
+{
+"slug": "file-fav",
+"name": "File Fav",
+"cat": "document"
+},
+{
+"slug": "file-plus",
+"name": "File Plus",
+"cat": "document"
+},
+{
+"slug": "file-text",
+"name": "File Text",
+"cat": "document"
+},
+{
+"slug": "fire",
+"name": "Fire",
+"cat": "misc"
+},
+{
+"slug": "flag",
+"name": "Flag",
+"cat": "misc"
+},
+{
+"slug": "flash",
+"name": "Flash",
+"cat": "misc"
+},
+{
+"slug": "folder",
+"name": "Folder",
+"cat": "document"
+},
+{
+"slug": "forward",
+"name": "Forward",
+"cat": "playre"
+},
+{
+"slug": "gift",
+"name": "Gift",
+"cat": "social"
+},
+{
+"slug": "girl",
+"name": "Girl",
+"cat": "user"
+},
+{
+"slug": "glass",
+"name": "Glass",
+"cat": "misc"
+},
+{
+"slug": "gym",
+"name": "Gym",
+"cat": "misc"
+},
+{
+"slug": "headphone",
+"name": "Headphone",
+"cat": "media"
+},
+{
+"slug": "heart",
+"name": "Heart",
+"cat": "user"
+},
+{
+"slug": "key",
+"name": "Key",
+"cat": "finance"
+},
+{
+"slug": "lab",
+"name": "Lab",
+"cat": "misc"
+},
+{
+"slug": "link",
+"name": "Link",
+"cat": "social"
+},
+{
+"slug": "location",
+"name": "Location",
+"cat": "social"
+},
+{
+"slug": "lock",
+"name": "Lock",
+"cat": "finance"
+},
+{
+"slug": "locker",
+"name": "Locker",
+"cat": "finance"
+},
+{
+"slug": "magic-trick",
+"name": "Magic Trick",
+"cat": "misc"
+},
+{
+"slug": "mail",
+"name": "Mail",
+"cat": "document"
+},
+{
+"slug": "map-pin",
+"name": "Map Pin",
+"cat": "social"
+},
+{
+"slug": "medal",
+"name": "Medal",
+"cat": "user"
+},
+{
+"slug": "megaphone",
+"name": "Megaphone",
+"cat": "media"
+},
+{
+"slug": "mic",
+"name": "Mic",
+"cat": "media"
+},
+{
+"slug": "mobile",
+"name": "Mobile",
+"cat": "media"
+},
+{
+"slug": "money",
+"name": "Money",
+"cat": "money"
+},
+{
+"slug": "money-bag",
+"name": "Money Bag",
+"cat": "money"
+},
+{
+"slug": "moon",
+"name": "Moon ",
+"cat": "icons"
+},
+{
+"slug": "music",
+"name": "Music ",
+"cat": "icons"
+},
+{
+"slug": "new-folder",
+"name": "New Folder ",
+"cat": "icons"
+},
+{
+"slug": "next",
+"name": "Next",
+"cat": "player"
+},
+{
+"slug": "notebook",
+"name": "Notebook ",
+"cat": "icons"
+},
+{
+"slug": "notify-heart",
+"name": "Notify Heart ",
+"cat": "icons"
+},
+{
+"slug": "paint-brush",
+"name": "Paint Brush",
+"cat": "art"
+},
+{
+"slug": "paint-kit",
+"name": "Paint Kit",
+"cat": "a"
+},
+{
+"slug": "pause",
+"name": "Pause",
+"cat": "player"
+},
+{
+"slug": "pencil",
+"name": "Pencil ",
+"cat": "icons"
+},
+{
+"slug": "phone-end",
+"name": "Phone End",
+"cat": "phone"
+},
+{
+"slug": "phone-incoming",
+"name": "Phone Incoming",
+"cat": "phone"
+},
+{
+"slug": "phone-missing",
+"name": "Phone Missing",
+"cat": "phone"
+},
+{
+"slug": "phone-only",
+"name": "Phone Only",
+"cat": "phone"
+},
+{
+"slug": "phone-outgoing",
+"name": "Phone Outgoing",
+"cat": "phone"
+},
+{
+"slug": "phone-ringing",
+"name": "Phone Ringing",
+"cat": "phone"
+},
+{
+"slug": "picture",
+"name": "Picture ",
+"cat": "icons"
+},
+{
+"slug": "pin",
+"name": "Pin ",
+"cat": "icons"
+},
+{
+"slug": "play",
+"name": "Play",
+"cat": "player"
+},
+{
+"slug": "plus",
+"name": "Plus",
+"cat": "at"
+},
+{
+"slug": "pound",
+"name": "Pound",
+"cat": "money-coin"
+},
+{
+"slug": "puzzle",
+"name": "Puzzle ",
+"cat": "icons"
+},
+{
+"slug": "rocket",
+"name": "Rocket ",
+"cat": "icons"
+},
+{
+"slug": "roll-brush",
+"name": "Roll Brush ",
+"cat": "icons"
+},
+{
+"slug": "rupee",
+"name": "Rupee",
+"cat": "money-coin"
+},
+{
+"slug": "scissor",
+"name": "Scissor ",
+"cat": "icons"
+},
+{
+"slug": "setting",
+"name": "Setting ",
+"cat": "icons"
+},
+{
+"slug": "sheild",
+"name": "Sheild ",
+"cat": "icons"
+},
+{
+"slug": "sphere",
+"name": "Sphere ",
+"cat": "icons"
+},
+{
+"slug": "star",
+"name": "Star ",
+"cat": "icons"
+},
+{
+"slug": "sun",
+"name": "Sun ",
+"cat": "icons"
+},
+{
+"slug": "takeaway-cup",
+"name": "Takeaway Cup ",
+"cat": "icons"
+},
+{
+"slug": "target",
+"name": "Target ",
+"cat": "icons"
+},
+{
+"slug": "tea-cup",
+"name": "Tea Cup ",
+"cat": "icons"
+},
+{
+"slug": "text",
+"name": "Text",
+"cat": "at"
+},
+{
+"slug": "thumb-down",
+"name": "Thumb Down ",
+"cat": "icons"
+},
+{
+"slug": "thumb-up",
+"name": "Thumb Up ",
+"cat": "icons"
+},
+{
+"slug": "tick",
+"name": "Tick",
+"cat": "at"
+},
+{
+"slug": "toggle",
+"name": "Toggle ",
+"cat": "icons"
+},
+{
+"slug": "tool",
+"name": "Tool ",
+"cat": "icons"
+},
+{
+"slug": "trash-can",
+"name": "Trash Can ",
+"cat": "icons"
+},
+{
+"slug": "travel",
+"name": "Travel ",
+"cat": "icons"
+},
+{
+"slug": "trophy",
+"name": "Trophy ",
+"cat": "icons"
+},
+{
+"slug": "umbrella",
+"name": "Umbrella ",
+"cat": "icons"
+},
+{
+"slug": "video-camera",
+"name": "Video Camera ",
+"cat": "icons"
+},
+{
+"slug": "wallet",
+"name": "Wallet ",
+"cat": "icons"
+},
+{
+"slug": "wifi",
+"name": "Wifi ",
+"cat": "icons"
+},
+{
+"slug": "yuan",
+"name": "Yuan",
+"cat": "money-coin"
+},
+{
+"slug": "zoom",
+"name": "Zoom ",
+"cat": "icons"
+}
+]

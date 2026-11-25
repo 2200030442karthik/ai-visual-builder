@@ -1,0 +1,77 @@
+SUPERSEDED (V10.21.1, 17 Nov 2026): patch_altdesign.py now builds this change into a COPY of the add-in automatically
+(form code + class ThumbClick; Module1 with the licence check and LicenseForm verified identical). The package uses it
+only with build-slsd-package.ps1 -NumberedGallery until it passes the real-PowerPoint check (docs/V10.21.1-POWERPOINT-CHECKS.md, B).
+The text below is kept as the design record.
+
+SL SMART DESIGN - ALTERNATIVE DESIGN: NUMBERED, CLEARER SELECTION (V10.21 PROPOSAL, NOT APPLIED)
+==============================================================================================
+
+Who applies it: the SL Smart Design owner, in the source the current .ppam is saved from. The AI Visual Builder
+project does not change the company add-in: the VBA project, its licensing and its distribution stay with the owner.
+Reviewed read-only: DynamicTemplateSelectorForm.frm (the V10.18 export). Line numbers below refer to that export.
+
+What it changes (form only; the licence check, OKButton_Click and the template insertion stay exactly as they are)
+  1. Every design shows its number:      "  1   Select"  ->  "Design 1", "Design 2", ...
+  2. The selected design is outlined:    the chosen thumbnail gets a 2.25 pt blue border; the others none.
+  3. Clicking the thumbnail selects it:  today only the small option button does.
+  4. The title shows the count:          "Alternative Design - 12 designs (scroll for more)".
+
+Patch
+-----
+A. New class module, name it  ThumbClick :
+
+    Option Explicit
+    Public WithEvents Img As MSForms.Image
+    Public Opt As MSForms.OptionButton
+    Private Sub Img_Click()
+        Opt.Value = True            ' picks the design; the form's own Change handling below outlines it
+    End Sub
+
+B. DynamicTemplateSelectorForm, declarations (top of the module):
+
+    Private thumbs As New Collection
+
+C. In the loop that builds the gallery (export lines 145-150), replace
+
+        radioButton.Caption = " Select"
+
+   with
+
+        radioButton.Caption = " Design " & i
+        radioButton.Font.Bold = True
+        Dim tc As ThumbClick
+        Set tc = New ThumbClick
+        Set tc.Img = imageControl
+        Set tc.Opt = radioButton
+        thumbs.Add tc
+
+D. After the loop (after "actualTemplateCount = i - 1", export line 157):
+
+        Me.Caption = "Alternative Design - " & actualTemplateCount & " designs" & _
+                     IIf(actualTemplateCount > controlsPerRow * 2, " (scroll for more)", "")
+
+E. Outline the chosen design. Option buttons made at run time raise no form events, so the outline is refreshed from
+   the class: add to ThumbClick
+
+    Public Sub Outline()
+        Dim t As Object
+        For Each t In DynamicTemplateSelectorForm.ThumbList
+            t.Img.BorderStyle = IIf(t.Opt.Value, fmBorderStyleSingle, fmBorderStyleNone)
+            t.Img.BorderColor = RGB(0, 102, 204)
+        Next t
+    End Sub
+
+   and call  Outline  at the end of Img_Click. Also add a Public WithEvents Opt and its Opt_Click calling Outline, in
+   place of the plain "Public Opt" in A. In the form, expose the list:
+
+    Public Function ThumbList() As Collection
+        Set ThumbList = thumbs
+    End Function
+
+Test (owner, on a copy of the .pptm): open Alternative Design on a slide with 4 points. Each thumbnail shows
+"Design n". Clicking a thumbnail selects its button and outlines it. OK inserts the same template as before. Cancel
+changes nothing. The licence message is unchanged after the expiry date.
+
+Why the AI Visual Builder side already has this: the panel's own design gallery (V10.21) numbers every design
+("Design n of N"), outlines the selected one, and moves with the arrow keys. That gallery is Office.js, so it can be
+changed here. The VBA form cannot.

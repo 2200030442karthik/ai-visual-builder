@@ -348,6 +348,29 @@ function conceptModel(text, heading) {
     if (help && !AUX_WORD.test(help[1]) && (m = cleanNP(help[2].split(/\s+/), 3))) add(`${help[1].toLowerCase()} ${m}`, sent);
     if (concepts.length === before && sent !== definition) context.push(sent);
   });
+  // 10.21.1: sentences about kinds of one thing ("Supervised learning ...", "In unsupervised learning, ...", "Reinforcement
+  // learning ...") - their subjects share a head noun. Each kind is an idea with its whole sentence (nothing reworded); a
+  // first sentence about the general term ("Machine learning lets ...") is the topic.
+  const subj = sent => { const s = sent.replace(/[.!]+$/, '');
+    const pre = /^(?:in|with|for|during|under)\s+([^,]{3,60}),\s/i.exec(s); if (pre) return stripArticle(pre[1]);
+    const m = /^(.{3,60}?)\s+(?:is|are|was|were|lets?|finds?|trains?|uses?|helps?|allows?|enables?|learns?|groups?|predicts?|works?|refers?|means|involves?|focuses?|relies?|requires?|creates?|builds?|provides?|gives?|makes?|takes?|stores?|runs?|has|have|can|stands?|describes?|measures?|protects?|connects?|automates?|manages?)\b/i.exec(s);
+    return m && wordCount(m[1]) <= 4 && !PRONOUN.test(m[1]) ? stripArticle(m[1]) : ''; };
+  const subs = body.map(subj), headOf = x => x.toLowerCase().split(/\s+/).pop(), byHead = {};
+  subs.forEach((x, i) => { if (x && wordCount(x) >= 2) (byHead[headOf(x)] = byHead[headOf(x)] || []).push(i); });
+  // kinds differ in what comes before the shared noun, and not only in its form ("Educational content" and
+  // "Education-focused content" are one thing said twice, not two kinds); the topic itself is not one of its kinds
+  const mod = x => x.toLowerCase().split(/\s+/).slice(0, -1).join(' ').replace(/[^a-z]/g, '').slice(0, 5);
+  const isTopic = x => topic && x.toLowerCase().replace(/[^a-z]/g, '') === topic.toLowerCase().replace(/[^a-z]/g, '');
+  let kinds = Object.values(byHead).map(ix => ix.filter(i => !isTopic(subs[i])))
+    .filter(ix => ix.length >= 2 && new Set(ix.map(i => mod(subs[i]))).size === ix.length).sort((a, b) => b.length - a.length)[0] || [];
+  if (kinds[0] === 0 && kinds.length >= 3) { topic = topic || cap1(subs[0]); kinds = kinds.slice(1); }
+  if (kinds.length >= 2) {
+    const keep = new Set(kinds);
+    concepts.length = 0;
+    kinds.forEach(i => concepts.push({ label: cap1(subs[i]), detail: '', source: body[i], members: [], kind: true }));
+    context.length = 0; body.forEach((b, i) => { if (!keep.has(i) && b !== definition) context.push(b); });
+    if (!definition && body[0] && !keep.has(0)) definition = body[0];
+  }
   topic = topic || (heading && wordCount(heading) <= 6 ? heading : '');
   if (concepts.length < 2) return null;
   return { topic, definition, concepts, context };
@@ -382,7 +405,10 @@ function recordModel(text) {
     if (!rec.title && !rec.fields.length && wordCount(l) <= 8 && !/[.!?]$/.test(l)) { rec.title = l; continue; }
     return null;
   }
-  return rec.fields.length >= 3 ? rec : null;
+  // 10.24: a record holds data ("Project ID: V10_TEST_2026", "Owner: Priya", "Price: ₹5,499.50"); points with their
+  // descriptions ("Data collection: gather raw data from sources") are a list of concepts, drawn by every layout
+  const data = f => /[\d@#$%₹€£=_()\\/]/.test(f.value) || wordCount(f.value) <= 2;
+  return rec.fields.length >= 3 && rec.fields.filter(data).length * 2 >= rec.fields.length ? rec : null;
 }
 /* A record drawn natively in R: 'pairs' (a coloured key beside its value, two columns), 'table' (one row per field) or
    'cards' (a card per field); lists as a band of cards under it (or beside a table). Every value exactly as written,

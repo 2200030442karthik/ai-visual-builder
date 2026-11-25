@@ -9,6 +9,13 @@
      - readable text: #404040 on light fills, white only on the dark neutral */
 const BRAND = { palette: TEMPLATE.accents.slice(), neutrals: TEMPLATE.neutrals.slice(), font: TEMPLATE.font, minPt: TEMPLATE.minBody, ink: TEMPLATE.text };
 const APPROVED = new Set(BRAND.palette.concat(BRAND.neutrals));
+/* 10.17: soft tints - one light tint of each palette colour for card and panel fills (the pastel cards of AI
+   infographics). Off unless the administrator allows them (config.json "soft_tints": true, sent with /api/status, or
+   TEMPLATE.softTints); when off, a tint becomes the light panel grey as before. Text and objects never use them. */
+const SOFT_T = 0.84;
+const SOFT_SET = new Set(BRAND.palette.map(c => tint(c, SOFT_T)));
+const softTints = () => !!(TEMPLATE.softTints || (typeof state !== 'undefined' && state && state.svc && state.svc.brand && state.svc.brand.soft_tints));
+const approved = (c, k) => APPROVED.has(c) || (k === 'fill' && softTints() && SOFT_SET.has(c));
 // Shapes never become #404040 (that is the text colour; dark filled graphics read as silhouettes, LVC guidelines p. 53).
 const NEAREST = BRAND.palette.concat(['#D9D9D9', '#7F7F7F']);
 
@@ -39,6 +46,37 @@ function brandColor(c) {
 }
 const readableOn = fill => fill && luminance(fill) <= 0.22 ? '#FFFFFF' : BRAND.ink;
 
+/* 10.19: LVC sentence case for labels written in Title Case ("What You Learn" -> "What you learn"). Kept as written:
+   the first word, acronyms (AI, SEO), words with inner capitals or digits (ChatGPT, IaaS, H2O), and every word the
+   source text itself capitalises in mid-sentence (names: Python, Kubernetes, TikTok) - see brandSource. A text that is
+   not Title Case (a sentence, a single word) is not changed. */
+BRAND.headPt = 24;
+let BRAND_KEEP = new Set();
+function brandSource(text) {
+  const keep = new Set();
+  String(text || '').split(/(?<=[.!?:;\n])\s*/).forEach(s => {
+    if (sentenceCase(s, true) !== s) return;                                   // a Title Case heading says nothing about names
+    s.trim().split(/\s+/).slice(1).forEach(w => { const c = w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9+#]+$/g, ''); if (/^[A-Z]/.test(c)) keep.add(c.toLowerCase()); });
+  });
+  BRAND_KEEP = keep;
+}
+const SMALL = /^(?:a|an|and|as|at|but|by|for|from|in|into|of|on|or|over|the|to|via|vs|with)$/i;
+function sentenceCase(t, probe) {
+  const s = String(t);
+  if (/\n/.test(s) || (!probe && s.length > 80)) return s;
+  const words = s.split(/(\s+)/), real = words.filter(w => /[A-Za-z]/.test(w));
+  if (real.length < 2) return s;
+  const caps = real.slice(1).filter(w => /^[A-Z][a-z]/.test(w.replace(/^[^A-Za-z]+/, ''))).length, big = real.slice(1).filter(w => !SMALL.test(w.replace(/[^A-Za-z]/g, ''))).length;
+  if (!big || caps < Math.max(1, Math.ceil(big * 0.6))) return s;            // not Title Case
+  let first = true;
+  return words.map(w => {
+    if (!/[A-Za-z]/.test(w)) return w;
+    const core = w.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9+#]+$/g, '');
+    if (first) { first = false; return w; }
+    if (/^[A-Z][a-z]+$/.test(core) && (probe || !BRAND_KEEP.has(core.toLowerCase()))) return w.replace(core, core.toLowerCase());
+    return w;                                                                  // AI, ChatGPT, IaaS, names from the text
+  }).join('');
+}
 /* One primitive in the standard, or null (an outline-only decoration inside an icon). stats counts the corrections. */
 function brandPrim(p, stats) {
   const q = Object.assign({}, p);
@@ -48,7 +86,7 @@ function brandPrim(p, stats) {
     return q;
   }
   if (q.t === 'image') return q;                       // pictures are made in the standard where they are made
-  ['fill', 'line', 'color'].forEach(k => { if (q[k] && k !== 'color' && !APPROVED.has(q[k])) { q[k] = brandColor(q[k]); stats.recolored++; } });
+  ['fill', 'line', 'color'].forEach(k => { if (q[k] && k !== 'color' && !approved(q[k], q.cmp ? 'part' : k)) { q[k] = brandColor(q[k]); stats.recolored++; } });
   if (q.t === 'line' && q.color && !APPROVED.has(q.color)) { q.color = brandColor(q.color); stats.recolored++; }
   if (q.grp && q.t === 'shape') {                      // a part of a pictorial icon: flat and filled
     if (!q.fill && q.line) { if (q.dash) { stats.outlines++; return null; } q.fill = q.line; stats.outlines++; }
@@ -67,6 +105,11 @@ function brandPrim(p, stats) {
   if (q.text != null && String(q.text).trim()) {
     q.color = q.t === 'shape' && q.fill ? readableOn(q.fill) : BRAND.ink;
     q.font = BRAND.font;
+    // 10.19: LVC type scale - headings 24 pt, everything else 22 pt (never larger, never in between)
+    // only ever down (a layout measured at its size never overflows): above 24 -> 24, between 22 and 24 -> 22
+    if (q.size > BRAND.minPt && q.size !== BRAND.headPt) { q.size = q.size > BRAND.headPt ? BRAND.headPt : BRAND.minPt; stats.sized = (stats.sized | 0) + 1; }
+    // sentence case is applied to the plan's labels where the plan is made (napkin.js planFromPrep, sections.js
+    // sectionsPlan), so every layout and every content check sees the same words; exact values are never changed
     if (!(q.size >= BRAND.minPt)) {
       q.size = BRAND.minPt; stats.raised++;
       const r = q.t === 'text' ? q : textRect(q.g, q.x, q.y, q.w, q.h);

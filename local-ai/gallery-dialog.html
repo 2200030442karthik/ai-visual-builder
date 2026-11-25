@@ -1,0 +1,162 @@
+<!doctype html>
+<!-- AI Visual Builder 10.16 - the large gallery: an Office dialog opened by the panel (app.js appLarge), in the spirit of
+     SL Smart Design's Alternative Design popup. It shows the panel's designs large, with a big preview on hover, and
+     sends the user's choice back to the panel (Office messageParent), which inserts it into PowerPoint. It reads the
+     designs from the panel host with the key in its address (server.py gallery_get) and never talks to PowerPoint. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SL Editor - designs</title>
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+  :root { --ink: #262626; --mute: #5f5f5f; --line: #dcdcdc; --sel: #1f6fb2; --bg: #f6f6f6; --card: #fff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); background: var(--bg); }
+  body { display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: #fff; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; white-space: nowrap; }
+  header .count { color: var(--mute); font-size: 13px; }
+  .chips { display: flex; gap: 5px; flex-wrap: nowrap; flex: 1 1 300px; min-width: 0; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
+  .chips button { white-space: nowrap; padding: 2px 10px !important; font-size: 12px !important; }
+  .chips button { border: 1px solid var(--line); background: #fff; border-radius: 14px; padding: 3px 11px; font-size: 12.5px; cursor: pointer; color: var(--ink); }
+  .chips button.sel { background: var(--sel); border-color: var(--sel); color: #fff; }
+  .chips .sep { font-size: 12px; color: var(--mute); margin: 0 2px 0 10px; align-self: center; border-left: 1px solid var(--line); padding-left: 10px; }
+  .chips button.src i { font-style: normal; opacity: .7; font-size: 11px; }
+  header { box-shadow: inset 0 3px 0 #3645A9; }
+  .card { transition: box-shadow .15s, transform .15s, border-color .15s; }
+  .card:hover { transform: translateY(-2px); }
+  .card .t { background: #fbfcfe; }
+  .tag { border-radius: 10px !important; padding: 1px 8px !important; }
+  .acts { display: flex; gap: 8px; }
+  button.b { border: 1px solid #b9b9b9; background: #fff; border-radius: 4px; padding: 6px 13px; font-size: 13px; cursor: pointer; color: var(--ink); }
+  button.b:hover:not(:disabled) { background: #f0f0f0; }
+  button.b.primary { background: var(--sel); border-color: var(--sel); color: #fff; font-weight: 600; }
+  button.b:disabled { opacity: .5; cursor: default; }
+  main { flex: 1; overflow-y: auto; padding: 12px 14px; background: #f4f6fa; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+  .card { background: var(--card); border: 2px solid transparent; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.12); padding: 8px; cursor: pointer; text-align: left; font: inherit; color: inherit; }
+  .card:hover { box-shadow: 0 3px 10px rgba(0,0,0,.18); }
+  .card.sel { border-color: var(--sel); }
+  .card { position: relative; }
+  .card .no { display: none; }
+  .card.sel .no { background: var(--sel); }
+  .card.sel::after { content: "\2713  Selected"; position: absolute; top: 12px; right: 12px; padding: 0 8px; height: 24px; border-radius: 12px; background: var(--sel); color: #fff; font-size: 12px; font-weight: 600; line-height: 24px; }
+  .card:focus-visible { outline: 2px solid var(--sel); outline-offset: 2px; }
+  .card .t { aspect-ratio: 1103 / 459; background: #fff; border: 1px solid #eee; border-radius: 4px; overflow: hidden; }
+  .card .t svg { width: 100%; height: 100%; display: block; }
+  .card .n { font-weight: 600; font-size: 13px; margin: 6px 2px 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card { border-radius: 10px !important; box-shadow: 0 1px 2px rgba(20,30,60,.08) !important; }
+  .card:hover { box-shadow: 0 6px 16px rgba(20,30,60,.14) !important; }
+  .card .m { font-size: 12px; color: var(--mute); margin: 0 2px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .tag { border-radius: 3px; padding: 0 6px; font-size: 11px; background: #e8f3e8; color: #23662a; }
+  .tag.ai { background: #ece8f6; color: #4b3b8f; }
+  .tag.part { background: #fdf0dc; color: #8a5a00; }
+  .tag.src { margin-left: 4px; font-weight: 600; }
+  .tag.src.claude { background: #fbe9e1; color: #a1431c; }
+  .tag.src.napkin { background: #e3f0fa; color: #1d5f8f; }
+  .tag.src.builtin { background: #eeeeee; color: #4a4a4a; }
+  footer { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: #fff; border-top: 1px solid var(--line); }
+  #note { flex: 1; font-size: 13px; color: var(--mute); }
+  #note.err { color: #a4262c; }
+  .spin { width: 14px; height: 14px; border: 2px solid #c8c8c8; border-top-color: var(--sel); border-radius: 50%; display: inline-block; animation: s 0.8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+  @keyframes s { to { transform: rotate(360deg); } }
+  #big { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.98); width: min(620px, 52vw); background: #fff; border-radius: 10px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.28); padding: 14px; pointer-events: none; opacity: 0; transition: opacity .12s, transform .12s; z-index: 5; }
+  #big.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  #big .t svg { width: 100%; height: auto; display: block; }
+  #big .n { font-weight: 600; font-size: 16px; margin-top: 8px; }
+  #big .m { font-size: 13px; color: var(--mute); }
+  .empty { color: var(--mute); padding: 40px; text-align: center; }
+</style></head>
+<body>
+<header>
+  <h1>Choose a design</h1><span class="count" id="count"></span>
+  <div class="chips" id="chips"></div>
+  <div class="acts"><button class="b" id="more" type="button">More visuals</button><button class="b" id="slides" type="button">Several slides</button>
+    <button class="b" id="edit" type="button">Edit a visual</button><button class="b" id="close" type="button">Close</button></div>
+</header>
+<main><div class="grid" id="grid"></div><div class="empty" id="empty" hidden>Loading the designs…</div></main>
+<footer><span id="note"></span><button class="b" id="insertNew" type="button" disabled title="Insert it on a new slide after the selected one">Insert on a new slide</button><button class="b primary" id="insert" type="button" disabled>Insert</button></footer>
+<div id="big" role="tooltip"></div>
+<script>
+(() => {
+  const K = new URLSearchParams(location.search).get('k') || '', $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const G = { v: -1, d: null, sel: -1, filter: 'All', src: 'All', hoverT: 0, open: false };
+  // to the panel: Office's dialog channel; a plain browser window (preview) posts to the window that opened it, a frame
+  // inside the panel (tests) to its parent
+  const send = m => { const s = JSON.stringify(m);
+    try { if (window.Office && Office.context && Office.context.ui && Office.context.ui.messageParent) { Office.context.ui.messageParent(s); return; } } catch (e) { /* not in Office */ }
+    const to = window.opener || (window.parent !== window ? window.parent : null);
+    if (to) to.postMessage({ aivbGallery: s }, location.origin); };
+  if (window.Office && Office.onReady) Office.onReady(() => {});
+  async function load() {
+    try {
+      const r = await fetch('/api/gallery?k=' + encodeURIComponent(K), { cache: 'no-store', headers: { 'X-AIVB-Client': '1' } });
+      const d = await r.json();
+      if (!r.ok) { $('empty').hidden = false; $('empty').textContent = d.error || 'The designs are not available.'; return; }
+      if (d.v !== G.v) { G.v = d.v; G.d = d; G.sel = d.sel; render(); } else { G.d.note = d.note; G.d.busy = d.busy; G.d.err = d.err; G.d.sel = d.sel; }
+      status();
+    } catch (e) { $('note').textContent = 'The panel host is not answering.'; }
+  }
+  function render() {
+    const L = G.d.items, cats = ['All'].concat([...new Set(L.map(c => c.category))]);
+    if (!cats.includes(G.filter)) G.filter = 'All';
+    $('count').textContent = L.length ? `${L.length} design${L.length > 1 ? 's' : ''}, best first` : '';
+    // 10.24: where the designs come from (Built-in, Claude, Napkin): a second filter when more than one source gave designs
+    const srcs = [...new Set(L.map(c => c.srcName).filter(Boolean))];
+    if (G.src !== 'All' && !srcs.includes(G.src)) G.src = 'All';
+    $('chips').innerHTML = '' +      // 10.25: no category filter; only where the designs come from
+      (srcs.length > 1 ? '<span class="sep">From</span>' + ['All'].concat(srcs).map(k => `<button type="button" class="src${k === G.src ? ' sel' : ''}" data-s="${esc(k)}">${esc(k)}${k === 'All' ? '' : ` <i>${L.filter(c => c.srcName === k).length}</i>`}</button>`).join('') : '');
+    $('chips').querySelectorAll('button[data-k]').forEach(b => b.addEventListener('click', () => { G.filter = b.dataset.k; render(); }));
+    $('chips').querySelectorAll('button[data-s]').forEach(b => b.addEventListener('click', () => { G.src = b.dataset.s; render(); }));
+    const shown = L.filter(c => (G.filter === 'All' || c.category === G.filter) && (G.src === 'All' || c.srcName === G.src));
+    $('empty').hidden = !!L.length; if (!L.length) $('empty').textContent = 'No designs yet. Press Generate visuals in the panel.';
+    $('grid').innerHTML = shown.map(c => `<button type="button" class="card${c.i === G.sel ? ' sel' : ''}" data-i="${c.i}" aria-pressed="${c.i === G.sel}" aria-label="Design ${c.i + 1} of ${L.length}: ${esc(c.name)}">` +
+      `<span class="no">${c.i + 1}</span><div class="t">${c.svg}</div><div class="n">${esc(c.name)}</div><div class="m">${c.slides > 1 ? `${c.slides} slides · ` : ''}` +
+      ` <span class="tag${c.edit === 'full' ? '' : ' part'}">${c.edit === 'full' ? 'Editable' : 'Partly editable'}</span>${c.srcName ? `<span class="tag src ${esc(c.src)}" title="${esc(c.srcWhy || '')}">${esc(c.srcName)}</span>` : c.ai ? '<span class="tag ai">AI-designed</span>' : ''}</div></button>`).join('');
+    $('grid').querySelectorAll('.card').forEach(b => {
+      b.addEventListener('click', () => pick(+b.dataset.i));
+      b.addEventListener('dblclick', () => { pick(+b.dataset.i); insert(); });
+      b.addEventListener('pointerenter', e => { if (e.pointerType !== 'touch') hover(b); });
+      b.addEventListener('pointerleave', unhover);
+    });
+    buttons();
+  }
+  function pick(i) { G.sel = i; document.querySelectorAll('.card').forEach(b => { const on = +b.dataset.i === i; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on); }); buttons(); send({ action: 'select', i }); }
+  function insert() { if (G.sel < 0 || (G.d && G.d.busy)) return; send({ action: 'insert', i: G.sel }); $('note').textContent = 'Inserting…'; }
+  function hover(b) { clearTimeout(G.hoverT); G.hoverT = setTimeout(() => { const c = G.d.items.find(x => x.i === +b.dataset.i); if (!c) return;
+    $('big').innerHTML = `<div class="t">${c.svg}</div><div class="n">${esc(c.name)}</div><div class="m">${c.edit === 'full' ? 'every shape and text editable in PowerPoint' : 'editable shapes and text; some icons are pictures'}${c.srcWhy ? ' · ' + esc(c.srcWhy) : c.ai ? ' · designed by AI' : ''}</div>`;
+    const r = b.getBoundingClientRect(), big = $('big');
+    // beside the card when there is room, so the card stays visible; else centred
+    big.style.left = r.left + r.width / 2 < innerWidth / 2 ? Math.min(innerWidth - big.offsetWidth / 2 - 10, r.right + 14 + big.offsetWidth / 2) + 'px' : Math.max(big.offsetWidth / 2 + 10, r.left - 14 - big.offsetWidth / 2) + 'px';
+    big.classList.add('on'); }, G.open ? 0 : 160); }
+  function unhover() { clearTimeout(G.hoverT); $('big').classList.remove('on'); }
+  function buttons() { const c = G.d && G.d.items.find(x => x.i === G.sel), busy = !!(G.d && G.d.busy);
+    $('insert').disabled = !c || busy; $('insertNew').disabled = !c || busy; $('insert').textContent = c ? `Insert “${c.name}”` : 'Insert'; $('more').disabled = busy || !(G.d && G.d.items.length); }
+  function status() { const d = G.d; if (!d) return; $('note').innerHTML = (d.busy ? '<span class="spin"></span>' : '') + esc(d.note || (d.items.length ? 'Rest the pointer on a design to see it large. Double-click to insert it.' : ''));
+    $('note').classList.toggle('err', !!d.err); buttons(); }
+  $('insert').addEventListener('click', insert);
+  $('insertNew').addEventListener('click', () => { if (G.sel < 0 || (G.d && G.d.busy)) return; send({ action: 'insertNew', i: G.sel }); $('note').textContent = 'Inserting on a new slide…'; });
+  $('more').addEventListener('click', () => { send({ action: 'more' }); $('note').textContent = 'Designing more visuals…'; });
+  $('slides').addEventListener('click', () => send({ action: 'slides' }));
+  $('edit').addEventListener('click', () => send({ action: 'edit' }));
+  $('close').addEventListener('click', () => send({ action: 'close' }));
+  // 10.21: arrow keys move the selection through the numbered designs shown (Home / End: first / last); Enter inserts it
+  function arrow(e) {
+    const cards = [...document.querySelectorAll('.card')]; if (!cards.length) return false;
+    let at = cards.findIndex(b => +b.dataset.i === G.sel); if (at < 0) at = cards.indexOf(document.activeElement);
+    const row = Math.max(1, cards.filter(b => b.offsetTop === cards[0].offsetTop).length);
+    const to = e.key === 'Home' ? 0 : e.key === 'End' ? cards.length - 1 : at < 0 ? 0
+      : Math.min(cards.length - 1, Math.max(0, at + ({ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -row, ArrowDown: row })[e.key]));
+    cards[to].focus(); cards[to].scrollIntoView({ block: 'nearest' }); unhover(); if (+cards[to].dataset.i !== G.sel) pick(+cards[to].dataset.i);
+    return true;
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') unhover();
+    if (/^(Arrow(Left|Right|Up|Down)|Home|End)$/.test(e.key) && !(e.target && e.target.closest && e.target.closest('.chips, .acts, footer')) && arrow(e)) { e.preventDefault(); return; }
+    if (e.key === 'Enter' && G.sel >= 0 && !(e.target && e.target.tagName === 'BUTTON' && !e.target.classList.contains('card'))) { e.preventDefault(); insert(); }
+  });
+  addEventListener('scroll', unhover, true);
+  load(); setInterval(load, 1000);
+})();
+</script>
+</body></html>

@@ -137,19 +137,26 @@ const editNote = rec => !rec ? ' (It could not be recorded for later editing.)' 
 /* Draws a plan layout on a slide in R (or the slide's free area) with tags and record; { ids, rec, r }. */
 async function drawPlanVisual(context, slide, plan, key, o) {
   o = o || {};
-  let rect = o.rect;
-  if (!rect) {
-    const fa = freeArea(await readSlide(context, slide));
-    if (!fa.rect || fa.rect.w < 520 || fa.rect.h < 260) throw Object.assign(new Error('full'), { full: true });
-    rect = fa.rect;
+  let rect = o.rect, prims = null, k = 1;
+  const draw = o.density === 'names' ? planNames(plan) : plan;
+  let r;
+  if (rect) {
+    r = planRender(draw, key, rect);
+    if (!r.ok) throw new Error(`the ${r.name || key} layout does not fit the visual's area (${r.why})`);
+    prims = r.prims;
+  } else {
+    // 10.19: the slide's free part (below the slide's own text), laid out there or scaled into it; else a new slide
+    const fit = await fitArea(context, slide);
+    let last = null;
+    const d = fitBuild(fit, R => { const x = planRender(draw, key, R); last = x; return x.ok ? x : null; });
+    r = d; prims = d.prims; rect = d.rect; k = d.k;
+    if (!r.name && last) r.name = last.name;
   }
-  const draw = o.density === 'names' ? planNames(plan) : plan, r = planRender(draw, key, rect);
-  if (!r.ok) throw new Error(`the ${r.name || key} layout does not fit ${o.rect ? "the visual's area" : 'the free part of this slide'} (${r.why})`);
   const meta = o.meta || studioMeta(draw), before = new Set(await shapeIds(context, slide));
-  await drawOnSlide(context, slide, r.prims, r.name, meta);
+  await drawOnSlide(context, slide, prims, r.name, meta);
   const ids = (await shapeIds(context, slide)).filter(x => !before.has(x));
   const rec = o.noRecord ? null : await studioAfterInsert(context, slide, ids, meta, { plan, layout: key, name: r.name, style: r.style, density: o.density || 'full', rect, from: o.from, ver: o.ver });
-  return { ids, rec, r, meta, rect };
+  return { ids, rec, r, meta, rect, k };
 }
 /* A rollback for a failed insertion: the shapes added to `slide` and the slides added to the presentation. */
 async function rollback(context, slide, before, slidesBefore) {
@@ -199,7 +206,8 @@ async function insertDesign() {
   if (!D || !state.inOffice || ST.busy) return;
   if (!(await ensureGate())) return;
   ST.busy = true; studioButtons();
-  const onNew = $('newSlide').checked;
+  const onNew = $('newSlide').checked || !!state.forceNew;
+  state.lastFull = false;
   try {
     let got = null;
     await PowerPoint.run(async context => {
@@ -210,16 +218,31 @@ async function insertDesign() {
       const slidesBefore = new Set(all.items.map(x => x.id));
       let slide = sel.getItemAt(0), before = null;
       try {
-        if (onNew) slide = await newSlideAfter(context, slide, D.full.title || '');
+        if (onNew) slide = await newSlideAfter(context, slide, (D.parts ? D.parts[0].plan.title : D.full.title) || '');
         slide.load('id');
         before = new Set(await shapeIds(context, slide));
-        const plan = Object.assign({}, D.full, { style: D.r.style });
-        got = await drawPlanVisual(context, slide, plan, D.r.key, { density: D.density, from: D.from });
-        state.lastInsert = { slideId: slide.id, ids: got.ids, newSlide: onNew, extraSlides: [] };
+        if (D.parts) {
+          // 10.19: a design in two parts - the first here (the slide's free part), the second on a new slide after it
+          got = await drawPlanVisual(context, slide, Object.assign({}, D.parts[0].plan, { style: D.parts[0].r.style }), D.parts[0].r.key, { density: 'full', from: D.from });
+          const extra = [];
+          for (const q of D.parts.slice(1)) {
+            const s2 = await newSlideAfter(context, extra.length ? context.presentation.slides.getItem(extra[extra.length - 1]) : slide, q.plan.title || '');
+            s2.load('id'); await context.sync();
+            await drawPlanVisual(context, s2, Object.assign({}, q.plan, { style: q.r.style }), q.r.key, { density: 'full', from: D.from, rect: Object.assign({}, TEMPLATE.contentArea) });
+            extra.push(s2.id);
+          }
+          context.presentation.setSelectedSlides([slide.id]); await context.sync();
+          state.lastInsert = { slideId: slide.id, ids: got.ids, newSlide: onNew, extraSlides: extra, extraWhat: `its continuation slide${extra.length > 1 ? 's' : ''}` };
+        } else {
+          const plan = Object.assign({}, D.full, { style: D.r.style });
+          got = await drawPlanVisual(context, slide, plan, D.r.key, { density: D.density, from: D.from });
+          state.lastInsert = { slideId: slide.id, ids: got.ids, newSlide: onNew, extraSlides: [] };
+        }
       } catch (e) { await rollback(context, slide, onNew ? null : before, slidesBefore); state.lastInsert = null; throw e; }
     });
-    setStatus(`Inserted: ${D.r.name} (${D.density === 'names' ? 'point names only' : 'every point and description'}), editable native shapes, no AI request.${editNote(got.rec)} “Remove last inserted visual” takes it out again.`);
-  } catch (e) { setStatus('Could not insert the design, so nothing was added: ' + (e.full ? 'this slide has no free space. Tick “Insert on a new slide”.' : errText(e)), true); }
+    state.lastFit = got.k || 1;
+    setStatus(`Inserted: ${D.r.name} (${D.parts ? `on ${D.parts.length} slides, every point and description` : D.density === 'names' ? 'point names only' : 'every point and description'}), editable native shapes.${fitNote(got.k || 1)}${editNote(got.rec)} “Remove last inserted visual” takes it out again.`);
+  } catch (e) { state.lastFull = !!e.full; setStatus('Could not insert the design, so nothing was added: ' + (e.full ? 'this slide has no free space for it.' : errText(e)), true); }
   finally { ST.busy = false; studioButtons(); updateButtons(); }
 }
 
@@ -361,8 +384,21 @@ async function selectedVisual(context) {
   if (!id && state.canGroup) for (const s of sel.items) {
     try { const t = s.parentGroup.tags.getItemOrNullObject('AIVB_V'); t.load('value'); await context.sync(); if (!t.isNullObject) { id = t.value; break; } } catch (e) { /* not in a group */ }
   }
-  if (!id) throw Object.assign(new Error('notours'), { notours: true });
-  return { slide, id };
+  if (!id) {   // 10.12.1: the original design of a Napkin result, inserted as one picture
+    const o = sel.items.map(s => { const t = s.tags.getItemOrNullObject('AIVB_O'); t.load('value'); return t; });
+    await context.sync();
+    if (o.some(t => !t.isNullObject)) throw Object.assign(new Error('original'), { original: true });
+    throw Object.assign(new Error('notours'), { notours: true });
+  }
+  // 10.25: one point's shapes selected (its texts carry AIVB_F "<point id>|L/D"): that point is edited on its own
+  let focus = '';
+  try {
+    const ft = sel.items.map(s => { const t = s.tags.getItemOrNullObject('AIVB_F'); t.load('value'); return t; });
+    await context.sync();
+    const ids = [...new Set(ft.filter(t => !t.isNullObject).map(t => String(t.value || '').split('|')[0]).filter(Boolean))];
+    if (ids.length === 1 && cnt.value <= 4) focus = ids[0];
+  } catch (e) { /* the whole visual */ }
+  return { slide, id, focus };
 }
 /* The visual's shapes on the slide (top level) and its texts (inside groups too), as PowerPoint has them now. */
 async function visualParts(context, slide, id) {
@@ -397,7 +433,7 @@ async function editLoad() {
   try {
     let E = null;
     await PowerPoint.run(async context => {
-      const { slide, id } = await selectedVisual(context), rec = await readBlob(context, slide, 'AIVB_R_' + id);
+      const { slide, id, focus } = await selectedVisual(context), rec = await readBlob(context, slide, 'AIVB_R_' + id);
       if (!rec) throw new Error('this visual has no edit record (it was inserted on another PC whose record PowerPoint did not keep on the slide), so it cannot be changed here safely');
       const parts = await visualParts(context, slide, id);
       if (!parts.tops.length) throw new Error("the visual's shapes are no longer on this slide");
@@ -408,7 +444,7 @@ async function editLoad() {
         const [iid, f] = t.field.split('|'), it = rec.plan.items.find(i => i.id === iid), want = f === 'T' ? rec.plan.title : it ? (f === 'L' ? it.label : it.detail) : null;
         if (want != null && normText(t.text) !== normText(want)) hand.push({ iid, f, from: want, to: normText(t.text) });
       });
-      E = { slideId: slide.id, id, rec, hand, texts: parts.texts, prev: await readBlob(context, slide, 'AIVB_P_' + id), moved: parts.bbox && rec.bbox ? Math.hypot(parts.bbox.x - rec.bbox.x, parts.bbox.y - rec.bbox.y) > 2 : false };
+      E = { focus: rec.kind === 'plan' && rec.plan.items.some(i => i.id === focus) ? focus : '', slideId: slide.id, id, rec, hand, texts: parts.texts, prev: await readBlob(context, slide, 'AIVB_P_' + id), moved: parts.bbox && rec.bbox ? Math.hypot(parts.bbox.x - rec.bbox.x, parts.bbox.y - rec.bbox.y) > 2 : false };
     });
     ST.edit = E;
     renderEdit();
@@ -416,11 +452,100 @@ async function editLoad() {
       (E.hand.length ? ` ${E.hand.length} text${E.hand.length > 1 ? 's were' : ' was'} changed by hand in PowerPoint and ${E.hand.length > 1 ? 'are' : 'is'} kept in the form.` : ''));
   } catch (e) {
     ST.edit = null; renderEdit();
-    setStatus(e.notours ? 'The selected object was not inserted by AI Visual Builder 10.12 or later (visuals inserted before 10.12 carry no edit record), so it is not changed here. Edit it directly in PowerPoint, or insert it again from the panel.'
+    setStatus(e.original ? 'This is the provider’s original design, one picture. In PowerPoint, right-click › Convert to Shape makes it shapes; then “Style the selection” above recolours them and replaces their icons.'
+      : e.notours ? 'This visual has no redesign record (inserted before 10.12, or not by this panel). Use “Style the selection” above: it changes the colours, text and icons of any visual.'
       : 'Edit: ' + errText(e), true);
   }
   finally { ST.busy = false; studioButtons(); }
 }
+// Storage and registration for custom icons generated by Claude AI
+const CUSTOM_ICONS_KEY = 'aivb.custom_icons.v1';
+
+function getStoredCustomIcons() {
+  try { return JSON.parse(localStorage.getItem(CUSTOM_ICONS_KEY) || '{}'); }
+  catch (e) { return {}; }
+}
+
+function saveCustomIcon(key, iconData) {
+  try {
+    const all = getStoredCustomIcons();
+    all[key] = iconData;
+    localStorage.setItem(CUSTOM_ICONS_KEY, JSON.stringify(all));
+  } catch (e) { console.warn('Could not save custom icon', e); }
+}
+
+/* 10.24: an AI icon fills its box: Claude may draw in a small part of its 100 x 100 grid, so the parts are scaled
+   together (proportions kept) to fill 6..94 and centred - the icon then grows with the design it is placed in. */
+function fitAIIcon(elements) {
+  const els = (elements || []).filter(e => e && typeof e === 'object');
+  const pts = [];
+  els.forEach(e => { if (e.shape === 'line' || e.x1 !== undefined) pts.push([+e.x1, +e.y1], [+e.x2, +e.y2]); else pts.push([+e.x, +e.y], [+e.x + +e.w, +e.y + +e.h]); });
+  const ok = pts.filter(p => isFinite(p[0]) && isFinite(p[1]));
+  if (!ok.length) return els;
+  const x0 = Math.min(...ok.map(p => p[0])), y0 = Math.min(...ok.map(p => p[1])), x1 = Math.max(...ok.map(p => p[0])), y1 = Math.max(...ok.map(p => p[1]));
+  const k = 88 / Math.max(x1 - x0, y1 - y0, 1), ox = 50 - (x0 + x1) / 2 * k, oy = 50 - (y0 + y1) / 2 * k;
+  if (k < 1.04 && k > 0.96) return els;
+  return els.map(e => e.shape === 'line' || e.x1 !== undefined
+    ? Object.assign({}, e, { x1: ox + e.x1 * k, y1: oy + e.y1 * k, x2: ox + e.x2 * k, y2: oy + e.y2 * k, lineW: (e.lineW || 2) * k })
+    : Object.assign({}, e, { x: ox + e.x * k, y: oy + e.y * k, w: e.w * k, h: e.h * k }));
+}
+function makeAIIconFn(elements) {
+  elements = fitAIIcon(elements);
+  return function (x, y, s, c) {
+    const resolveCol = col => {
+      if (!col || col === 'none') return null;
+      if (col === 'primary') return c;
+      if (col === 'tint') return typeof tint === 'function' ? tint(c, 0.4) : c;
+      if (col === 'shade') return typeof shade === 'function' ? shade(c, 0.3) : c;
+      if (col === 'white') return '#FFFFFF';
+      if (col === 'dark') return '#2B2B2B';
+      if (col === 'coral') return '#E58F6D';
+      if (col === 'gold') return '#DDB945';
+      if (typeof col === 'string' && col.startsWith('#')) return col;
+      return c;
+    };
+    const out = [];
+    (elements || []).forEach(el => {
+      const fill = resolveCol(el.fill);
+      const line = resolveCol(el.line);
+      if (el.shape === 'line' || (el.x1 !== undefined && el.x2 !== undefined)) {
+        const x1 = x + s * (el.x1 / 100), y1 = y + s * (el.y1 / 100);
+        const x2 = x + s * (el.x2 / 100), y2 = y + s * (el.y2 / 100);
+        const w = Math.max(1.5, s * ((el.lineW || 2) / 100));
+        out.push(seg(x1, y1, x2, y2, line || fill || c, w, el.dash ? { dash: true } : {}));
+      } else {
+        const ex = x + s * (el.x / 100), ey = y + s * (el.y / 100);
+        const ew = s * (el.w / 100), eh = s * (el.h / 100);
+        const opts = { fill, line };
+        if (line && line !== 'none') opts.lineW = Math.max(1, s * ((el.lineW || 2) / 100));
+        if (el.rot) opts.rot = el.rot;
+        out.push(box(el.shape || 'roundRect', ex, ey, ew, eh, opts));
+      }
+    });
+    return out;
+  };
+}
+
+function registerCustomIcon(iconData) {
+  if (!iconData || !iconData.name || !Array.isArray(iconData.elements)) return null;
+  const key = iconData.name.startsWith('ai_') ? iconData.name : 'ai_' + iconData.name.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  if (typeof CMP === 'object' && CMP) {
+    CMP[key] = makeAIIconFn(iconData.elements);
+  }
+  if (typeof CMP_NAMES === 'object' && CMP_NAMES) {
+    CMP_NAMES[key] = iconData.label || iconData.name;
+  }
+  return key;
+}
+
+function loadAllCustomIcons() {
+  const all = getStoredCustomIcons();
+  Object.keys(all).forEach(k => {
+    registerCustomIcon(all[k]);
+  });
+}
+loadAllCustomIcons();
+
 const ICON_CHOICES = () => ['none'].concat(Object.keys(typeof CMP === 'object' ? CMP : {}).sort());
 function renderEdit() {
   const E = ST.edit, box = stEl('EditForm');
@@ -430,15 +555,30 @@ function renderEdit() {
   let h = '';
   if (E.rec.kind === 'plan') {
     const hand = (iid, f) => (E.hand.find(x => x.iid === iid && x.f === f) || {}).to;
-    h += `<div class="small"><b>Points</b> (label, description, icon)</div>` + P.items.map((it, k) => `<div class="edrow" data-k="${k}" style="border-top:1px solid var(--line);padding:4px 0">` +
-      `<input type="text" class="edL" value="${esc(hand(it.id, 'L') || it.label)}" aria-label="Label of point ${k + 1}" style="width:100%">` +
-      `<textarea class="edD" rows="2" aria-label="Description of point ${k + 1}" style="width:100%;height:auto;font:inherit">${esc(hand(it.id, 'D') != null ? hand(it.id, 'D') : it.detail || '')}</textarea>` +
-      `<select class="edI" aria-label="Icon of point ${k + 1}">${icons.map(x => `<option${x === (it.icon || 'none') ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></div>`).join('');
+    // 10.25: each point is a card - its label, description and icon (the icon shown, a box to describe a new one, the
+    // library behind a small list); with one point selected on the slide only that point is shown (E.focus)
+    const thumbOf = key => { try { return key && key !== 'none' && CMP[key] ? toSVG(comp(key, 3, 3, 34, accent(0)), 40, 40) : ''; } catch (e) { return ''; } };
+    const fk = E.focus ? P.items.findIndex(i => i.id === E.focus) : -1;
+    h += (fk >= 0 ? `<div class="edfocus">Editing point ${fk + 1} of ${P.items.length} (the part you selected) <button type="button" id="stEdAll">Edit the whole visual</button></div>`
+      : `<div class="small"><b>Points</b> - change a text or an icon, then press Preview change</div>`) +
+      P.items.map((it, k) => `<div class="edrow edcard${fk >= 0 && k !== fk ? ' edhide' : ''}" data-k="${k}">` +
+      `<div class="edhead"><span class="ednum">${k + 1}</span><input type="text" class="edL" value="${esc(hand(it.id, 'L') || it.label)}" aria-label="Label of point ${k + 1}"></div>` +
+      `<textarea class="edD" rows="2" aria-label="Description of point ${k + 1}">${esc(hand(it.id, 'D') != null ? hand(it.id, 'D') : it.detail || '')}</textarea>` +
+      `<div class="edicon"><span class="edthumb" id="aiIconThumb_${k}" title="The icon now">${thumbOf(it.icon)}</span>` +
+        `<div class="edicwrap" id="aiIconPrompt_${k}"><div class="edictitle">Icon</div>` +
+        `<div class="edicrow"><input type="text" class="aiIconInput" id="aiIconInput_${k}" placeholder="Describe it: handshake, rocket, shield…">` +
+          `<button type="button" class="aiIconSubmit" data-k="${k}">Design icon</button>` +
+          `<button type="button" class="aiIconCancel" hidden data-k="${k}">✕</button></div>` +
+        `<details class="ediclib"><summary>or pick from the icon library</summary><select class="edI" aria-label="Icon of point ${k + 1}">${icons.map(x => `<option value="${esc(x)}"${x === (it.icon || 'none') ? ' selected' : ''}>${esc(typeof CMP_NAMES === 'object' && CMP_NAMES[x] ? CMP_NAMES[x] : x)}</option>`).join('')}</select></details>` +
+        `<button type="button" class="btnAiIcon" data-k="${k}" hidden></button>` +
+        `<div class="aiIconLib" id="aiIconLib_${k}"></div>` +
+        `<div class="aiIconStatus" id="aiIconStatus_${k}" hidden></div></div></div>` +
+      `</div>`).join('');
     const st = E.rec.style || {};
-    h += `<div class="viewrow" style="margin-top:6px"><label>Layout <select id="stEdLayout"></select></label></div>` +
+    h += `<div class="edglobal"${fk >= 0 ? ' hidden' : ''}><div class="viewrow" style="margin-top:6px"><label>Layout <select id="stEdLayout"></select></label></div>` +
       `<div class="viewrow"><label>Colours <select id="stEdColour">${PLAN_COLOUR_NAMES.map((c, i) => `<option value="${i}"${i === (st.accent | 0) % 10 ? ' selected' : ''}>start with ${c}</option>`).join('')}</select></label>` +
       `<label>Spacing <select id="stEdSpacing"><option value="fill"${st.spacing !== 'open' ? ' selected' : ''}>fill the area</option><option value="open"${st.spacing === 'open' ? ' selected' : ''}>more white space</option></select></label></div>` +
-      `<div class="viewrow"><label>Text <select id="stEdDensity"><option value="full"${E.rec.density !== 'names' ? ' selected' : ''}>labels and descriptions</option><option value="names"${E.rec.density === 'names' ? ' selected' : ''}>point names only</option></select></label></div>`;
+      `<div class="viewrow"><label>Text <select id="stEdDensity"><option value="full"${E.rec.density !== 'names' ? ' selected' : ''}>labels and descriptions</option><option value="names"${E.rec.density === 'names' ? ' selected' : ''}>point names only</option></select></label></div></div>`;
     if (E.hand.length) h += `<div class="small">Changed by hand in PowerPoint (kept): ${esc(E.hand.map(x => `“${x.from}” → “${x.to}”`).join('; '))}</div>`;
   } else {
     h += `<div class="small"><b>Texts</b> of the visual (each stays in its own shape and size; a text that would no longer fit at its size is refused)</div>` +
@@ -447,8 +587,95 @@ function renderEdit() {
   }
   if (E.moved) h += '<div class="small">The visual was moved on the slide; the edit is drawn where it is now.</div>';
   box.innerHTML = h; box.hidden = false;
+  if (document.getElementById('stEdAll')) document.getElementById('stEdAll').addEventListener('click', () => { E.focus = ''; renderEdit(); });
+  box.querySelectorAll('.edI').forEach((s, k) => s.addEventListener('change', () => { const th = document.getElementById('aiIconThumb_' + k); if (th) { try { th.innerHTML = s.value !== 'none' && CMP[s.value] ? toSVG(comp(s.value, 3, 3, 34, accent(0)), 40, 40) : ''; } catch (e) { /* none */ } } }));
   if (stEl('EdLayout')) fillLayouts();
-  box.querySelectorAll('input,textarea,select').forEach(x => x.addEventListener('change', () => { if (x.id !== 'stEdLayout') fillLayouts(); stEl('EditPreview').hidden = true; }));
+  box.querySelectorAll('input:not(.aiIconInput),textarea,select').forEach(x => x.addEventListener('change', () => { if (x.id !== 'stEdLayout') fillLayouts(); stEl('EditPreview').hidden = true; }));
+
+  // Event handlers for AI Icon Generation
+  box.querySelectorAll('.btnAiIcon').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const k = btn.dataset.k;
+      const wrap = document.getElementById('aiIconPrompt_' + k);
+      if (wrap) {
+        wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+        if (wrap.style.display !== 'none') {
+          const inp = document.getElementById('aiIconInput_' + k), lab = box.querySelectorAll('.edL')[+k];
+          if (inp && !inp.value && lab) inp.value = lab.value.trim();   // 10.24: the point's own words to start from
+          if (inp) { inp.focus(); inp.select(); }
+        }
+      }
+    });
+  });
+
+  box.querySelectorAll('.aiIconCancel').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const k = btn.dataset.k;
+      const wrap = document.getElementById('aiIconPrompt_' + k);
+      if (wrap) wrap.style.display = 'none';
+    });
+  });
+
+  // 10.24: "Find or design an icon" - the library's matching icons first (free, at once), then Claude's own design when
+  // Claude is set up and allowed; each result says where it comes from, and a stand-in is never called Claude's
+  const useIcon = (k, key) => {
+    const sel = box.querySelectorAll('.edI')[+k];
+    if (sel) { if (![...sel.options].some(o => o.value === key)) sel.insertAdjacentHTML('beforeend', `<option value="${esc(key)}">${esc((CMP_NAMES && CMP_NAMES[key]) || key)}</option>`); sel.value = key; }
+    const th = document.getElementById('aiIconThumb_' + k); if (th) th.innerHTML = iconThumb(key);
+    if (P && P.items && P.items[k]) P.items[k].icon = key;
+    fillLayouts(); editPreview();
+  };
+  const iconThumb = key => { try { return toSVG(comp(key, 2, 2, 36, accent(0)), 40, 40); } catch (e) { return ''; } };
+  box.querySelectorAll('.aiIconSubmit').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const k = btn.dataset.k, inp = document.getElementById('aiIconInput_' + k), stat = document.getElementById('aiIconStatus_' + k), lib = document.getElementById('aiIconLib_' + k);
+      const desc = (inp ? inp.value : '').trim();
+      const say = (t, err) => { if (stat) { stat.textContent = t; stat.hidden = false; stat.style.color = err ? 'var(--warn,#a4262c)' : ''; } };
+      if (!desc) { say('Describe the icon first (e.g. "vehicle").', true); return; }
+      // 1. the library
+      const seen = new Set(), found = (typeof conceptScores === 'function' ? conceptScores(desc, '') : []).filter(x => CMP[x.key] && !seen.has(x.key) && seen.add(x.key)).slice(0, 6);
+      if (lib) {
+        lib.innerHTML = found.length ? '<div class="iconSrc">Library icons <span class="badge src builtin">Built-in</span></div>' + found.map(x =>
+          `<button type="button" class="iconPick" data-key="${esc(x.key)}" title="${esc(x.name)}">${iconThumb(x.key)}<span>${esc(x.name)}</span></button>`).join('') : '';
+        lib.querySelectorAll('.iconPick').forEach(b => b.addEventListener('click', () => { useIcon(k, b.dataset.key); say(`Using the library icon “${b.title}”.`); }));
+      }
+      // 2. Claude
+      btn.disabled = true;
+      say(`${found.length ? found.length + ' library icon' + (found.length > 1 ? 's' : '') + ' found. ' : ''}Asking Claude to design “${desc}”…`);
+      try {
+        const res = await api('/api/claude/icon', { description: desc, style: typeof AIVB_ICON_STYLE === 'function' ? AIVB_ICON_STYLE() : 'flat' }, 90000);
+        if (!res || !res.ok || !res.icon) { say(((res && res.error) || 'Claude could not design this icon.') + (found.length ? ' Pick a library icon above.' : ''), !found.length); return; }
+        const iconKey = registerCustomIcon(res.icon);
+        saveCustomIcon(iconKey, res.icon);
+        const from = res.source === 'claude' ? '<span class="badge src claude">Claude</span>' : '<span class="badge src builtin">Ready-made</span>';
+        if (lib) {
+          lib.insertAdjacentHTML('beforeend', `<div class="iconSrc">${res.source === 'claude' ? 'Designed for you' : 'Ready-made drawing'} ${from}</div>` +
+            `<button type="button" class="iconPick" data-key="${esc(iconKey)}" title="${esc(res.icon.label || iconKey)}">${iconThumb(iconKey)}<span>${esc(res.icon.label || iconKey)}</span></button>`);
+          lib.lastElementChild.addEventListener('click', () => { useIcon(k, iconKey); say(`Using “${res.icon.label || iconKey}”.`); });
+        }
+        useIcon(k, iconKey);
+        say(res.source === 'claude' ? `Claude designed “${res.icon.label || iconKey}” and it is applied to point ${+k + 1}. Press “Preview change”, then “Apply to the slide”.`
+          : `Claude was not available; a ready-made “${res.icon.label || iconKey}” drawing is applied instead.`);
+        setStatus(`Icon of point ${+k + 1}: “${res.icon.label || iconKey}” (${res.source === 'claude' ? 'designed by Claude' : 'ready-made drawing'}).`);
+      } catch (err) {
+        say('Claude: ' + errText(err) + (found.length ? ' Pick a library icon above.' : ''), !found.length);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  box.querySelectorAll('.aiIconInput').forEach(inp => {
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const k = inp.id.replace('aiIconInput_', '');
+        const submitBtn = box.querySelector(`.aiIconSubmit[data-k="${k}"]`);
+        if (submitBtn) submitBtn.click();
+      }
+    });
+  });
+
   studioButtons();
 }
 /* The visual's area now: its designed area, moved with it. */
@@ -511,7 +738,16 @@ async function replaceVisual(E, t) {
     const rect = editRect(E, parts.bbox), mine = new Set(parts.tops.map(s => s.id));
     if (rect.x < -1 || rect.y < -1 || rect.x + rect.w > SLIDE.w + 1 || rect.y + rect.h > SLIDE.h + 1) throw new Error('the visual has been moved partly off the slide; move it back first');
     const info = await readSlide(context, slide);
-    const blockers = info.filter(x => !mine.has(x.id) && !x.isTitle && !x.removable && x.width * x.height < 0.6 * SLIDE.w * SLIDE.h && overlaps(x, rect));
+    // 10.24: a text box above the visual (the slide's own text, its frame reaching into the area) is not in the way: the
+    // part its text uses ends above the visual, so the area starts below it instead of the edit being refused
+    const used = x => x.text && typeof textUsedHeight === 'function' ? Object.assign({}, x, { height: Math.min(x.height, textUsedHeight(x.text, x.width, 24)) }) : x;
+    const b = parts.bbox;
+    info.filter(x => !mine.has(x.id) && !x.isTitle && !x.removable && overlaps(x, rect)).map(used).forEach(x => {
+      const bottom = x.top + x.height;
+      if (b && bottom <= b.y + 6 && bottom > rect.y) { const y2 = bottom + 8; rect.h -= y2 - rect.y; rect.y = y2; }
+    });
+    if (rect.h < 120) throw new Error('there is too little room under the text above the visual; move the visual down or shorten that text, then try again. Nothing was changed');
+    const blockers = info.filter(x => !mine.has(x.id) && !x.isTitle && !x.removable && x.width * x.height < 0.6 * SLIDE.w * SLIDE.h).map(used).filter(x => overlaps(x, rect));
     if (blockers.length) throw new Error(`other objects now overlap the visual's area (${blockers.slice(0, 3).map(x => x.name || x.type).join(', ')}); move them or the visual, then try again. Nothing was changed`);
     const before = new Set(await shapeIds(context, slide));
     let got;

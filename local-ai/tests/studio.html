@@ -5,7 +5,7 @@
      the previews for the screenshot (tests/run_tests.py). -->
 <html><head><meta charset="utf-8"><title>V10.12 studio tests</title><script src="/tests/samples.js"></script><script src="/tests/mock.js"></script>
 <style>body{font:12px Segoe UI,Arial} #evidence{display:grid;grid-template-columns:repeat(4,300px);gap:8px;width:1240px} #evidence div{border:1px solid #ccc;padding:3px} #evidence svg{width:100%;height:auto;display:block} h3{grid-column:1/-1;margin:8px 0 0}</style></head>
-<body><iframe id="f" src="/v10.html" style="width:420px;height:900px"></iframe><pre id="out">running</pre><div id="evidence"></div>
+<body><iframe id="f" src="/v10.html?dev=1" style="width:420px;height:900px"></iframe><pre id="out">running</pre><div id="evidence"></div>
 <script>
 const out = document.getElementById('out'), errors = [], EV = document.getElementById('evidence');
 const APPROVED = new Set(['#8ECDB7', '#62B7E4', '#7EA2C8', '#9B99C7', '#DDB945', '#E6A157', '#E58F6D', '#B88968', '#D98CA1', '#C1A5C6', '#FFFFFF', '#F2F2F2', '#D9D9D9', '#7F7F7F', '#404040']);
@@ -160,7 +160,7 @@ async function run() {
     const idsL = sl.items.map(x => x.id).join(); await S.editApply();
     res.e.tooLong = { refused: /does not fit|longer than/.test(status()), unchanged: sl.items.map(x => x.id).join() === idsL, status: status().slice(0, 200) };
     M.selShapes = [note]; await S.editLoad();
-    res.e.notOurs = /not inserted by AI Visual Builder 10.12/.test(status());
+    res.e.notOurs = /no redesign record/.test(status()) && /Style the selection/.test(status());   // 10.24: explained, and the way to style it anyway
     M.selShapes = []; await S.editLoad();
     res.e.nothingSelected = /Select the visual/.test(status());
     // a PowerPoint that changes tag values: the record is kept on this PC, said, and editing still works

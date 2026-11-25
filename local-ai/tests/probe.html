@@ -2,7 +2,7 @@
 <!-- Probe page: the real panel (v10.html) with the stand-in PowerPoint, ready for tests/run_probe.py to evaluate code in
      it. No network, no credits. -->
 <html><head><meta charset="utf-8"><title>probe</title><script src="/tests/samples.js"></script><script src="/tests/mock.js"></script></head>
-<body><iframe id="f" src="/v10.html" style="width:420px;height:900px"></iframe><pre id="out">loading</pre>
+<body><iframe id="f" src="/v10.html?dev=1" style="width:420px;height:900px"></iframe><pre id="out">loading</pre>
 <script>
 (async () => {
   const F = document.getElementById('f');

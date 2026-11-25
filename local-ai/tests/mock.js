@@ -36,7 +36,9 @@ function installMock(W) {
       textFrame: { textRange: { text: text || '', font: new Proxy({ load() {} }, { set(t, k, v) { if (k === 'size' && !(v > 0 && v <= 4000)) bad('ShapeFont.size'); if (k === 'color' && !HEXRE.test(v)) bad('ShapeFont.color');
         if (k === 'name' && M.reject === 'font' ) bad('ShapeFont.name'); t[k] = v; return true; } }), paragraphFormat: {}, load() {} } },
       tags: tagsObj(), get parentGroup() { if (!s._parent) throw new Error('GeneralException: not in a group'); return s._parent; },
-      load() {}, delete() { if (M.failDelete) { bad('Shape.delete'); return; } const i = slide.items.indexOf(s); if (i >= 0) slide.items.splice(i, 1); } };
+      load() {}, delete() { if (M.failDelete) { bad('Shape.delete'); return; } const i = slide.items.indexOf(s); if (i >= 0) slide.items.splice(i, 1); },
+      setZOrder(p) { M.zorders = (M.zorders || 0) + 1; const L = slide.items, i = L.indexOf(s); if (i < 0) return; L.splice(i, 1);   // 10.19: PowerPointApi 1.8
+        if (p === 'BringToFront') L.push(s); else if (p === 'SendToBack') L.unshift(s); else L.splice(i, 0, s); } };
     Object.defineProperty(s, 'rotation', { set(v) { if (!(v >= 0 && v < 360)) bad('Shape.rotation'); s._rot = v; }, get() { return s._rot || 0; } });
     if (!(o.width > 0 && o.height > 0) || ![o.left, o.top].every(Number.isFinite)) bad('ShapeCollection.add (size)');
     return s;
@@ -66,8 +68,11 @@ function installMock(W) {
         b.width = Math.max(...mem.map(x => x.left + x.width)) - b.left; b.height = Math.max(...mem.map(x => x.top + x.height)) - b.top;
         const g = shapeObj(slide, 'group', b);
         g.type = 'Group'; g.group = { shapes: { items: mem, load() {}, getItem(id) { return mem.find(x => x.id === id); } } };
+        // 10.19: as PowerPoint does - the group takes the layer of its top-most member (V10.18's stand-in put it on top)
+        const top = Math.max(...mem.map(x => slide.items.indexOf(x))), next = slide.items[top + 1];
         mem.forEach(x => { slide.items.splice(slide.items.indexOf(x), 1); x._parent = g; });
-        return add(g); },
+        if (next) slide.items.splice(slide.items.indexOf(next), 0, g); else slide.items.push(g);
+        return g; },
       getItem(id) { return slide.items.find(x => x.id === id) || { delete() {}, textFrame: { textRange: {} } }; } };
     return slide;
   };
@@ -84,9 +89,13 @@ function installMock(W) {
       M.slides.splice(o.targetSlideId ? M.slides.findIndex(x => x.id === o.targetSlideId) + 1 : M.slides.length, 0, s); } } };
   W.PowerPoint = { run: async f => f(ctx), GeometricShapeType: {} };
   W.Office = { context: { requirements: { isSetSupported: (set, v) => set === 'PowerPointApi' ? (v !== '1.8' || true) : true },
-    document: { setSelectedDataAsync(d, o, cb) { M.pictures = (M.pictures || 0) + 1; selected.items.push(shapeObj(selected, 'picture', { left: o.imageLeft, top: o.imageTop, width: o.imageWidth, height: o.imageHeight })); cb({ status: 'ok' }); } } }, AsyncResultStatus: { Succeeded: 'ok' }, CoercionType: { Image: 'image', XmlSvg: 'svg' } };
+    // a picture goes into the selected slide; 10.12.1 tests: it keeps its data, M.failPicture = PowerPoint refuses it,
+    // M.lostPicture = PowerPoint reports success but adds nothing
+    document: { setSelectedDataAsync(d, o, cb) { if (M.failPicture) { cb({ status: 'failed', error: { message: 'The picture could not be inserted (test).' } }); return; } M.pictures = (M.pictures || 0) + 1;
+      if (!M.lostPicture) selected.items.push(Object.assign(shapeObj(selected, 'picture', { left: o.imageLeft, top: o.imageTop, width: o.imageWidth, height: o.imageHeight }), { data: d, coercion: o.coercionType })); cb({ status: 'ok' }); } } }, AsyncResultStatus: { Succeeded: 'ok' }, CoercionType: { Image: 'image', XmlSvg: 'svg' } };
   M.added = () => M.slides.reduce((k, s) => k + s.items.filter(x => x.type !== 'Placeholder').length, 0);
-  M.reset = () => { M.slides.splice(0, M.slides.length, makeSlide('slide-1')); selected = M.slides[0]; M.reject = null; pending = null; M.pictures = 0; M.imported = 0; };
+  M.reset = () => { M.slides.splice(0, M.slides.length, makeSlide('slide-1')); selected = M.slides[0]; M.reject = null; pending = null; M.pictures = 0; M.imported = 0; M.failPicture = M.lostPicture = false; M.failText = null; };
+  M.selected = () => selected;
   // text that went in with another font than Open Sans
   M.fontBad = () => M.slides.flatMap(s => s.items).filter(x => x.type !== 'Placeholder' && x.textFrame && String(x.textFrame.textRange.text || '').trim() && x.textFrame.textRange.font.name !== 'Open Sans').length;
 }

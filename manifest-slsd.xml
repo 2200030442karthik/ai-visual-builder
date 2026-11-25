@@ -1,0 +1,491 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SL Smart Design (V10.20.1): AI Visual Builder with the SL Smart Design ribbon tab. Written by
+     local-ai/sl-smart-design/make_manifest_slsd.py - edit that script, not this file. Same Id as manifest-v10.xml: it
+     replaces that registration (switch-slsd.ps1). The SL Smart Design commands run the original macros of the SL Smart
+     Design VBA add-in (slsd.js -> server.py /api/slsd/run -> PowerPoint Application.Run); that add-in's own tab is hidden
+     in the copy this setup installs. The panel is served on this PC by local-ai\server.py (https://localhost:44317). -->
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
+  <Id>08d15d9d-8629-4583-b67d-5f80143dde6d</Id>
+  <Version>10.26.0.0</Version>
+  <ProviderName>Simplilearn</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="SL Editor"/>
+  <Description DefaultValue="SL Editor: AI SL Smart Design (AI infographics, editing, SL Smart Design templates), SL Design and SL Animation in one add-in."/>
+  <IconUrl DefaultValue="https://localhost:44317/assets/v4/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://localhost:44317/assets/v4/icon-64.png"/>
+  <SupportUrl DefaultValue="https://2200030442karthik.github.io/ai-visual-builder/"/>
+  <AppDomains><AppDomain>https://localhost:44317</AppDomain></AppDomains>
+  <Hosts><Host Name="Presentation"/></Hosts>
+  <Requirements><Sets DefaultMinVersion="1.1"><Set Name="PowerPointApi" MinVersion="1.5"/><Set Name="SharedRuntime" MinVersion="1.1"/></Sets></Requirements>
+  <DefaultSettings><SourceLocation DefaultValue="https://localhost:44317/v10.html"/></DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Presentation">
+        <Runtimes>
+          <Runtime resid="Taskpane.Url" lifetime="long"/>
+        </Runtimes>
+        <DesktopFormFactor>
+          <GetStarted>
+            <Title resid="GetStarted.Title"/>
+            <Description resid="GetStarted.Description"/>
+            <LearnMoreUrl resid="GetStarted.LearnMoreUrl"/>
+          </GetStarted>
+          <FunctionFile resid="Taskpane.Url"/>
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <CustomTab id="AISLSD.Tab">
+              <Group id="SLSD.Design">
+                <Label resid="SLSDDesign.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.design.16"/>
+                  <bt:Image size="32" resid="Icon.design.32"/>
+                  <bt:Image size="80" resid="Icon.design.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="SLSD.AltDesign">
+                  <Label resid="SLSDAltDesign.Label"/>
+                  <Supertip>
+                    <Title resid="SLSDAltDesign.Label"/>
+                    <Description resid="SLSDAltDesign.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.design.16"/>
+                    <bt:Image size="32" resid="Icon.design.32"/>
+                    <bt:Image size="80" resid="Icon.design.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>slsdAlternativeDesign</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="AIVB10.Open">
+                  <Label resid="AIVB10Open.Label"/>
+                  <Supertip>
+                    <Title resid="AIVB10Open.Label"/>
+                    <Description resid="AIVB10Open.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.aivb.16"/>
+                    <bt:Image size="32" resid="Icon.aivb.32"/>
+                    <bt:Image size="80" resid="Icon.aivb.80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>AIVisualBuilderV10Pane</TaskpaneId>
+                    <SourceLocation resid="Taskpane.Url"/>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="AIVB10.Slides">
+                  <Label resid="AIVB10Slides.Label"/>
+                  <Supertip>
+                    <Title resid="AIVB10Slides.Label"/>
+                    <Description resid="AIVB10Slides.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.aivb.16"/>
+                    <bt:Image size="32" resid="Icon.aivb.32"/>
+                    <bt:Image size="80" resid="Icon.aivb.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>aivbOpenSlides</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="AIVB10.Edit">
+                  <Label resid="AIVB10Edit.Label"/>
+                  <Supertip>
+                    <Title resid="AIVB10Edit.Label"/>
+                    <Description resid="AIVB10Edit.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.aivb.16"/>
+                    <bt:Image size="32" resid="Icon.aivb.32"/>
+                    <bt:Image size="80" resid="Icon.aivb.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>aivbOpenEdit</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+              <Group id="SLSD.Templates">
+                <Label resid="SLSDTemplates.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.footer-note.16"/>
+                  <bt:Image size="32" resid="Icon.footer-note.32"/>
+                  <bt:Image size="80" resid="Icon.footer-note.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="SLSD.FooterNote">
+                  <Label resid="SLSDFooterNote.Label"/>
+                  <Supertip>
+                    <Title resid="SLSDFooterNote.Label"/>
+                    <Description resid="SLSDFooterNote.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.footer-note.16"/>
+                    <bt:Image size="32" resid="Icon.footer-note.32"/>
+                    <bt:Image size="80" resid="Icon.footer-note.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>slsdFooterNote</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SLSD.BlueCode">
+                  <Label resid="SLSDBlueCode.Label"/>
+                  <Supertip>
+                    <Title resid="SLSDBlueCode.Label"/>
+                    <Description resid="SLSDBlueCode.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.code-blue.16"/>
+                    <bt:Image size="32" resid="Icon.code-blue.32"/>
+                    <bt:Image size="80" resid="Icon.code-blue.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>slsdBlueCodebox</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SLSD.BlackCode">
+                  <Label resid="SLSDBlackCode.Label"/>
+                  <Supertip>
+                    <Title resid="SLSDBlackCode.Label"/>
+                    <Description resid="SLSDBlackCode.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.code-black.16"/>
+                    <bt:Image size="32" resid="Icon.code-black.32"/>
+                    <bt:Image size="80" resid="Icon.code-black.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>slsdBlackCodebox</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SLSD.FooterInfo">
+                  <Label resid="SLSDFooterInfo.Label"/>
+                  <Supertip>
+                    <Title resid="SLSDFooterInfo.Label"/>
+                    <Description resid="SLSDFooterInfo.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.footer-info.16"/>
+                    <bt:Image size="32" resid="Icon.footer-info.32"/>
+                    <bt:Image size="80" resid="Icon.footer-info.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>slsdFooterInfo</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SLSD.ProbSol">
+                  <Label resid="SLSDProbSol.Label"/>
+                  <Supertip>
+                    <Title resid="SLSDProbSol.Label"/>
+                    <Description resid="SLSDProbSol.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.problem.16"/>
+                    <bt:Image size="32" resid="Icon.problem.32"/>
+                    <bt:Image size="80" resid="Icon.problem.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>slsdProblemSolution</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SLSD.ProbSolImg">
+                  <Label resid="SLSDProbSolImg.Label"/>
+                  <Supertip>
+                    <Title resid="SLSDProbSolImg.Label"/>
+                    <Description resid="SLSDProbSolImg.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.problem-image.16"/>
+                    <bt:Image size="32" resid="Icon.problem-image.32"/>
+                    <bt:Image size="80" resid="Icon.problem-image.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>slsdProblemSolutionImage</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+              <Group id="SLSD.Misc">
+                <Label resid="SLSDMisc.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.no-animation.16"/>
+                  <bt:Image size="32" resid="Icon.no-animation.32"/>
+                  <bt:Image size="80" resid="Icon.no-animation.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="SLSD.NoAnim">
+                  <Label resid="SLSDNoAnim.Label"/>
+                  <Supertip>
+                    <Title resid="SLSDNoAnim.Label"/>
+                    <Description resid="SLSDNoAnim.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.no-animation.16"/>
+                    <bt:Image size="32" resid="Icon.no-animation.32"/>
+                    <bt:Image size="80" resid="Icon.no-animation.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>slsdRemoveAnimations</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SLSD.DelEmpty">
+                  <Label resid="SLSDDelEmpty.Label"/>
+                  <Supertip>
+                    <Title resid="SLSDDelEmpty.Label"/>
+                    <Description resid="SLSDDelEmpty.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.delete-empty.16"/>
+                    <bt:Image size="32" resid="Icon.delete-empty.32"/>
+                    <bt:Image size="80" resid="Icon.delete-empty.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>slsdDeleteEmptyBoxes</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+              <Group id="SLSD.Rename">
+                <Label resid="SLSDRename.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.rename-text.16"/>
+                  <bt:Image size="32" resid="Icon.rename-text.32"/>
+                  <bt:Image size="80" resid="Icon.rename-text.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="SLSD.RenText">
+                  <Label resid="SLSDRenText.Label"/>
+                  <Supertip>
+                    <Title resid="SLSDRenText.Label"/>
+                    <Description resid="SLSDRenText.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.rename-text.16"/>
+                    <bt:Image size="32" resid="Icon.rename-text.32"/>
+                    <bt:Image size="80" resid="Icon.rename-text.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>slsdRenameText</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="SLSD.RenHead">
+                  <Label resid="SLSDRenHead.Label"/>
+                  <Supertip>
+                    <Title resid="SLSDRenHead.Label"/>
+                    <Description resid="SLSDRenHead.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.rename-heading.16"/>
+                    <bt:Image size="32" resid="Icon.rename-heading.32"/>
+                    <bt:Image size="80" resid="Icon.rename-heading.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>slsdRenameHeading</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+              <Group id="SLED.Design">
+                <Label resid="SLEDDesign.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.sldesign.16"/>
+                  <bt:Image size="32" resid="Icon.sldesign.32"/>
+                  <bt:Image size="80" resid="Icon.sldesign.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="SLED.OpenDesign">
+                  <Label resid="SLEDOpenDesign.Label"/>
+                  <Supertip>
+                    <Title resid="SLEDOpenDesign.Label"/>
+                    <Description resid="SLEDOpenDesign.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.sldesign.16"/>
+                    <bt:Image size="32" resid="Icon.sldesign.32"/>
+                    <bt:Image size="80" resid="Icon.sldesign.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>sledOpenDesign</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+              <Group id="SLED.Anim">
+                <Label resid="SLEDAnim.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.slanimation.16"/>
+                  <bt:Image size="32" resid="Icon.slanimation.32"/>
+                  <bt:Image size="80" resid="Icon.slanimation.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="SLED.OpenAnim">
+                  <Label resid="SLEDOpenAnim.Label"/>
+                  <Supertip>
+                    <Title resid="SLEDOpenAnim.Label"/>
+                    <Description resid="SLEDOpenAnim.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.slanimation.16"/>
+                    <bt:Image size="32" resid="Icon.slanimation.32"/>
+                    <bt:Image size="80" resid="Icon.slanimation.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>sledOpenAnimation</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+              <Label resid="Tab.Label"/>
+            </CustomTab>
+            <OfficeTab id="TabHome">
+              <Group id="AISLSD.HomeGroup">
+                <Label resid="Group.AISLSD.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.sleditor.16"/>
+                  <bt:Image size="32" resid="Icon.sleditor.32"/>
+                  <bt:Image size="80" resid="Icon.sleditor.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="AIVB10.HomeOpen">
+                  <Label resid="SLEDHome.Label"/>
+                  <Supertip>
+                    <Title resid="SLEDHome.Label"/>
+                    <Description resid="SLEDHome.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.sleditor.16"/>
+                    <bt:Image size="32" resid="Icon.sleditor.32"/>
+                    <bt:Image size="80" resid="Icon.sleditor.80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>AIVisualBuilderV10Pane</TaskpaneId>
+                    <SourceLocation resid="Taskpane.Url"/>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="AIVB10.HomeSlides">
+                  <Label resid="SLEDOpenDesign.Label"/>
+                  <Supertip>
+                    <Title resid="SLEDOpenDesign.Label"/>
+                    <Description resid="SLEDOpenDesign.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.sldesign.16"/>
+                    <bt:Image size="32" resid="Icon.sldesign.32"/>
+                    <bt:Image size="80" resid="Icon.sldesign.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>sledOpenDesign</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="AIVB10.HomeEdit">
+                  <Label resid="SLEDOpenAnim.Label"/>
+                  <Supertip>
+                    <Title resid="SLEDOpenAnim.Label"/>
+                    <Description resid="SLEDOpenAnim.Tip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.slanimation.16"/>
+                    <bt:Image size="32" resid="Icon.slanimation.32"/>
+                    <bt:Image size="80" resid="Icon.slanimation.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>sledOpenAnimation</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Icon.design.16" DefaultValue="https://localhost:44317/assets/v4/slsd/design-16.png"/>
+        <bt:Image id="Icon.design.32" DefaultValue="https://localhost:44317/assets/v4/slsd/design-32.png"/>
+        <bt:Image id="Icon.design.80" DefaultValue="https://localhost:44317/assets/v4/slsd/design-80.png"/>
+        <bt:Image id="Icon.aivb.16" DefaultValue="https://localhost:44317/assets/v4/icon-16.png"/>
+        <bt:Image id="Icon.aivb.32" DefaultValue="https://localhost:44317/assets/v4/icon-32.png"/>
+        <bt:Image id="Icon.aivb.80" DefaultValue="https://localhost:44317/assets/v4/icon-80.png"/>
+        <bt:Image id="Icon.footer-note.16" DefaultValue="https://localhost:44317/assets/v4/slsd/footer-note-16.png"/>
+        <bt:Image id="Icon.footer-note.32" DefaultValue="https://localhost:44317/assets/v4/slsd/footer-note-32.png"/>
+        <bt:Image id="Icon.footer-note.80" DefaultValue="https://localhost:44317/assets/v4/slsd/footer-note-80.png"/>
+        <bt:Image id="Icon.code-blue.16" DefaultValue="https://localhost:44317/assets/v4/slsd/code-blue-16.png"/>
+        <bt:Image id="Icon.code-blue.32" DefaultValue="https://localhost:44317/assets/v4/slsd/code-blue-32.png"/>
+        <bt:Image id="Icon.code-blue.80" DefaultValue="https://localhost:44317/assets/v4/slsd/code-blue-80.png"/>
+        <bt:Image id="Icon.code-black.16" DefaultValue="https://localhost:44317/assets/v4/slsd/code-black-16.png"/>
+        <bt:Image id="Icon.code-black.32" DefaultValue="https://localhost:44317/assets/v4/slsd/code-black-32.png"/>
+        <bt:Image id="Icon.code-black.80" DefaultValue="https://localhost:44317/assets/v4/slsd/code-black-80.png"/>
+        <bt:Image id="Icon.footer-info.16" DefaultValue="https://localhost:44317/assets/v4/slsd/footer-info-16.png"/>
+        <bt:Image id="Icon.footer-info.32" DefaultValue="https://localhost:44317/assets/v4/slsd/footer-info-32.png"/>
+        <bt:Image id="Icon.footer-info.80" DefaultValue="https://localhost:44317/assets/v4/slsd/footer-info-80.png"/>
+        <bt:Image id="Icon.problem.16" DefaultValue="https://localhost:44317/assets/v4/slsd/problem-16.png"/>
+        <bt:Image id="Icon.problem.32" DefaultValue="https://localhost:44317/assets/v4/slsd/problem-32.png"/>
+        <bt:Image id="Icon.problem.80" DefaultValue="https://localhost:44317/assets/v4/slsd/problem-80.png"/>
+        <bt:Image id="Icon.problem-image.16" DefaultValue="https://localhost:44317/assets/v4/slsd/problem-image-16.png"/>
+        <bt:Image id="Icon.problem-image.32" DefaultValue="https://localhost:44317/assets/v4/slsd/problem-image-32.png"/>
+        <bt:Image id="Icon.problem-image.80" DefaultValue="https://localhost:44317/assets/v4/slsd/problem-image-80.png"/>
+        <bt:Image id="Icon.no-animation.16" DefaultValue="https://localhost:44317/assets/v4/slsd/no-animation-16.png"/>
+        <bt:Image id="Icon.no-animation.32" DefaultValue="https://localhost:44317/assets/v4/slsd/no-animation-32.png"/>
+        <bt:Image id="Icon.no-animation.80" DefaultValue="https://localhost:44317/assets/v4/slsd/no-animation-80.png"/>
+        <bt:Image id="Icon.delete-empty.16" DefaultValue="https://localhost:44317/assets/v4/slsd/delete-empty-16.png"/>
+        <bt:Image id="Icon.delete-empty.32" DefaultValue="https://localhost:44317/assets/v4/slsd/delete-empty-32.png"/>
+        <bt:Image id="Icon.delete-empty.80" DefaultValue="https://localhost:44317/assets/v4/slsd/delete-empty-80.png"/>
+        <bt:Image id="Icon.rename-text.16" DefaultValue="https://localhost:44317/assets/v4/slsd/rename-text-16.png"/>
+        <bt:Image id="Icon.rename-text.32" DefaultValue="https://localhost:44317/assets/v4/slsd/rename-text-32.png"/>
+        <bt:Image id="Icon.rename-text.80" DefaultValue="https://localhost:44317/assets/v4/slsd/rename-text-80.png"/>
+        <bt:Image id="Icon.rename-heading.16" DefaultValue="https://localhost:44317/assets/v4/slsd/rename-heading-16.png"/>
+        <bt:Image id="Icon.rename-heading.32" DefaultValue="https://localhost:44317/assets/v4/slsd/rename-heading-32.png"/>
+        <bt:Image id="Icon.rename-heading.80" DefaultValue="https://localhost:44317/assets/v4/slsd/rename-heading-80.png"/>
+        <bt:Image id="Icon.sldesign.16" DefaultValue="https://localhost:44317/assets/v4/slsd/sldesign-16.png"/>
+        <bt:Image id="Icon.sldesign.32" DefaultValue="https://localhost:44317/assets/v4/slsd/sldesign-32.png"/>
+        <bt:Image id="Icon.sldesign.80" DefaultValue="https://localhost:44317/assets/v4/slsd/sldesign-80.png"/>
+        <bt:Image id="Icon.slanimation.16" DefaultValue="https://localhost:44317/assets/v4/slsd/slanimation-16.png"/>
+        <bt:Image id="Icon.slanimation.32" DefaultValue="https://localhost:44317/assets/v4/slsd/slanimation-32.png"/>
+        <bt:Image id="Icon.slanimation.80" DefaultValue="https://localhost:44317/assets/v4/slsd/slanimation-80.png"/>
+        <bt:Image id="Icon.sleditor.16" DefaultValue="https://localhost:44317/assets/v4/icon-16.png"/>
+        <bt:Image id="Icon.sleditor.32" DefaultValue="https://localhost:44317/assets/v4/icon-32.png"/>
+        <bt:Image id="Icon.sleditor.80" DefaultValue="https://localhost:44317/assets/v4/icon-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:44317/v10.html"/>
+        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://localhost:44317/v10.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="Tab.Label" DefaultValue="SL Editor"/>
+        <bt:String id="GetStarted.Title" DefaultValue="SL Editor is ready"/>
+        <bt:String id="SLSDDesign.Label" DefaultValue="Design"/>
+        <bt:String id="SLSDAltDesign.Label" DefaultValue="Alternative Design"/>
+        <bt:String id="AIVB10Open.Label" DefaultValue="AI SL Smart Design"/>
+        <bt:String id="AIVB10Slides.Label" DefaultValue="Several slides"/>
+        <bt:String id="AIVB10Edit.Label" DefaultValue="Edit a visual"/>
+        <bt:String id="SLSDTemplates.Label" DefaultValue="SL Templates"/>
+        <bt:String id="SLSDFooterNote.Label" DefaultValue="Add Footer Note"/>
+        <bt:String id="SLSDBlueCode.Label" DefaultValue="Add Blue Codebox"/>
+        <bt:String id="SLSDBlackCode.Label" DefaultValue="Add Black Codebox"/>
+        <bt:String id="SLSDFooterInfo.Label" DefaultValue="Add Footer Info"/>
+        <bt:String id="SLSDProbSol.Label" DefaultValue="Add Problem Solution"/>
+        <bt:String id="SLSDProbSolImg.Label" DefaultValue="Add Problem Solution Image"/>
+        <bt:String id="SLSDMisc.Label" DefaultValue="Miscellaneous"/>
+        <bt:String id="SLSDNoAnim.Label" DefaultValue="Remove Animations"/>
+        <bt:String id="SLSDDelEmpty.Label" DefaultValue="Delete Empty Boxes"/>
+        <bt:String id="SLSDRename.Label" DefaultValue="Shape Rename"/>
+        <bt:String id="SLSDRenText.Label" DefaultValue="Text"/>
+        <bt:String id="SLSDRenHead.Label" DefaultValue="Heading"/>
+        <bt:String id="SLEDDesign.Label" DefaultValue="SL Design"/>
+        <bt:String id="SLEDOpenDesign.Label" DefaultValue="SL Design"/>
+        <bt:String id="SLEDAnim.Label" DefaultValue="SL Animation"/>
+        <bt:String id="SLEDOpenAnim.Label" DefaultValue="SL Animation"/>
+        <bt:String id="Group.AISLSD.Label" DefaultValue="SL Editor"/>
+        <bt:String id="SLEDHome.Label" DefaultValue="SL Editor"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="GetStarted.Description" DefaultValue="Home &gt; SL Editor opens the panel: AI SL Smart Design, SL Design and SL Animation. If it does not load, run &quot;Restart AI SL Smart Design&quot; from the Start menu."/>
+        <bt:String id="SLSDAltDesign.Tip" DefaultValue="Redesign the slide's points (2 to 10, one per line) with a template from the SL Smart Design library."/>
+        <bt:String id="AIVB10Open.Tip" DefaultValue="Turn the slide's content into editable infographics designed by AI: generate, preview, insert."/>
+        <bt:String id="AIVB10Slides.Tip" DefaultValue="Spread long content over several slides, each with its own editable visual."/>
+        <bt:String id="AIVB10Edit.Tip" DefaultValue="Change the texts, icons, colours or layout of a visual AI Visual Builder inserted."/>
+        <bt:String id="SLSDFooterNote.Tip" DefaultValue="Add the footer note section to this slide."/>
+        <bt:String id="SLSDBlueCode.Tip" DefaultValue="Add the blue code box to this slide."/>
+        <bt:String id="SLSDBlackCode.Tip" DefaultValue="Add the black code box to this slide."/>
+        <bt:String id="SLSDFooterInfo.Tip" DefaultValue="Add the footer info section to this slide."/>
+        <bt:String id="SLSDProbSol.Tip" DefaultValue="Add the problem / solution section to this slide."/>
+        <bt:String id="SLSDProbSolImg.Tip" DefaultValue="Add the problem / solution section with an image to this slide."/>
+        <bt:String id="SLSDNoAnim.Tip" DefaultValue="Remove every animation and slide transition in this presentation."/>
+        <bt:String id="SLSDDelEmpty.Tip" DefaultValue="Delete the empty text boxes and placeholders on every slide."/>
+        <bt:String id="SLSDRenText.Tip" DefaultValue="Name the selected shapes Text_1, Text_2 ... in the order you selected them."/>
+        <bt:String id="SLSDRenHead.Tip" DefaultValue="Name the selected shapes T_Text_1, T_Text_2 ... in the order you selected them."/>
+        <bt:String id="SLEDOpenDesign.Tip" DefaultValue="Brand shapes, text boxes, bullets, layout templates, brandlines and speaker notes."/>
+        <bt:String id="SLEDOpenAnim.Tip" DefaultValue="Entrance and exit animations, bulk timing shift, transitions, audio and video export."/>
+        <bt:String id="SLEDHome.Tip" DefaultValue="Open SL Editor: AI SL Smart Design (AI infographics and editing), SL Design and SL Animation."/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>

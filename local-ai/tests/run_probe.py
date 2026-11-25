@@ -50,7 +50,7 @@ def main():
             for name, svg in res.pop('svg').items():
                 with open(os.path.join(out_dir, name + '.svg'), 'w', encoding='utf-8') as f:
                     f.write(svg)
-        print(json.dumps(res, indent=1, ensure_ascii=False)[:30000])
+        print(json.dumps(res, indent=1, ensure_ascii=False)[:None if os.environ.get('AIVB_PROBE_FULL') else 30000])
     finally:
         ps = f"Get-CimInstance Win32_Process -Filter \"Name='msedge.exe'\" | Where-Object {{ $_.CommandLine -like '*{PROFILE}*' }} | ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }}"
         subprocess.run(['powershell', '-NoProfile', '-Command', ps], capture_output=True)

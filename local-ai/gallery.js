@@ -338,7 +338,7 @@ const CATALOG = [
   ['collect', 'Data collection', 'data collection | collect* | gather* | ingest* | data acquisition | data sources? | raw data | sourcing | data capture'],
   ['clean', 'Data cleaning', 'data cleaning | clean* | transform* | standardi[sz]* | preprocess* | pre-process* | data preparation | prepar(?:e|ing) the data | wrangl* | missing values? | duplicates? | outliers? | normali[sz]*'],
   ['features', 'Feature engineering', 'feature engineering | feature selection | feature extraction | features? | encoding', 'variables?'],
-  ['train', 'Model training', 'model training | model selection | train* | fitting | algorithms? | hyperparameters? | learns?'],
+  ['train', 'Model training', 'model training | model selection | train(?:ing|ed)? (?:the |a )?models? | fitting | algorithms? | hyperparameters? | learns?', 'train*'],
   ['evaluate', 'Model evaluation', 'model evaluation | evaluat* | assess* | validat* | accuracy | precision | recall | metrics? | testing | tests? | tuning | benchmark*'],
   ['predict', 'Prediction output', 'predict* | inference | forecast* | projections?', 'outputs? | outcomes? | results?'],
   ['deploy', 'Deployment', 'deploy* | production | releas* | rollouts? | go-live | launch* | serving'],
@@ -359,24 +359,24 @@ const CATALOG = [
   ['window', 'Web page / system', 'websites? | web pages? | portals?', 'systems?'],
   ['shield', 'Security', 'secur* | governance | protect* | safety | defen[cs]e* | firewalls? | guard*'],
   ['lock', 'Access control', 'access control | access | authent* | passwords? | encrypt* | privacy | permissions? | credentials?'],
-  ['chartUp', 'Analytics chart', 'analytics | insights? | trends? | growth | statistics | performance'],
+  ['chartUp', 'Analytics chart', 'analytics | insights? | trends? | growth | statistics | performance | scal* | productiv* | sales growth'],
   ['monitor', 'Monitoring dashboard', 'monitor* | dashboards? | reporting | observab* | visuali[sz]*'],
-  ['team', 'Team', 'stakeholders? | teams? | people | staff | customers? | employees? | learners? | students? | users? | community'],
+  ['team', 'Team', 'collaborat* | teamwork | cooperat* | partnerships? | mentor* | hiring | recruit* | onboarding | stakeholders? | teams? | people | staff | customers? | employees? | learners? | students? | users? | community'],
   ['person', 'Person', 'managers? | owners? | leaders? | individuals? | persons? | sponsors?'],
   ['sheet', 'Workbook / spreadsheet', 'workbooks? | spreadsheets? | excel | worksheets? | sheets?'],
   ['pages', 'Paginated / printable report', 'paginated | printable | print(?:ing|ed|outs?)? | pdfs? | multi-page'],
   ['org', 'Organization', 'compan(?:y|ies) | organi[sz]ations? | developers? | vendors? | firms? | corporations? | startups? | enterprises? | manufacturers? | publishers? | creators? | founders? | makers? | producers? | builders? | designers? | inventors? | maintainers? | operators? | acquirers?'],
   ['warning', 'Risk / warning', 'risks? | issues? | incidents? | warnings? | alerts? | errors? | failures?'],
   ['milestone', 'Milestone', 'milestones? | deliverables?'],
-  ['flag', 'Goal', 'goals? | targets? | objectives? | kpis?'],
+  ['flag', 'Goal', 'goals? | targets? | objectives? | kpis? | strateg* | missions? | visions?'],
   ['calendar', 'Schedule', 'schedul* | deadlines? | timelines? | calendar | planning | plans?'],
   ['document', 'Document', 'documents? | logs? | logging | documentation | polic(?:y|ies) | charter | contracts? | specifications? | guidelines? | articles? | reports?'],
-  ['checklist', 'Checklist', 'checklists? | verif* | complian* | audits? | reviews? | quality assurance | approv*'],
+  ['checklist', 'Checklist', 'checklists? | verif* | complian* | audits? | reviews? | quality assurance | quality | certif* | approv*'],
   ['filter', 'Filter', 'filter* | sorting | screening | selection'],
   ['magnifier', 'Search / investigation', 'search* | investigat* | discover* | explor* | research | analy[sz]* | inspect*'],
   ['bulb', 'Idea', 'ideas? | innovat* | concepts? | creativ* | brainstorm*'],
   ['coin', 'Cost / money', 'costs? | budget* | pric(?:e|es|ing) | revenue | profit* | invest* | sales | savings? | roi'],
-  ['gear', 'Process / automation', 'automat* | orchestrat* | process(?:es|ing)? | operations? | workflows? | pipelines? | maintenance | configur*', 'engineering'],
+  ['gear', 'Process / automation', 'automat* | orchestrat* | process(?:es|ing)? | operations? | workflows? | pipelines? | maintenance | configur* | efficien* | execution | implement*', 'engineering'],
   ['info', 'Information', 'informational | informative | information | quick facts | facts?'],
   ['access', 'Accessibility', 'accessib* | inclusiv* | disabilit*'],
   ['spark', 'Engagement and inspiration', 'engag* | inspir* | motivat* | encourag*'],
@@ -398,16 +398,21 @@ function conceptScores(label, detail) {
 }
 /* Objects for the points of one visual: each from its own point. A point that matches nothing (or only weakly) gets the
    neutral marker, never another point's or the title's object. Two points get the same object only when nothing else fits. */
+/* 10.24: the objects are chosen for the whole set at once - the strongest match anywhere first - so a point that fits an
+   object best keeps it even when an earlier point also matched it weakly ("Data collection" before "Collect feedback").
+   A point's alternative must score at least 60% of its own best; with none left it shares, or gets the marker. */
+function iconAssign(lists, min) {
+  const pick = lists.map(() => null), used = new Set(), pairs = [];
+  lists.forEach((sc, i) => { const best = sc[0] ? sc[0].score : 0; sc.forEach(x => { if (x.score >= min && x.score >= best * 0.6) pairs.push({ i, x, d: best - x.score }); }); });
+  pairs.sort((a, b) => b.x.score - a.x.score || a.d - b.d || a.i - b.i);
+  pairs.forEach(p => { if (!pick[p.i] && !used.has(p.x.key)) { pick[p.i] = p.x; used.add(p.x.key); } });
+  lists.forEach((sc, i) => { if (!pick[i] && sc[0] && sc[0].score >= min) pick[i] = sc[0]; });
+  return pick;
+}
 function iconsFor(items) {
-  const used = new Set();
-  return items.map(it => {
-    const sc = conceptScores(it.label || '', it.detail || ''), best = sc[0];
-    if (!best || best.score < 3) return { key: 'none', matched: false, name: 'Point marker', why: 'no catalog object depicts this point' };
-    let pick = best;
-    if (used.has(best.key)) { const alt = sc.find(x => !used.has(x.key) && x.score >= 3 && x.score >= best.score * 0.6); if (alt) pick = alt; }
-    used.add(pick.key);
-    return { key: pick.key, matched: true, name: pick.name, why: pick.hits.join(', '), score: pick.score };
-  });
+  const picks = iconAssign(items.map(it => conceptScores(it.label || '', it.detail || '')), 3);
+  return picks.map(pick => pick ? { key: pick.key, matched: true, name: pick.name, why: pick.hits.join(', '), score: pick.score }
+    : { key: 'none', matched: false, name: 'Point marker', why: 'no catalog object depicts this point' });
 }
 /* A component as a group of shapes; returns primitives tagged with the group id, its name and the object key. */
 let grpSeq = 0;
@@ -1358,7 +1363,9 @@ function renderGallery() {
     (A.length < 10 && !oneNote ? `Only ${A.length} infographic arrangement${A.length === 1 ? ' is' : 's are'} valid for this content` + (sc && sc.mode === 'fixed' ? ' (formulas, conditions, exact values and long lists keep their exact structure).' : sc && sc.mode === 'graph' ? ' (its links must be drawn as stated, which rules out free arrangements).' : '.') : '') +
     noPict + ` Built in ${Math.round(G.ms)} ms without any extra AI call.`) +
     (G.dropped && G.dropped.length ? `<details><summary>Why not more suggestions? (${G.dropped.length})</summary><ul>${G.dropped.map(d => `<li>${esc(d)}</li>`).join('')}</ul></details>` : '');
-  const t0 = performance.now(), cardsHTML = c => `<button type="button" class="gcard${isChosen(s, c) ? ' sel' : ''}" data-key="${esc(c.key)}" title="${esc(c.why + (c.objects.length ? ' Objects: ' + c.objects.join(', ') + '.' : ''))}"><div class="gthumb"></div>` +
+  // 10.21: every design carries its number in the whole set (stable when "More variants" pages), the chosen one says so
+  const num = c => G.list.indexOf(c) + 1;
+  const t0 = performance.now(), cardsHTML = c => `<button type="button" class="gcard${isChosen(s, c) ? ' sel' : ''}" data-key="${esc(c.key)}" data-n="${num(c)}" aria-pressed="${isChosen(s, c)}" aria-label="Design ${num(c)} of ${G.list.length}: ${esc(c.name)}" title="${esc(c.why + (c.objects.length ? ' Objects: ' + c.objects.join(', ') + '.' : ''))}"><span class="gnum">${num(c)}</span><div class="gthumb"></div>` +
     `<div class="gname">${esc(c.name)}</div><div class="gwhy">${esc(c.engine === 'B' && c.objects.length ? c.objects.join(' · ') : c.why)}</div>` +
     `<span class="badge ${c.edit}">${EDIT_LABEL[c.edit]}</span>${c.hidden ? ' <span class="badge partial" title="Descriptions go on detail slides">+ detail slides</span>' : ''}</button>`;
   $('gridA').innerHTML = showA.map(cardsHTML).join('');
@@ -1388,8 +1395,19 @@ function chooseSuggestion(key) {
   if (c.base) { s.choice = null; s.want = key; } else { s.choice = key; s.want = ''; }
   s.userPicked = true; s.page = 0; s.view = 'diagram';
   buildPreview(); renderResult(); renderSections();
-  document.querySelectorAll('#gallery .gcard').forEach(b => b.classList.toggle('sel', b.dataset.key === key));
-  setStatus(`Selected: ${c.name} (${EDIT_LABEL[c.edit].toLowerCase()}). Check the large preview, click a slide, then press Insert visual.`);
+  document.querySelectorAll('#gallery .gcard').forEach(b => { const on = b.dataset.key === key; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on); });
+  setStatus(`Selected design ${s.gallery.list.indexOf(c) + 1} of ${s.gallery.list.length}: ${c.name} (${EDIT_LABEL[c.edit].toLowerCase()}). Check the large preview, click a slide, then press Insert visual.`);
+}
+// 10.21: arrow keys move through the designs (and choose the one reached), Home / End jump to the first / last shown
+function galleryKey(e) {
+  const cards = [...document.querySelectorAll('#gallery .gcard')], at = cards.indexOf(document.activeElement);
+  if (at < 0 || !/^(Arrow(Left|Right|Up|Down)|Home|End)$/.test(e.key)) return;
+  const row = Math.max(1, cards.filter(b => b.offsetTop === cards[at].offsetTop && b.parentNode === cards[at].parentNode).length);
+  const to = e.key === 'Home' ? 0 : e.key === 'End' ? cards.length - 1
+    : Math.min(cards.length - 1, Math.max(0, at + ({ ArrowLeft: -1, ArrowRight: 1, ArrowUp: -row, ArrowDown: row })[e.key]));
+  e.preventDefault();
+  if (to === at) return;
+  cards[to].focus(); cards[to].scrollIntoView({ block: 'nearest' }); chooseSuggestion(cards[to].dataset.key);
 }
 
 /* ===================== PowerPoint drawing self-test (Setup) =====================

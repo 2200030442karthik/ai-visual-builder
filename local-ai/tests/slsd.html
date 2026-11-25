@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SL Smart Design 10.20.1 tests</title>
+<!-- slsd.js without PowerPoint: point counting as the original Select Template window counts, choice of the content
+     shape, and the whole Alternative Design run (prepare -> the original macro, played by a stand-in that behaves like
+     DynamicTemplateSelectorForm -> restore) on stand-in slides modelled on LVC_Template.pptx. -->
+<style>body { font: 13px/1.4 "Open Sans", Segoe UI, sans-serif; margin: 16px; } pre { white-space: pre-wrap; } .f { color: #b00; }</style>
+</head>
+<body>
+<h1>SL Smart Design 10.20.1</h1>
+<div id="evidence"><ul id="list"></ul></div>
+<pre id="out">running</pre>
+<form id="f"></form>
+<script src="/slsd.js"></script>
+<script>
+const acc = [];
+const check = (name, ok, evidence) => { acc.push({ name, ok: !!ok, evidence: String(evidence) }); };
+const S = window.SLSD;
+const lines = n => Array.from({ length: n }, (_, i) => `Point ${i + 1} of the slide`).join('\r');
+
+/* ---------- 1. point counting (the original: CR/LF paragraphs, VBA Trim of spaces) */
+for (let n = 2; n <= 10; n++) check(`points: ${n} paragraphs`, S.points(lines(n)).length === n, S.points(lines(n)).length);
+check('points: CRLF, LF and CR all separate', S.points('a\r\nb\nc\rd').length === 4, S.points('a\r\nb\nc\rd').length);
+check('points: empty and space-only lines are not points', S.points('a\r\r   \rb\r').length === 2, S.points('a\r\r   \rb\r').length);
+check('points: a tab-only line is a point (VBA Trim removes spaces only)', S.points('a\r\t\rb').length === 3, S.points('a\r\t\rb').length);
+check('points: line break inside a paragraph is one point', S.points('a\vb\vc').length === 1, S.points('a\vb\vc').length);
+
+/* ---------- 2. which shape is the content */
+const sh = (id, o) => Object.assign({ id, name: id, type: 'TextBox', ph: '', text: '', index: 0, area: 1000 }, o);
+const LVC = () => [sh('ph-body', { name: 'Text Placeholder 2', type: 'Placeholder', ph: 'Body', text: '' }), sh('title', { name: 'Title 3', type: 'Placeholder', ph: 'Title', text: 'Cloud computing' }),
+  sh('grp', { name: 'Group 10', type: 'Group', text: null }), sh('content', { name: 'TextBox 7', text: lines(4), area: 50000 })];
+let r = S.pickContent(LVC(), []);
+check('LVC slide: the text box with 4 points, not the bottom-most placeholder / title / group', r.ok && r.id === 'content' && r.count === 4, JSON.stringify(r));
+for (let n = 2; n <= 10; n++) { r = S.pickContent([sh('bg', { type: 'GeometricShape', text: '' }), sh('c', { text: lines(n) })], []); check(`content found for ${n} points`, r.ok && r.id === 'c' && r.count === n, JSON.stringify(r)); }
+r = S.pickContent([sh('t', { type: 'Placeholder', ph: 'Title', text: lines(3) }), sh('c', { type: 'Placeholder', ph: 'Body', text: lines(5) })], []);
+check('a title with several lines is never the content', r.ok && r.id === 'c', JSON.stringify(r));
+r = S.pickContent([sh('a', { text: lines(3) }), sh('b', { text: lines(5) })], ['b']);
+check('the selected text box wins', r.ok && r.id === 'b' && r.why === 'selected', JSON.stringify(r));
+r = S.pickContent([sh('a', { text: lines(3) }), sh('b', { text: lines(5) })], []);
+check('two candidate text boxes, none selected: asks to select (no guess)', !r.ok && /Select the one/.test(r.message), r.message);
+r = S.pickContent([sh('a', { text: lines(3) }), sh('b', { type: 'Placeholder', ph: 'Body', text: lines(5) })], []);
+check('two candidates: the content placeholder is preferred', r.ok && r.id === 'b', JSON.stringify(r));
+r = S.pickContent([sh('a', { text: lines(3) }), sh('b', { name: 'Content_Text_Box', text: lines(6) })], []);
+check('a shape already named Content_Text_Box (renamed by the user) is used', r.ok && r.id === 'b' && r.why === 'named', JSON.stringify(r));
+r = S.pickContent([sh('a', { text: lines(12) })], []);
+check('12 points: clear explanation (templates are for 2 to 10)', !r.ok && r.count === 12 && /12 points/.test(r.message) && /2 to 10/.test(r.message), r.message);
+r = S.pickContent([sh('a', { text: 'One single statement.' })], []);
+check('1 point: clear explanation', !r.ok && /only one point/.test(r.message), r.message);
+r = S.pickContent([sh('a', { text: 'First\vSecond\vThird' })], []);
+check('points separated by Shift+Enter: says to use Enter', !r.ok && /Shift\+Enter/.test(r.message), r.message);
+r = S.pickContent([sh('a', { text: 'Alpha' }), sh('b', { text: 'Beta' }), sh('c', { text: 'Gamma' })], []);
+check('points in separate one-line text boxes: says to put them in one text box', !r.ok && /3 separate text boxes/.test(r.message), r.message);
+// real PowerPoint, 16 Nov: an LVC slide with one point and its one-line lead-in placeholder
+r = S.pickContent([sh('body', { name: 'Text Placeholder 1', type: 'Placeholder', ph: 'Body', text: 'Only one statement', area: 469000 }),
+  sh('lead', { name: 'Text Placeholder 2', type: 'Placeholder', ph: 'Body', text: 'Course production', area: 76800 }), sh('t', { type: 'Placeholder', ph: 'Title', text: 'Edge: 1 point' })], []);
+check('1 point + one-line lead-in placeholder: the 1-point message (not "separate text boxes")', !r.ok && /only one point/.test(r.message) && r.id === 'body', r.message);
+r = S.pickContent([sh('t', { type: 'Placeholder', ph: 'Title', text: 'Only a title' }), sh('p', { type: 'Image', text: null })], []);
+check('slide without a content text box: clear explanation', !r.ok && /No text was found/.test(r.message), r.message);
+r = S.pickContent([sh('a', { text: lines(3) }), sh('b', { text: lines(4) })], ['a', 'b']);
+check('two selected text boxes with points: asks for one', !r.ok && /Several text boxes are selected/.test(r.message), r.message);
+r = S.pickContent([sh('a', { text: lines(3) }), sh('b', { text: 'Heading' })], ['a', 'b']);
+check('a selection of heading + points: the points', r.ok && r.id === 'a', JSON.stringify(r));
+r = S.pickContent([sh('a', { text: '1. Plan\r2. Build\r3. Test' }), sh('b', { text: '_\r_' , type: 'Group' })], []);
+check('numbered list read as its points (numbers kept in the text)', r.ok && r.count === 3, JSON.stringify(r));
+r = S.pickContent([sh('a', { text: 'Problem_The issue\rSolution_The fix' })], []);
+check('heading_text lines (the original underscore form) are points', r.ok && r.count === 2, JSON.stringify(r));
+
+/* ---------- 2b. points a misnamed template did not take */
+const tb = (id, name, text) => ({ id, name, text });
+let pm = S.placeMissing([tb('a', 'Text_1', 'x'), tb('b', 'Text_2', 'y')], ['p1', 'p2']);
+check('placeMissing: a good template needs nothing', !pm.assign.length && !pm.unplaced.length, JSON.stringify(pm));
+pm = S.placeMissing([tb('a', 'Text 2', 'Lorem ipsum'), tb('b', 'Text 1', 'Lorem ipsum')], ['p1', 'p2']);
+check('placeMissing: "Text 1"/"Text 2" matched by number', JSON.stringify(pm.assign.map(a => a.id + a.text)) === '["bp1","ap2"]' && !pm.guessed, JSON.stringify(pm));
+pm = S.placeMissing([tb('a', 'Text 1', 'Lorem ipsum'), tb('b', 'Text 1', 'Lorem ipsum'), tb('c', 'Text 1', 'Lorem ipsum')], ['p1', 'p2', 'p3']);
+check('placeMissing: duplicate names filled in template order, marked as a guess', pm.assign.map(a => a.id + a.text).join() === 'ap1,bp2,cp3' && pm.guessed, JSON.stringify(pm));
+pm = S.placeMissing([tb('a', 'Text_1', 'p1'), tb('b', 'Text 2', 'Real text the template keeps')], ['p1', 'p2']);
+check('placeMissing: never overwrites a box with real text', pm.unplaced.join() === '2' && !pm.assign.length, JSON.stringify(pm));
+pm = S.placeMissing([tb('a', 'Text 1', 'Lorem ipsum')], ['Heading_Body text']);
+check('placeMissing: heading_text lines give the text part (as the original does)', pm.assign[0] && pm.assign[0].text === 'Body text', JSON.stringify(pm));
+
+/* ---------- 3. the whole run on a stand-in PowerPoint, with the original macro played as the original behaves */
+function stage(shapes, selected) {
+  const W = shapes.map(d => {
+    const w = { id: d.id, type: d.type, width: 100, height: 50, load() {}, _d: d,
+      get name() { return d.name; }, set name(v) { d.name = v; },
+      textFrame: { textRange: { load() {}, get text() { return d.text == null ? '' : d.text; } } },
+      setZOrder(p) { const L = st.list, i = L.indexOf(w); L.splice(i, 1);
+        if (p === 'SendToBack') L.unshift(w); else if (p === 'BringToFront') L.push(w); else if (p === 'BringForward') L.splice(Math.min(i + 1, L.length), 0, w); else L.splice(Math.max(i - 1, 0), 0, w); } };
+    if (d.type === 'Placeholder') w.placeholderFormat = { load() {}, type: d.ph };
+    return w;
+  });
+  const st = { list: W.slice(), notices: [], read: null };
+  const slide = { id: 'S1', load() {}, shapes: { load() {}, get items() { return st.list; } } };
+  window.PowerPoint = { run: async f => f({ sync: async () => {}, presentation: {
+    getSelectedSlides: () => ({ load() {}, items: [slide] }), getSelectedShapes: () => ({ load() {}, items: (selected || []).map(id => ({ id })) }),
+    slides: { getItem: () => slide } } }) };
+  window.Office = { AsyncResultStatus: { Succeeded: 'succeeded' }, EventType: { DialogMessageReceived: 'm' }, context: { ui: { displayDialogAsync(url, o, cb) {
+    // as PowerPoint does it: the dialog says "ready", the add-in hands it the text (never in the URL)
+    if (url.includes('?') || url.includes('#')) st.notices.push('TEXT IN URL: ' + url);
+    let h = null; const d = { addEventHandler(ev, f) { h = f; }, messageChild(s) { st.notices.push(JSON.parse(s).m); }, close() { st.closed = (st.closed || 0) + 1; } };
+    cb({ status: 'succeeded', value: d }); h({ message: 'ready' }); h({ message: 'unexpected' });   // an extra message must not close it
+    setTimeout(() => { st.closedBeforeOk = st.closed || 0; h({ message: 'ok' }); }, 30); } } } };   // the user reads it, then presses OK
+  /* DynamicTemplateSelectorForm as the original does it: RenamePlaceholder (bottom-most -> Content_Text_Box), read
+     Shapes("Content_Text_Box") (the first by z-order), on OK delete EVERY Content_Text_Box and paste Text_1..n */
+  st.macro = choice => {
+    st.list[0].name = 'Content_Text_Box';
+    const c = st.list.find(w => w.name === 'Content_Text_Box');
+    st.read = S.points(c._d.text).length;
+    const box = (id, name, text) => { const d = { text }; return { id, name, type: 'TextBox', load() {}, _d: d, textFrame: { textRange: { load() {}, get text() { return d.text; }, set text(v) { d.text = v; } } } }; };
+    if (choice === 'ok') {     // a well-made template: Text_1..Text_n, filled by the original
+      st.list = st.list.filter(w => w.name !== 'Content_Text_Box');
+      for (let i = 1; i <= st.read; i++) st.list.push(box('new' + i, 'Text_' + i, S.points(c._d.text)[i - 1]));
+    }
+    if (choice === 'ok-spaced' || choice === 'ok-short') {   // library templates named "Text 1" on every box: the original fills nothing
+      st.list = st.list.filter(w => w.name !== 'Content_Text_Box');
+      const n = choice === 'ok-short' ? st.read - 1 : st.read;
+      for (let i = 1; i <= n; i++) st.list.push(box('sp' + i, 'Text 1', 'Lorem ipsum dolor sit amet'));
+    }
+  };
+  return st;
+}
+function serve(st, choice) {
+  let calls = 0;
+  window.fetch = async (url, o) => {
+    if (url === '/api/slsd/run') { st.asked = JSON.parse(o.body).cmd; return { ok: true, json: async () => ({ id: 'j1' }) }; }
+    if (url.startsWith('/api/slsd/status')) { if (++calls === 1) { if (choice === 'error') return { ok: true, json: async () => ({ state: 'error', message: 'The SL Smart Design add-in is not loaded.' }) }; st.macro(choice); }
+      return { ok: true, json: async () => ({ state: 'done' }) }; }
+    return { ok: false, json: async () => ({}) };
+  };
+}
+const ev = () => { const e = { n: 0, completed() { e.n++; } }; return e; };
+
+(async () => {
+  try {
+    // A. LVC-like slide, cancelled: the original reads the 4 points; the content is back where it was, with its name
+    let st = stage([{ id: 'ph', name: 'Text Placeholder 2', type: 'Placeholder', ph: 'Body', text: '' }, { id: 'ti', name: 'Title 3', type: 'Placeholder', ph: 'Title', text: 'Cloud' },
+      { id: 'c', name: 'TextBox 7', type: 'TextBox', text: lines(4) }, { id: 'deco', name: 'Oval 1', type: 'GeometricShape', text: '' }]);
+    serve(st, 'cancel'); let e = ev();
+    await S.alternativeDesign(e);
+    check('LVC slide: the original window reads the 4 points (not 0 or 1 -> no empty gallery)', st.read === 4 && st.asked === 'alternative', `read ${st.read}, asked ${st.asked}`);
+    check('cancelled: the content keeps its name and place', st.list.map(w => w.name).join('|') === 'Text Placeholder 2|Title 3|TextBox 7|Oval 1', st.list.map(w => w.name).join('|'));
+    check('the ribbon command is completed once', e.n === 1, e.n);
+    // B. inserted: the content replaced, an older Content_Text_Box (another shape) kept and its name given back
+    st = stage([{ id: 'old', name: 'Content_Text_Box', type: 'TextBox', text: 'Speaker reminder' }, { id: 'c', name: 'Points', type: 'Placeholder', ph: 'Body', text: lines(6) }]);
+    serve(st, 'ok'); await S.alternativeDesign(ev());
+    const names = st.list.map(w => w.name);
+    check('inserted: 6 points read, template boxes Text_1..Text_6 pasted', st.read === 6 && names.filter(n => /^Text_\d$/.test(n)).length === 6, names.join('|'));
+    check('inserted: the older shape named Content_Text_Box is not deleted and keeps its name', names.includes('Content_Text_Box') && !names.includes('Points'), names.join('|'));
+    // B2. a library template whose boxes are all named "Text 1": the points placed in its order, the user told to check
+    st = stage([{ id: 'c', name: 'Body', type: 'Placeholder', ph: 'Body', text: lines(4) }]); serve(st, 'ok-spaced'); await S.alternativeDesign(ev());
+    const filled = st.list.filter(w => w.name === 'Text 1').map(w => w._d.text);
+    check('misnamed template ("Text 1" x4): every point placed in order, no Lorem ipsum left', filled.join('|') === S.points(lines(4)).join('|'), filled.join('|'));
+    check('misnamed template: the user is told to check the order', /placed in the template's own order/.test(st.notices[0] || ''), st.notices[0]);
+    // B3. a template with fewer boxes than points: says which points have no place
+    st = stage([{ id: 'c', name: 'Body', type: 'Placeholder', ph: 'Body', text: lines(5) }]); serve(st, 'ok-short'); await S.alternativeDesign(ev());
+    check('template too small: says point 5 has no place and how to undo', /point 5 of your 5/.test(st.notices[0] || '') && /Ctrl\+Z/.test(st.notices[0] || ''), st.notices[0]);
+    // C. 11 points: not sent to SL Smart Design, explained
+    st = stage([{ id: 'c', name: 'TextBox 1', type: 'TextBox', text: lines(11) }]); serve(st, 'ok'); st.asked = null;
+    await S.alternativeDesign(ev());
+    check('11 points: explained, the original window not opened', !st.asked && /11 points/.test(st.notices[0] || ''), st.notices[0]);
+    check('notice stays open until the user presses OK (real PowerPoint, 16 Nov: it closed itself)', st.closedBeforeOk === 0, st.closedBeforeOk);
+    check('notice closes on OK', st.closed === 1, st.closed);
+    // the ribbon command is completed only after the notice was closed (PowerPoint closes a dialog of a completed command)
+    { const e2 = ev(); let doneAtClose = null; st = stage([{ id: 'c', name: 'TextBox 1', type: 'TextBox', text: lines(12) }]);
+      const orig = window.Office.context.ui.displayDialogAsync; window.Office.context.ui.displayDialogAsync = (u, o, cb) => orig(u, o, r => { const ad = r.value.addEventHandler; r.value.addEventHandler = (k, f) => ad(k, a => { if (a.message === 'ok') doneAtClose = e2.n; f(a); }); cb(r); });
+      await S.alternativeDesign(e2);
+      check('the command stays open while its notice is shown, completed after OK', doneAtClose === 0 && e2.n === 1, `completed before OK: ${doneAtClose}, after: ${e2.n}`); }
+    // D. an error from the panel host (add-in not loaded) is shown in plain words and the slide restored
+    st = stage([{ id: 'x', name: 'Rect', type: 'GeometricShape', text: '' }, { id: 'c', name: 'Body', type: 'TextBox', text: lines(3) }]); serve(st, 'error');
+    await S.alternativeDesign(ev());
+    check('error from SL Smart Design: shown, slide restored', /not loaded/.test(st.notices[0] || '') && st.list.map(w => w.name).join('|') === 'Rect|Body', `${st.notices[0]} / ${st.list.map(w => w.name).join('|')}`);
+    // E. the other commands only ask for their own key
+    const asked = [];
+    window.fetch = async (url, o) => url === '/api/slsd/run' ? (asked.push(JSON.parse(o.body).cmd), { ok: true, json: async () => ({ id: 'k' }) }) : { ok: true, json: async () => ({ state: 'done' }) };
+    for (const cmd of Object.values(S.COMMANDS)) await S.command(cmd)(ev());
+    check('SL Templates, Miscellaneous, Shape Rename: each asks for its own command', asked.join(',') === Object.values(S.COMMANDS).join(','), asked.join(','));
+    // F. the panel host not running: a plain message
+    window.fetch = async () => { throw new TypeError('Failed to fetch'); };
+    st = stage([{ id: 'c', name: 'B', type: 'TextBox', text: lines(3) }]);
+    window.fetch = async () => ({ ok: false, json: async () => ({ error: 'SL Smart Design is still running a command. Close its window (for example Select Template) first.' }) });
+    await S.alternativeDesign(ev());
+    check('busy panel host: the reason is shown', /still running/.test(st.notices[0] || ''), st.notices[0]);
+    // G. 10.21: Office on a Mac - the SL Smart Design commands say where they are; the panel host is not asked
+    st = stage([{ id: 'c', name: 'B', type: 'TextBox', text: lines(4) }]);
+    window.Office.PlatformType = { Mac: 'Mac', PC: 'PC' }; window.Office.context.platform = 'Mac';
+    let asked2 = 0, bridge = false; window.fetch = async url => { if (url === '/api/status') return { ok: true, json: async () => ({ slsd: { mac_bridge: bridge } }) }; if (url === '/api/slsd/run') asked2++; return { ok: true, json: async () => ({ id: 'x', state: 'done' }) }; };
+    const e3 = ev(); await S.alternativeDesign(e3); await S.command('footer-note')(ev());
+    check('Mac: Alternative Design and the other commands show where to find them; the panel host is not asked to run them',
+      asked2 === 0 && st.notices.length === 2 && st.notices.every(n => n === S.MAC_MSG) && e3.n === 1, `asked ${asked2}, notices ${JSON.stringify(st.notices)}`);
+    // 10.21.1: with the opt-in Mac bridge switched on in the panel host, the commands are run as on Windows
+    bridge = true; st.notices.length = 0; await S.command('footer-note')(ev());
+    check('Mac with the opt-in AppleScript bridge: the command is sent to the panel host, no Mac notice', asked2 === 1 && !st.notices.includes(S.MAC_MSG), `asked ${asked2}, notices ${JSON.stringify(st.notices)}`);
+    check('Mac: detected from Office.context.platform', S.onMac() === true);
+    window.Office.context.platform = 'PC';
+    check('Windows: not treated as a Mac', S.onMac() === false);
+  } catch (err) { check('no exception', false, err && err.stack); }
+  document.getElementById('list').innerHTML = acc.map(a => `<li class="${a.ok ? '' : 'f'}">${a.ok ? 'PASS' : 'FAIL'} ${a.name}</li>`).join('');
+  document.getElementById('out').textContent = JSON.stringify({ acceptance: acc });
+})();
+</script>
+</body>
+</html>
