@@ -84,13 +84,10 @@
     document.title = 'SL Editor';
     if (DEV) return;      // the developer mode keeps the original page (its version line included)
     const h1 = document.querySelector('h1');
-    if (h1) h1.innerHTML = `<i class="sled-logo">${LOGO}</i><b class="sled-name">SL Editor<small>AI SL Smart Design · SL Design · SL Animation</small></b>`;
+    // 10.26: no tab bar - each ribbon button opens its own tool (SL Editor / AI SL Smart Design, SL Design, SL Animation)
+    if (h1) h1.innerHTML = `<i class="sled-logo">${LOGO}</i><b class="sled-name">SL Editor<small id="sledMode">AI SL Smart Design</small></b>` +
+      `<button type="button" id="sledBack" class="sled-back" hidden title="Back to AI SL Smart Design">AI SL Smart Design ›</button>`;
     document.body.classList.add('sled');
-    const tabs = document.createElement('nav');
-    tabs.className = 'sled-tabs'; tabs.setAttribute('role', 'tablist');
-    tabs.innerHTML = [['ai', 'AI SL Smart Design'], ['design', 'SL Design'], ['anim', 'SL Animation']]
-      .map(([k, l], i) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${i === 0}" class="${i === 0 ? 'sel' : ''}">${l}</button>`).join('');
-    h1.insertAdjacentElement('afterend', tabs);
     const mk = (id, html) => { const d = document.createElement('div'); d.id = id; d.className = 'sled-pane'; d.hidden = true; d.innerHTML = html; document.body.insertBefore(d, document.querySelector('footer')); wire(d); return d; };
     mk('sledDesign', `<p class="sled-lead">Brand shapes, text, layouts and notes for the selected slide.</p>` + cards(DESIGN, 'sd'));
     mk('sledAnim', `<p class="sled-lead">Animations, timing, audio and video for this presentation.</p>` + cards(ANIM, 'sa'));
@@ -100,15 +97,19 @@
     const after = $('stPanel') || $('appMain');
     if (after && after.parentNode) after.parentNode.insertBefore(tools, after.nextSibling);
     wire(tools);
-    tabs.querySelectorAll('button').forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
+    if ($('sledBack')) $('sledBack').addEventListener('click', () => show('ai'));
     let want = new URLSearchParams(location.search).get('tab');
     try { want = want || sessionStorage.getItem('sled.tab'); } catch (e) { /* none */ }
     if (want) show(want);
   }
+  const MODES = { ai: 'AI SL Smart Design', design: 'SL Design', anim: 'SL Animation' };
+  let shownAt = 0;
   function show(tab) {
     if (!['ai', 'design', 'anim'].includes(tab)) tab = 'ai';
     document.body.dataset.tab = tab;
-    document.querySelectorAll('.sled-tabs button').forEach(b => { const on = b.dataset.tab === tab; b.classList.toggle('sel', on); b.setAttribute('aria-selected', on); });
+    if ($('sledMode')) $('sledMode').textContent = MODES[tab];
+    if ($('sledBack')) $('sledBack').hidden = tab === 'ai';
+    shownAt = Date.now();
     if (!$('sledDesign')) return;
     $('sledDesign').hidden = tab !== 'design'; $('sledAnim').hidden = tab !== 'anim';
     try { sessionStorage.setItem('sled.tab', tab); } catch (e) { /* none */ }
@@ -124,9 +125,8 @@
     .sled-logo { display:block; font-style:normal; } .sled-logo svg { width:34px; height:34px; display:block; filter:drop-shadow(0 3px 6px rgba(54,69,169,.25)); }
     .sled-name { display:flex; flex-direction:column; font-size:17px; font-weight:700; letter-spacing:.2px; line-height:1.15; }
     .sled-name small { font-size:10.5px; font-weight:500; color:var(--muted); letter-spacing:.1px; }
-    .sled-tabs { position:sticky; top:58px; z-index:29; display:flex; gap:4px; padding:4px; margin:0 0 12px; background:#e6ebf6; border-radius:12px; }
-    .sled-tabs button { flex:1; border:0; background:none; padding:7px 4px; border-radius:9px; font-size:12px; font-weight:600; color:#47506a; white-space:nowrap; }
-    .sled-tabs button.sel { background:#fff; color:var(--accent); box-shadow:0 1px 4px rgba(20,30,60,.14); }
+    .sled-back { margin-left:auto; border:1px solid #d5dcea; background:#fff; color:var(--accent); border-radius:999px; padding:4px 10px; font-size:11px; font-weight:600; white-space:nowrap; }
+    .sled-back:hover { border-color:var(--accent); }
     body.sled:not([data-tab="ai"])[data-tab] > .panel, body.sled:not([data-tab="ai"])[data-tab] #appFoot, body.sled:not([data-tab="ai"])[data-tab] footer { display:none !important; }
     body.sled:not([data-tab="ai"])[data-tab] { padding-bottom:24px; }
     body.simple .panel { border:0; border-radius:14px; box-shadow:0 1px 3px rgba(20,30,60,.06), 0 6px 18px rgba(20,30,60,.05); padding:14px; }
@@ -194,5 +194,12 @@
   `;
   document.head.appendChild(css);
   build();
-  window.__sled = { run, show, NAMES };
+  // a ShowTaskpane button (SL Editor, AI SL Smart Design) opens the AI tool; SL Design / SL Animation call show() first
+  try {
+    if (typeof Office !== 'undefined') Office.onReady(() => {
+      if (Office.addin && typeof Office.addin.onVisibilityModeChanged === 'function')
+        Office.addin.onVisibilityModeChanged(a => { if (a && a.visibilityMode === 'Taskpane') setTimeout(() => { if (Date.now() - shownAt > 1500) show('ai'); }, 600); });
+    });
+  } catch (e) { /* outside Office */ }
+  window.__sled = { run, show, NAMES, mode: () => document.body.dataset.tab || 'ai' };
 })();

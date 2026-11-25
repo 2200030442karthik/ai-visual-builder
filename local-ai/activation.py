@@ -35,6 +35,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -144,6 +145,14 @@ def machine_id():
                                 winreg.KEY_READ | winreg.KEY_WOW64_64KEY) as k:
                 raw = winreg.QueryValueEx(k, 'MachineGuid')[0]
         except OSError:
+            raw = ''
+    if not raw and sys.platform == 'darwin':          # 10.26: the Mac's hardware UUID (its network name can change)
+        try:
+            import subprocess
+            out = subprocess.run(['ioreg', '-rd1', '-c', 'IOPlatformExpertDevice'], capture_output=True, text=True, timeout=10).stdout
+            m = re.search(r'"IOPlatformUUID"\s*=\s*"([^"]+)"', out)
+            raw = m.group(1) if m else ''
+        except Exception:
             raw = ''
     if not raw:
         import platform

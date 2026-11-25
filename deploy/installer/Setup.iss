@@ -1,9 +1,9 @@
-; Inno Setup Script for AI SL Smart Design
-; Produces a single, standalone Setup executable (AI-SL-Smart-Design-Setup.exe)
+; Inno Setup Script for SL Editor
+; Produces a single, standalone Setup executable (SL-Editor-Setup.exe)
 ; Installs per-user without requiring administrator rights
 
 #define MyAppName "SL Editor"
-#define MyAppVersion "10.25"
+#define MyAppVersion "10.26"
 #define MyAppPublisher "Simplilearn"
 #define MyAppURL "https://www.simplilearn.com"
 #define MyAppExeName "run_server.pyw"
@@ -36,8 +36,8 @@ RestartApplications=no
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-; Copy all files from the built Team Package
-Source: "..\..\Team_Package\AI Visual Builder\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Copy everything staged by build-stage.ps1
+Source: "..\..\Build_Stage\SL Editor\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "Setup-PostInstall.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "Setup-Uninstall.ps1"; DestDir: "{app}"; Flags: ignoreversion
 

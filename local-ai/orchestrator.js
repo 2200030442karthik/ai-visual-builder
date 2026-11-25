@@ -115,7 +115,9 @@ function orchScore(c) {
    each at most 3 times before every other category had its turn. */
 /* 10.24: compositions retired from the gallery after review: text that collides in the layered stack, a lone title
    with a stray rule (poster), a small grey hub (ecosystem). Kept in the packs for editing visuals already inserted. */
-const ORCH_RETIRED = /^(isostack|poster|ecosystem)$/;
+// 10.26: the scenes pack and the concept tiles / bento grid ("Ring and cards", "Split panel", "Icon band", "Folder tabs",
+// "Device links", "Circuit board", ...) are set aside: the built-in infographic library (packs/library-10.26.js) replaces them
+const ORCH_RETIRED = /^(isostack|poster|ecosystem|concepttiles|bento|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|sectionrows|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|mindmap|circleheads)$/;
 /* 10.25: the sentence in a box ("Key message", "Statement banner", "Statement with icon", "Key statement"): not an
    infographic. Shown only when no other design exists for the text (Claude breaks a paragraph into its key ideas). */
 const ORCH_PLAIN = /^(statement|key_message|s-key|s-banner|s-icon)$/;
@@ -127,8 +129,10 @@ function orchRank(all, max, shown, strict) {
   (rich.length ? rich : live).map(c => Object.assign(c, { score: orchScore(c) })).sort((a, b) => b.score - a.score).forEach(c => {
     // an AI service's own drawings are each their own design; its plan drawn here competes by family like the rest
     const sig = orchSig(c.prims), fk = c.own ? c.id : c.category + '|' + c.family, fp = c.footprint || (c.footprint = orchFootprint(c.prims));
-    const look = { fp, sp: c.shapeprint || (c.shapeprint = orchShapePrint(c.prims)) };
-    if (seen.has(sig) || fam.has(fk) || (shown && shown.has(fk)) || prints.some(q => orchSame(q.fp, fp) || orchLooksSame(q, look))) return;
+    const look = { fp, sp: c.shapeprint || (c.shapeprint = orchShapePrint(c.prims)), lib: c.lib };
+    // 10.26: the library's variants of one layout are each their own design (other holders, cards, marks, tones);
+    // two different layouts that look the same are still look-alikes
+    if (seen.has(sig) || fam.has(fk) || (shown && shown.has(fk)) || prints.some(q => !(q.lib && q.lib === c.lib) && (orchSame(q.fp, fp) || orchLooksSame(q, look)))) return;
     seen.add(sig); fam.add(fk); prints.push(look); pool.push(c);
   });
   // 10.16: never padded with weak designs - when six or more designs with objects and hierarchy exist, the plain
@@ -298,22 +302,66 @@ const orchPlanBuild = (plan, key, style, density) => R => { const pl = Object.as
 registerEngine({ id: 'designs', kind: 'native', order: 20,
   available: () => true,
   // 10.17: every composition that fits is drawn (one Generate shows 20+ distinct designs; the ranking removes look-alikes)
-  run: async ctx => orchDesigns(ctx, 40),
-  more: async ctx => orchDesigns(ctx, 16) });
+  run: async ctx => orchDesigns(ctx, 20),   // 10.26: 20 (was 40) - the library engine gives most designs now
+  more: async ctx => orchDesigns(ctx, 8) });
 /* 10.16: the facts every design of a text must show (beyond its items, which planRender already requires): a statement's
    subject, verbs and object; labelled sections' names. */
 const orchFacts = P => { const st = P && P.statement;
   return (st ? [st.subject].concat(st.verbs || [], [st.object]) : P && P.sections ? (P.paragraph ? [P.title] : []).concat(planGroups(P).map(x => x.g.name)) : []).filter(Boolean); };
 const orchMissing = (prims, facts) => { const T = prims.filter(p => p.text).map(p => String(p.text)).join(' ').replace(/\s+/g, ' ').toLowerCase();
   return facts.filter(f => !T.includes(String(f).replace(/\s+/g, ' ').toLowerCase())); };
-async function orchDesigns(ctx, max) {
+async function orchPlanInit(ctx) {
   const m = ctx.memo.free;
   if (!m.plan) {
     const prep = await PANELS.napkin.prepared(ctx.text);
-    if (prep.error || prep.record || (prep.points || []).length < 2) return [];
+    if (prep.error || prep.record || (prep.points || []).length < 2) return null;
     const plan = planFromPrep(prep), d = planAtDensity(plan, ctx.R, 'auto');
     Object.assign(m, { plan, d, seen: new Set() });
   }
+  return m;
+}
+/* 10.26: the built-in infographic library (packs/library-10.26.js): 25 layouts x 120 variants. Each round offers the
+   next variant of every layout that suits the text, so Generate shows one of each and every "More visuals" new ones. */
+registerEngine({ id: 'library', kind: 'native', order: 15,
+  available: () => typeof LIB !== 'undefined' && LIB.layouts.length > 0,
+  run: async ctx => orchLibrary(ctx, 18),
+  more: async ctx => orchLibrary(ctx, 12) });
+async function orchLibrary(ctx, max) {
+  const m = await orchPlanInit(ctx);
+  if (!m) return [];
+  const lib = m.lib || (m.lib = { round: 0, at: 0, fails: {}, P: m.d.plan, names: m.d.density === 'names', layouts: LIB.layouts.filter(L => !L.why(m.d.plan)) });
+  const facts = orchFacts(m.plan), out = [], nV = LIB.variants.length;
+  for (let guard = 0; out.length < max && lib.round < nV && guard < 600; guard++) {
+    const live = lib.layouts.filter(L => (lib.fails[L.key] || 0) < 8), P = lib.P;
+    if (!live.length && !(lib.round === 0 && !lib.names)) break;
+    if (lib.at >= live.length) {
+      // long content: when no layout fits with every description, the point names (said in the design's name)
+      if (!out.length && lib.round === 0 && !lib.names && P.items.some(i => i.detail)) {
+        lib.P = planNames(P); lib.names = true; lib.fails = {}; lib.at = 0; lib.layouts = LIB.layouts.filter(L => !L.why(lib.P)); continue; }
+      lib.at = 0; lib.round++;
+      if (out.length) break;          // one variant of each layout per click: two variants of one layout look alike
+      continue;
+    }
+    const L = live[lib.at++], vi = (lib.round + LIB.layouts.indexOf(L) * 7) % nV, key = LIB.key(L.key, vi);
+    const style = { accent: (lib.round * 3 + LIB.layouts.indexOf(L)) % 10, spacing: 'fill' };
+    const Ps = Object.assign({}, P, { style: Object.assign({}, P.style, style) });
+    let r = planRender(Ps, key, ctx.R);
+    // a statement's subject or a paragraph's topic the layout leaves out: the same design with it as a caption above
+    if (r.ok && orchMissing(r.prims, facts).length) { const c = planRender(Ps, 'cap:' + key, ctx.R); if (c.ok && orchMissing(c.prims, facts).length < orchMissing(r.prims, facts).length) r = c; }
+    if (!r.ok) { if (!/numbers only/.test(r.why || '')) lib.fails[L.key] = (lib.fails[L.key] || 0) + 1; continue; }
+    lib.fails[L.key] = 0;
+    const names = lib.names, plan = lib.P;
+    out.push({ id: 'L:' + key + ':' + r.style.accent + (names ? ':n' : ''), engine: 'designs', lib: L.key, title: r.name + (names ? ' · point names only' : ''), family: key,
+      category: 'Library: ' + L.name, prims: r.prims, edit: r.prims.some(p => p.t === 'image') ? 'partial' : 'full', complete: !names && !orchMissing(r.prims, facts).length, slides: 1, rich: true,
+      relevant: L.cat !== 'List' && L.cat !== 'Concept', base: 90 + (L.cat === 'Cycle' || L.cat === 'Hierarchy' ? 8 : L.cat === 'Process' ? 4 : 0) - (names ? 6 : 0), why: r.kind,
+      fit: orchFits(orchPlanBuild(m.plan, r.key, r.style, names ? 'names' : 'full')),
+      insert: async () => { ST.designs = [{ r, plan, full: m.plan, density: names ? 'names' : 'full', from: 'your text' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });
+  }
+  return out;
+}
+async function orchDesigns(ctx, max) {
+  const m = await orchPlanInit(ctx);
+  if (!m) return [];
   // 10.15: labelled sections have no built-in single-list views, so more of their compositions are drawn here; the
   // learner-style ones (learning pack) rank above the general grouped layouts
   const sec = !!m.d.plan.sections, facts = orchFacts(m.plan);
@@ -529,12 +577,12 @@ function orchPlanDesigns(key, plan) {
 function orchSource(c) {
   // 10.24: in detail - which service designed it, and how it reached the slide
   const pack = (PLAN_LAYOUTS[c.family] && PLAN_LAYOUTS[c.family].pack) || '';
-  if (c.engine === 'claude') return c.concept ? { src: 'claude', srcName: 'Claude · own design', srcWhy: 'Composed by Claude for this text (its own layout), drawn as editable shapes' }
-    : { src: 'claude', srcName: /antv/.test(pack) ? 'Claude · AntV structure' : 'Claude · plan', srcWhy: 'Claude read the text (points, order, groups, icons); drawn in ' + (/antv/.test(pack) ? 'an AntV Infographic structure' : 'a built-in layout') + ' as editable shapes' };
-  if (c.engine === 'napkin') return /:origedit$/.test(c.id) ? { src: 'napkin', srcName: 'Napkin · original', srcWhy: 'Napkin’s own design, drawn as editable shapes and text' }
-    : { src: 'napkin', srcName: 'Napkin · rebuilt', srcWhy: 'Designed by Napkin, rebuilt in the template as editable shapes' };
-  if (/antv/.test(pack)) return { src: 'builtin', srcName: 'Built-in · AntV', srcWhy: 'An AntV Infographic structure, made on this PC from your text (no AI service)' };
-  return { src: 'builtin', srcName: c.engine === 'builtin' ? 'Built-in · SL Smart Design' : 'Built-in · design pack', srcWhy: 'Made on this PC from your text by the add-in’s own layouts (no AI service)' };
+  // 10.26: three sources only - Built-in design pack, Claude, Napkin (the detail stays in the tooltip)
+  if (c.engine === 'claude') return c.concept ? { src: 'claude', srcName: 'Claude', srcWhy: 'Composed by Claude for this text (its own layout), drawn as editable shapes' }
+    : { src: 'claude', srcName: 'Claude', srcWhy: 'Claude read the text (points, order, groups, icons); drawn in a built-in layout as editable shapes' };
+  if (c.engine === 'napkin') return /:origedit$/.test(c.id) ? { src: 'napkin', srcName: 'Napkin', srcWhy: 'Napkin’s own design, drawn as editable shapes and text' }
+    : { src: 'napkin', srcName: 'Napkin', srcWhy: 'Designed by Napkin, rebuilt in the template as editable shapes' };
+  return { src: 'builtin', srcName: 'Built-in design pack', srcWhy: c.lib ? 'From the built-in infographic library (3,000 designs), made on this PC from your text (no AI service)' : 'Made on this PC from your text by the add-in’s own layouts (no AI service)' };
 }
 registerEngine(orchProvider('napkin'));
 registerEngine(orchProvider('claude'));

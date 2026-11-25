@@ -61,6 +61,8 @@ STATIC = {'/': ('v10.html', 'text/html; charset=utf-8'), '/v10.html': ('v10.html
           # 10.20.1: the SL Smart Design tab's icons (manifest-slsd.xml; made by sl-smart-design/make_icons.py)
           # 10.25: the 3D picture icons (3dicons v1, CC0) for 'Style the selection' > Replace the selected icon
           **{f'/assets/3dicons/{n}': (f'assets/3dicons/{n}', 'application/json' if n.endswith('.json') else 'image/png') for n in (os.listdir(os.path.join(HERE, 'assets', '3dicons')) if os.path.isdir(os.path.join(HERE, 'assets', '3dicons')) else []) if n.endswith(('.png', '.json'))},
+          # 10.26: Microsoft Fluent Emoji 3D (MIT), a business and education subset
+          **{f'/assets/fluent3d/{n}': (f'assets/fluent3d/{n}', 'application/json' if n.endswith('.json') else 'image/png') for n in (os.listdir(os.path.join(HERE, 'assets', 'fluent3d')) if os.path.isdir(os.path.join(HERE, 'assets', 'fluent3d')) else []) if n.endswith(('.png', '.json'))},
           **{f'/assets/slsd/{n}': (f'assets/slsd/{n}', 'image/png') for n in (os.listdir(os.path.join(HERE, 'assets', 'slsd')) if os.path.isdir(os.path.join(HERE, 'assets', 'slsd')) else []) if n.endswith('.png')},
           # 10.24: AntV Infographic (MIT, vendor/antv-infographic-LICENSE.txt), served locally - no CDN at run time
           '/vendor/antv-infographic.min.js': ('vendor/antv-infographic-0.2.20.min.js', 'text/javascript; charset=utf-8'),
@@ -711,17 +713,20 @@ def mac_bridge_on():
     return sys.platform == 'darwin' and CONFIG.get('mac_vba_bridge') is True and not TEST_NO_PAID
 
 
-def mac_script(macro):
+def mac_script(macro, addin=None):
     # the AppleScript for one allow-listed macro of the configured add-in (both checked: no quote can get in)
-    if macro not in SLSD_MACROS.values() or not re.fullmatch(r'[A-Za-z0-9_. -]{1,100}\.ppam', CONFIG['slsd_addin']):
+    addin = addin or CONFIG['slsd_addin']
+    allowed = set(SLSD_MACROS.values()) | set(SLED_MACROS.values())
+    if macro not in allowed or not re.fullmatch(r'[A-Za-z0-9_. -]{1,100}\.ppam', addin):
         raise SlsdUnavailable('This command is not available.')
-    return f'tell application "Microsoft PowerPoint" to run VB macro macro name "{CONFIG["slsd_addin"]}!Module1.{macro}"'
+    return f'tell application "Microsoft PowerPoint" to run VB macro macro name "{addin}!Module1.{macro}"'
 
 
-def _mac_runner(macro):
-    # 10.21.1, opt-in (mac_vba_bridge): PowerPoint for Mac runs the original macro itself (licence check included)
+def _mac_runner(macro, addin=None):
+    # 10.21.1, opt-in (mac_vba_bridge; the 10.26 Mac installer turns it on): PowerPoint for Mac runs the original macro
+    # itself (licence check included)
     import subprocess
-    r = subprocess.run(['osascript', '-e', mac_script(macro)], capture_output=True, text=True, timeout=3600)
+    r = subprocess.run(['osascript', '-e', mac_script(macro, addin)], capture_output=True, text=True, timeout=3600)
     if r.returncode != 0:
         why = (r.stderr or '').strip().splitlines()[-1:] or ['']
         raise SlsdUnavailable('PowerPoint for Mac could not run the command' + (f' ({why[0][:160]})' if why[0] else '') +
@@ -743,12 +748,15 @@ SLSD_RUNNER = _slsd_runner      # replaced by the tests (no PowerPoint)
 
 
 def _sled_runner(macro, pre):
+    addin = CONFIG.get('sled_addin') if isinstance(CONFIG.get('sled_addin'), str) and re.fullmatch(r'[A-Za-z0-9_. -]{1,100}\.ppam', CONFIG.get('sled_addin')) else 'SL_Audomation.ppam'
     if sys.platform != 'win32':
-        raise SlsdUnavailable('On a Mac, use the SL Design and SL Animation tabs of the VBA add-in for this command.')
+        # 10.26: on a Mac, AppleScript runs the commands that need no typed value; the others from the add-in's own tab
+        if mac_bridge_on() and not pre:
+            return _mac_runner(macro, addin)
+        raise SlsdUnavailable('On a Mac, use the SL Design and SL Animation tabs of the SL_Audomation add-in for this command.')
     import slsd_com
     if TEST_NO_PAID:
         raise slsd_com.MacroError('PowerPoint commands are switched off on a test panel host.')
-    addin = CONFIG.get('sled_addin') if isinstance(CONFIG.get('sled_addin'), str) and re.fullmatch(r'[A-Za-z0-9_. -]{1,100}\.ppam', CONFIG.get('sled_addin')) else 'SL_Audomation.ppam'
     for setter, v in pre:        # VBA's CDbl reads the PC's own decimal separator
         if setter in ('Shift_Animations_User_Form', 'Shift_By_User_Form'):
             v = v.replace('.', _decimal_sep())

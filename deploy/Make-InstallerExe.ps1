@@ -1,5 +1,5 @@
-# Single-File Installer Builder for SL Smart Design + AI Visual Builder
-# Produces: Dist_Installer\SL-Editor-Setup.exe (the ONLY file to share with the team)
+﻿# SL Editor installer builder: Windows (one exe) and Mac (one zip)
+# Produces: Dist_Installer\SL-Editor-Setup.exe (Windows) and Dist_Installer\SL-Editor-Mac.zip (Mac): the only files to share
 # And:      deploy\team-keys\activation-keys.csv   (PRIVATE: kept by manager to issue individual keys)
 
 param(
@@ -24,7 +24,7 @@ if (-not (Test-Path $InnoCompiler)) {
 Set-Location $Root
 Write-Host ''
 Write-Host '===========================================================' -ForegroundColor Cyan
-Write-Host ' SL Smart Design + AI Visual Builder: Single-File Builder  ' -ForegroundColor Cyan
+Write-Host ' SL Editor: installer builder (Windows exe + Mac zip)      ' -ForegroundColor Cyan
 Write-Host '===========================================================' -ForegroundColor Cyan
 
 # 1. Generate or reuse activation bundle
@@ -46,15 +46,20 @@ if (-not (Test-Path $BundlePath)) {
 }
 
 # 2. Stage files into Team_Package
-Write-Host 'Staging application files into Team_Package...' -ForegroundColor Yellow
-& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build-team-package.ps1') -Bundle $BundlePath
-if ($LASTEXITCODE -ne 0) { throw 'build-team-package.ps1 failed.' }
+Write-Host 'Staging application files into Build_Stage...' -ForegroundColor Yellow
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build-stage.ps1') -Bundle $BundlePath
+if ($LASTEXITCODE -ne 0) { throw 'build-stage.ps1 failed.' }
 
 # 3. Compile single installer using Inno Setup
 $IssPath = Join-Path $PSScriptRoot 'installer\Setup.iss'
 Write-Host "Compiling single-file installer with Inno Setup ($IssPath)..." -ForegroundColor Yellow
 & $InnoCompiler $IssPath
 if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }
+
+# 4. 10.26: the Mac installer from the same staged files (Dist_Installer\SL-Editor-Mac.zip)
+Write-Host 'Making the Mac installer...' -ForegroundColor Yellow
+& python -I (Join-Path $PSScriptRoot 'make-mac-installer.py')
+if ($LASTEXITCODE -ne 0) { throw 'The Mac installer was not made.' }
 
 $OutExe = Join-Path $Root 'Dist_Installer\SL-Editor-Setup.exe'
 if (Test-Path $OutExe) {

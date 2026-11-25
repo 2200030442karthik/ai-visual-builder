@@ -9,7 +9,7 @@ import os, re, sys
 from xml.sax.saxutils import escape
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
-ID, VERSION, BASE = '08d15d9d-8629-4583-b67d-5f80143dde6d', '10.25.0.0', 'https://localhost:44317'
+ID, VERSION, BASE = '08d15d9d-8629-4583-b67d-5f80143dde6d', '10.26.0.0', 'https://localhost:44317'
 # Office caches add-in images by URL (and showed generic icons while the host sent Cache-Control: no-store, 16 Nov):
 # the icons are versioned so Office fetches them afresh. Change ICONS when an icon changes.
 ICONS = BASE + '/assets/v4'

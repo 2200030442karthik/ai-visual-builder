@@ -44,7 +44,8 @@ function planIcon(key, x, y, D, col, bg, grp) {
 }
 /* A step number on a rounded square (22 pt needs at least 40 pt of width). */
 // a step's number: P.start continues the numbering of a sequence split across slides (V10.12)
-let PLAN_NUM0 = 0;
+let PLAN_NUM0 = 0, PLAN_OPT_ONLY = -1, PLAN_WHY_LAST = '';
+const PLAN_SIZE_HINT = new Map();     // 10.26: library families - the size that fitted, per layout, holder, mark and content
 const planN = i => String(i + 1 + PLAN_NUM0);
 const planNum = (i, x, y, D, col, grp) => box('roundRect', x, y, D, D, { fill: col, text: planN(i), size: PLAN_DS, bold: true, color: textOn(col), align: 'center', valign: 'middle', grp });
 const planGrp = (out, g, name) => { out.forEach(p => { if (!p.grp) p.grp = g; }); if (out[0]) out[0].grpName = name; return out; };
@@ -588,9 +589,29 @@ function planRender(P, key, R) {
     // 10.22: compact, as in the reference decks - the smallest height (from the top of the area) at which the layout
     // still passes every check at the template's text sizes; the full area only when nothing smaller does.
     // "More white space" (spacing 'open') keeps the whole area.
-    const A = planArea(P, R);
+    const A = planArea(P, R), F = PLAN_LAYOUTS[key];
     let r = null;
-    if (!(st.spacing === 'open') && A.h > 200) {
+    // 10.26: a library family (packs/library-10.26.js) keeps its largest size that fits: each size at the smallest
+    // height first, then the next smaller size
+    if (F && F.sizeFirst && !(st.spacing === 'open') && A.h > 200) {
+      // the variants of a layout with the same holder and mark fit the same way: the size found first is tried first
+      const sig = (F.hintKey ? F.hintKey() : key) + '|' + P.items.map(i => i.label + '/' + (i.detail || '')).join('|') + '|' + (P.title || '') + '|' + A.w + 'x' + A.h;
+      const hint = PLAN_SIZE_HINT.get(sig), Fs = PLAN_COMPACT.concat([1]);
+      if (hint === 'fail') return { ok: false, key, name: F.name, why: 'does not fit the content area at 22 pt' };
+      const need = F.needs(P);
+      if (need) return { ok: false, key, name: F.name, why: need };
+      const tries = hint ? [[hint.k, hint.f]] : [];
+      // compact first (the reference decks: visuals sit compactly under the title), each size largest first; then taller
+      for (const band of [Fs.filter(f => f <= 0.72), Fs.filter(f => f > 0.72)])
+        for (let k = 0; k < F.opts.length; k++) for (const f of band) if (!hint || k !== hint.k || f !== hint.f) tries.push([k, f]);
+      for (const [k, f] of tries) {
+        PLAN_OPT_ONLY = k;
+        try { const c = planRender0(P, key, { x: A.x, y: A.y, w: A.w, h: Math.round(A.h * f) }); if (c.ok) { r = c; PLAN_SIZE_HINT.set(sig, { k, f }); break; } }
+        finally { PLAN_OPT_ONLY = -1; }
+      }
+      if (!r) { if (PLAN_SIZE_HINT.size > 5000) PLAN_SIZE_HINT.clear(); PLAN_SIZE_HINT.set(sig, 'fail'); return { ok: false, key, name: F.name, why: 'does not fit the content area at 22 pt' }; }
+    }
+    if (!r && !(st.spacing === 'open') && A.h > 200) {
       for (const f of PLAN_COMPACT) {
         const c = planRender0(P, key, { x: A.x, y: A.y, w: A.w, h: Math.round(A.h * f) });
         if (c.ok) { r = c; break; }
@@ -607,9 +628,10 @@ function planRender0(P, key, R) {
     : /^ai:\d$/.test(key) ? planConceptFamily(P, +key.slice(3)) : /^cap:/.test(key) ? planCaptionFamily(key.slice(4)) : PLAN_LAYOUTS[key];
   if (!L) return { ok: false, key, why: 'unknown layout' };
   const need = L.needs(P);
+  PLAN_WHY_LAST = need || '';
   if (need) return { ok: false, key, name: L.name, why: need };
   let why = 'does not fit the content area at 22 pt', first = '';
-  for (const o of L.opts) {
+  for (const o of (PLAN_OPT_ONLY >= 0 && L.opts[PLAN_OPT_ONLY] ? [L.opts[PLAN_OPT_ONLY]] : L.opts)) {
     let prims;
     PLAN_WHY = ''; PLAN_ICONSTYLE = (P.style && P.style.icons) || '';
     try { prims = L.build(P, R, o); } catch (e) { why = 'could not be drawn (' + e.message + ')'; continue; } finally { PLAN_ICONSTYLE = ''; }

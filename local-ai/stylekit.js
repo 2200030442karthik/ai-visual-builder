@@ -143,21 +143,30 @@
     creative: 'paint-kit color-palette', strategy: 'chess target puzzle', problem: 'puzzle', solution: 'puzzle bulb', energy: 'flash battery', power: 'flash battery', approval: 'tick thumb-up',
     done: 'tick', like: 'thumb-up heart', notification: 'notify-heart megaphone', photo: 'picture camera', image: 'picture', write: 'pencil notebook', edit: 'pencil', delete: 'trash-can',
     weather: 'sun umbrella moon', risk: 'umbrella sheild', protection: 'umbrella sheild', coffee: 'tea-cup takeaway-cup cup' };
-  async function index3d() { if (!IDX3) { try { IDX3 = await (await fetch('/assets/3dicons/index.json', { cache: 'force-cache' })).json(); } catch (e) { IDX3 = []; } } return IDX3; }
+  // 10.26: two sets - 3dicons (CC0, 115) and Microsoft Fluent Emoji 3D (MIT, 759 objects, places, symbols, nature)
+  const SETS3 = [['3dicons', '3dicons · CC0'], ['fluent3d', 'Fluent 3D · MIT']];
+  async function index3d() {
+    if (!IDX3) {
+      IDX3 = [];
+      for (const [dir, src] of SETS3) { try { (await (await fetch(`/assets/${dir}/index.json`, { cache: 'force-cache' })).json()).forEach(it => IDX3.push(Object.assign({ dir, src }, it))); } catch (e) { /* that set is not installed */ } }
+    }
+    return IDX3;
+  }
   async function find3d(desc, n) {
     const L = await index3d(), words = String(desc).toLowerCase().match(/[a-z]+/g) || [];
     const want = new Set(words.flatMap(w => [w, w.replace(/s$/, '')].concat((SYN3[w] || SYN3[w.replace(/s$/, '')] || '').split(' ')).filter(Boolean)));
-    const sc = it => { const s = (it.slug + ' ' + it.name).toLowerCase(); let v = 0; want.forEach(w => { if (it.slug === w) v += 5; else if (s.split(/[^a-z]+/).includes(w)) v += 3; }); return v; };
+    const sc = it => { const s = (it.slug + ' ' + it.name).toLowerCase().split(/[^a-z]+/), k = String(it.kw || '').split(/[^a-z]+/); let v = 0;
+      want.forEach(w => { if (it.slug === w) v += 5; else if (s.includes(w)) v += 3; else if (k.includes(w)) v += 1; }); return v; };
     return L.map(it => [it, sc(it)]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, n).map(x => x[0]);
   }
-  const pick3d = it => `<button type="button" class="iconPick pic3d" data-slug="${esc2(it.slug)}" data-name="${esc2(it.name)}" title="${esc2(it.name)} (3D picture)"><img src="/assets/3dicons/${esc2(it.slug)}.png" alt="" width="36" height="36"><span>${esc2(it.name)}</span></button>`;
+  const pick3d = it => `<button type="button" class="iconPick pic3d" data-slug="${esc2(it.dir + '/' + it.slug)}" data-name="${esc2(it.name)}" title="${esc2(it.name)} (3D picture, ${esc2(it.src)})"><img src="/assets/${esc2(it.dir)}/${esc2(it.slug)}.png" alt="" width="36" height="36" loading="lazy"><span>${esc2(it.name)}</span></button>`;
   const b64of = async url => { const blob = await (await fetch(url)).blob(); return await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(blob); }); };
   async function replacePicture(slug, label) {
     await run(`Icon replaced by the 3D picture “${label}”.`, async context => {
       const { top } = await selection(context);
       const x = Math.min(...top.map(s => s.left)), y = Math.min(...top.map(s => s.top)), r = Math.max(...top.map(s => s.left + s.width)), b = Math.max(...top.map(s => s.top + s.height));
       const D = Math.max(Math.min(r - x, b - y), 56), box = { left: (x + r) / 2 - D / 2, top: (y + b) / 2 - D / 2 };
-      const data = await b64of(`/assets/3dicons/${slug}.png`);
+      const data = await b64of(`/assets/${/\//.test(slug) ? slug : '3dicons/' + slug}.png`);
       top.forEach(s => s.delete());
       await context.sync();
       await new Promise((res, rej) => Office.context.document.setSelectedDataAsync(data, { coercionType: Office.CoercionType.Image, imageLeft: box.left, imageTop: box.top, imageWidth: D, imageHeight: D },
@@ -168,8 +177,8 @@
   document.getElementById('skIconGo').addEventListener('click', async () => {
     const desc = document.getElementById('skIconDesc').value.trim(), picks = document.getElementById('skIconPicks');
     if (SK.style === '3dpic') {
-      const got = desc ? await find3d(desc, 12) : (await index3d()).slice(0, 24);
-      picks.innerHTML = got.length ? '<div class="iconSrc">3D picture icons <span class="badge src builtin">3dicons · CC0</span></div>' + got.map(pick3d).join('') : '';
+      const got = desc ? await find3d(desc, 18) : (await index3d()).slice(0, 30);
+      picks.innerHTML = got.length ? '<div class="iconSrc">3D picture icons <span class="badge src builtin">3dicons · Fluent 3D</span></div>' + got.map(pick3d).join('') : '';
       wire3d(picks);
       note(got.length ? 'Select the icon to replace on the slide, then click a 3D picture. It is a picture: resize it freely; its colours stay as drawn.' : 'No 3D picture matches; try another word (money, goal, team, idea, security).', !got.length);
       return;
@@ -179,8 +188,8 @@
     const pick = (key, name) => `<button type="button" class="iconPick" data-key="${esc2(key)}" data-name="${esc2(name)}" title="${esc2(name)}">${thumbOf(key)}<span>${esc2(name)}</span></button>`;
     picks.innerHTML = (found.length ? '<div class="iconSrc">Library <span class="badge src builtin">Built-in</span></div>' + found.map(x => pick(x.key, x.name)).join('') : '');
     const wire = () => { picks.querySelectorAll('.iconPick:not(.pic3d)').forEach(b => { b.onclick = () => replaceIcon(b.dataset.key, b.dataset.name); }); wire3d(picks); };
-    const p3 = await find3d(desc, 4);
-    if (p3.length) picks.insertAdjacentHTML('beforeend', '<div class="iconSrc">3D pictures <span class="badge src builtin">3dicons · CC0</span></div>' + p3.map(pick3d).join(''));
+    const p3 = await find3d(desc, 6);
+    if (p3.length) picks.insertAdjacentHTML('beforeend', '<div class="iconSrc">3D pictures <span class="badge src builtin">3dicons · Fluent 3D</span></div>' + p3.map(pick3d).join(''));
     wire();
     note(`Asking Claude for a ${SK.style === '3d' ? '3D' : 'flat'} “${desc}” icon…`);
     try {

@@ -42,3 +42,7 @@ Dist_Installer/
 sample for claude.pptx
 *.exe
 local-ai/tests/.edge-profile-*/
+
+# 10.26: installer staging (deploy/build-stage.ps1) and the Windows Python runtime it reuses: never committed
+Build_Stage/
+deploy/runtime-win/

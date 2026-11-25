@@ -1,0 +1,19 @@
+SL Editor for Mac
+=================
+
+Install (about 2 minutes, no administrator rights):
+  1. Quit PowerPoint.
+  2. Right-click "Install SL Editor.command" > Open > Open.
+     (The first time macOS asks because the file is not from the App Store. Double-clicking works after that.)
+  3. If macOS offers to install its "command line tools" (Python), click Install. When it has finished, run step 2 again.
+  4. macOS asks for your password once, to trust SL Editor's certificate for https://localhost.
+  5. Start PowerPoint, then go to Insert > Add-ins > My Add-ins > Developer Add-ins > SL Editor (first time only).
+     After that, use Home > SL Editor.
+  6. Enter your activation key once. No Claude or Napkin key is needed.
+
+The SL Smart Design, SL Design and SL Animation tools come from the company add-ins that are copied with SL Editor.
+Turn them on once: in PowerPoint, Tools > PowerPoint Add-ins, then tick SL_Smart_Design_v2_Key_Dec_25 and SL_Audomation.
+
+Remove: right-click "Uninstall SL Editor.command" > Open.
+
+Needs: PowerPoint for Mac (Microsoft 365), macOS 12 or later, and the internet once during the install.

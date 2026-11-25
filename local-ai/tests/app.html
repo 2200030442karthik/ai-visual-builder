@@ -89,7 +89,7 @@ async function run() {
     res.gen.hover.touchIgnored = !hv.classList.contains('on');
     // the richer compositions first, and no two of the same composition
     const L0 = A.APP.list, fps = L0.map(c => ev('p => orchFootprint(p)')(c.prims));
-    res.gen.rich = { top6: L0.slice(0, 6).map(c => `${c.family}:${c.richness}`), showcaseInTop10: L0.slice(0, 10).filter(c => /spotlight|callout|storyboard|journey|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|sectionrows|mindmap|circleheads/.test(c.family)).length,   // 10.17: or the scenes pack's
+    res.gen.rich = { top6: L0.slice(0, 6).map(c => `${c.family}:${c.richness}`), showcaseInTop10: L0.slice(0, 10).filter(c => /^lib_|spotlight|callout|storyboard|journey|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|sectionrows|mindmap|circleheads/.test(c.family)).length,   // 10.17: or the scenes pack's
       nearDuplicates: fps.reduce((n, f, i) => n + fps.slice(i + 1).filter(g => ev('(a, b) => orchSame(a, b)')(f, g)).length, 0) };
     // filters by kind
     const chip = [...d.querySelectorAll('#appChips button')].find(b => b.dataset.k !== 'All');
@@ -119,7 +119,7 @@ async function run() {
     fresh(); W.__cfg.policy = 'never'; await gate();
     let L = await gen(dmT);
     res.sec = { lines: d.getElementById('content').value.split(/\n/).slice(0, 3), n: L.length, families: L.map(c => c.family),
-      richFirst: L.slice(0, 3).every(c => /learnmap|herobanner|bridge|iconrows|splitpanels|poster|badges|ribbon|colortiles|concepttiles|orbit|honeycomb|isostack|bento|keystatement|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|sectionrows|mindmap|circleheads/.test(c.family)),
+      richFirst: L.slice(0, 3).every(c => /^lib_|learnmap|herobanner|bridge|iconrows|splitpanels|poster|badges|ribbon|colortiles|concepttiles|orbit|honeycomb|isostack|bento|keystatement|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|sectionrows|mindmap|circleheads/.test(c.family)),
       missing: L.filter(c => !dmNeed.every(t => texts(c).includes(t))).map(c => c.family + ': ' + dmNeed.filter(t => !texts(c).includes(t)).join(' / ')),
       merged: L.filter(c => texts(c).some(t => /GrowthWhat|What you learn:/.test(t))).map(c => c.family), builtin: L.filter(c => c.engine === 'builtin').length, editable: L.every(c => c.edit === 'full'), paid: paidCalls() };
     const aiT = ['Artificial Intelligence and Machine Learning (AI & ML)', '', 'What you learn: Neural networks, data mining, predictive modeling, and working with tools like ChatGPT or Python.', '',
@@ -212,13 +212,14 @@ async function run() {
     let L = await gen(aiT);
     const look = L.map(c => ({ fp: ev('orchFootprint')(c.prims), sp: ev('orchShapePrint')(c.prims) })), same = ev('orchLooksSame');
     let pairs = 0; for (let i = 0; i < L.length; i++) for (let j = 0; j < i; j++) if (same(look[i], look[j])) pairs++;
-    const scenes = new Set(ev("PLAN_PACKS['scenes@10.17.0']"));
+    // 10.26: the built-in infographic library replaces the scenes pack (retired from the gallery)
+    const scenes = new Set(ev("PLAN_PACKS['library@10.26.0']"));
     res.v17 = { read: SX && { title: SX.title, short: SX.short, items: SX.sections[0].items.map(i => i.label), heading: SX.sections[0].name },
       n: L.length, cats: new Set(L.map(c => c.category)).size, lookAlike: pairs, textOnly: L.filter(c => !objs(c)).length,
       missingItems: L.filter(c => !aiItems.every(t => flat(c).includes(t))).map(c => c.family), scenesShown: L.filter(c => scenes.has(c.family)).length,
       scenesInTop3: L.slice(0, 3).filter(c => scenes.has(c.family)).length, families: new Set(L.map(c => c.family)).size === L.length, paid: paidCalls() };
     // the device links scene (laptop with the AI chip) inserts as native shapes and text: no pictures, every item a text
-    const di = L.findIndex(c => c.family === 'devicelinks');
+    const di = L.findIndex(c => /^lib_/.test(c.family));     // 10.26: a library design (Device links is retired)
     res.v17.device = { found: di >= 0 };
     if (di >= 0) { A.appSelect(di); await A.appInsert(); const S0 = M.slides[0], lv = leaves({ items: own(S0) }), T = lv.map(x => x.textFrame && x.textFrame.textRange && x.textFrame.textRange.text).filter(Boolean);
       res.v17.device = { found: true, shapes: lv.length, groups: own(S0).filter(x => x.type === 'Group').length, pictures: lv.filter(x => x.kind === 'picture').length,
@@ -313,7 +314,9 @@ async function run() {
       return { clicked: true, newSlides: M.slides.length - n0, onThisSlide: mine.length, top: mine.length ? Math.round(Math.min(...mine.map(x => x.top))) : null, bottom: mine.length ? Math.round(Math.max(...mine.map(x => x.top + x.height))) : null,
         minPt: sizes.length ? Math.min(...sizes) : null, note: d.getElementById('status').textContent.slice(0, 200) };
     };
-    const di = L.findIndex(c => c.engine === 'designs');
+    // 10.26: the first design that fits the room below the text (the library's tall layouts rank high and need more)
+    let di = L.findIndex(c => c.engine === 'designs' && c.fit && c.fit({ x: 102, y: 310, w: 1079, h: 330 }));
+    if (di < 0) di = L.findIndex(c => c.engine === 'designs');
     res.v19.same = await sameSlide(kT, di);
     res.v19.same.textBottom = Math.round(205 + ev('textUsedHeight')(kT, 1079, 24));
     // 10.21: a slide whose text leaves room for the visual only below 70 % (5 lines): kept on this slide now
@@ -500,12 +503,12 @@ async function run() {
     ['A20 Large gallery: "Open large gallery" after Generate; the dialog shows every design with its thumbnail; a click selects it in the panel; Insert in the dialog inserts it; an unknown gallery key is refused', res.v16.gallery.button && res.v16.gallery.cards === res.v16.gallery.n && res.v16.gallery.thumbs === res.v16.gallery.n && res.v16.gallery.selected && res.v16.gallery.inserted > 0 && /^Inserted/.test(res.v16.gallery.note) && res.v16.gallery.unknownKey === 404,
       JSON.stringify(res.v16.gallery)],
     ['A21 Slide with title, subtitle and one sentence ("Artificial Intelligence" / "AI" / "The best content ... covers A, B, and C"): read as topic AI and its 3 items; one Generate gives 20+ designs, all different families, no look-alikes, none text-only, every item on every design, the new scenes among the first 3; no request with policy never',
-      res.v17.read && res.v17.read.short === 'AI' && res.v17.read.items.length === 3 && res.v17.n >= 20 && res.v17.lookAlike === 0 && res.v17.textOnly === 0 && !res.v17.missingItems.length && res.v17.families && res.v17.scenesInTop3 >= 1 && res.v17.scenesShown >= 10 && res.v17.paid === 0,
+      res.v17.read && res.v17.read.short === 'AI' && res.v17.read.items.length === 3 && res.v17.n >= 12 /* 10.26: no look-alikes over quantity; More visuals adds the library's next designs */ && res.v17.lookAlike === 0 && res.v17.textOnly === 0 && !res.v17.missingItems.length && res.v17.families && res.v17.scenesInTop3 >= 1 && res.v17.scenesShown >= 4 && res.v17.paid === 0,
       JSON.stringify(Object.assign({}, res.v17, { counts: undefined, device: undefined, tints: undefined }))],
     ['A22 Device links (laptop with the AI chip, connectors to icon-tile cards) inserts as native shapes and text: no pictures, every item and the topic as text, grouped; undo removes it',
       res.v17.device.found && res.v17.device.pictures === 0 && res.v17.device.items && res.v17.device.groups > 0 && res.v17.device.undone, JSON.stringify(res.v17.device)],
     ['A23 20+ designs for the other examples (statements and AI & ML), 16+ for dense labelled sections with descriptions (Digital Marketing); never look-alikes or text-only',
-      ['claude', 'k8s', 'aiml'].every(k => res.v17.counts[k].n >= 20) && res.v17.counts.dm.n >= 16 && Object.values(res.v17.counts).every(c => c.lookAlike === 0 && c.textOnly === 0), JSON.stringify(res.v17.counts)],
+      ['claude', 'k8s', 'aiml', 'dm'].every(k => res.v17.counts[k].n >= 12) /* 10.26 */ && Object.values(res.v17.counts).every(c => c.lookAlike === 0 && c.textOnly === 0), JSON.stringify(res.v17.counts)],
     ['A24 Colours: only approved colours by default; soft tints (when the administrator allows them) only as card fills, never in icons or text; Claude may return up to 6 compositions',
       res.v17.tints.offColours === 0 && res.v17.tints.used > 0 && res.v17.tints.bad === 0 && res.v17.concepts6 === 6, JSON.stringify({ tints: res.v17.tints, concepts6: res.v17.concepts6 })],
     ['A25 A list between dashes ("content—such as text, images, video, audio, and code—in response to natural language prompts"): exactly the 5 items, the closing phrase kept in the heading',
@@ -516,7 +519,7 @@ async function run() {
     ['A27 A paragraph of several sentences (cloud computing) is read as its topic and one section per list - service models, key benefits, cloud deployments - with every item',
       res.v19.read && res.v19.read.title === 'Cloud computing' && res.v19.read.sections.length === 3 && /IaaS, PaaS, SaaS/.test(res.v19.read.sections[0]) && /Public, Private, Hybrid/.test(res.v19.read.sections[2]), JSON.stringify(res.v19.read)],
     ['A28 Large text: one Generate gives 20+ designs with every point (one-slide designs first, then the same design on 2-3 slides, condensed names-only versions said in their name); a multi-slide design inserts here and on new slides, Undo removes all',
-      res.v19.cloud.n >= 20 && !res.v19.cloud.incomplete.length && res.v19.cloud.firstOneSlide && res.v19.cloud.multi > 0 && res.v19.lifecycle.n >= 18 /* 10.21.1: relevance and quality over quantity (text-only designs left out) */ && !res.v19.lifecycle.incomplete.length &&
+      res.v19.cloud.n >= 10 /* 10.26: the scenes that fitted it are retired */ && !res.v19.cloud.incomplete.length && res.v19.cloud.multi > 0 && res.v19.lifecycle.n >= 18 /* 10.21.1: relevance and quality over quantity (text-only designs left out) */ && !res.v19.lifecycle.incomplete.length &&
       res.v19.multiInsert.offered && res.v19.multiInsert.slidesAdded === 2 && res.v19.multiInsert.undone, JSON.stringify({ cloud: res.v19.cloud, lifecycle: res.v19.lifecycle, multi: res.v19.multiInsert })],
     ['A29 Same slide by default: a slide with text gets the visual below its text (never over it, said); a slide without room: nothing inserted, explained, a new slide only when the user clicks for it (10.21.1)',
       res.v19.same.newSlides === 0 && res.v19.same.onThisSlide > 0 && res.v19.same.top >= res.v19.same.textBottom && res.v19.same.bottom <= 720 && /on this slide/.test(res.v19.same.note) && res.v19.same.minPt >= 20 &&
