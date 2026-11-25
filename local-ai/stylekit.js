@@ -117,6 +117,17 @@
 
   /* ---------- replace the selected icon ---------- */
   const thumbOf = key => { try { return toSVG(comp(key, 2, 2, 36, SK.colour || TEMPLATE.accents[0]), 40, 40); } catch (e) { return ''; } };
+  /* 10.26: the visual a selected shape belongs to (its AIVB_V tag, or its group's): a replaced icon keeps it, so the
+     visual stays one editable visual ("Edit the selected visual" saw the new icon as an object in its way) */
+  async function visualIdOf(context, shapes) {
+    for (const s of shapes) {
+      try { const t = s.tags.getItemOrNullObject('AIVB_V'); t.load('value'); await context.sync(); if (!t.isNullObject) return t.value; } catch (e) { /* no tags */ }
+      try { const t = s.parentGroup.tags.getItemOrNullObject('AIVB_V'); t.load('value'); await context.sync(); if (!t.isNullObject) return t.value; } catch (e) { /* not in a group */ }
+    }
+    return '';
+  }
+  async function newShapesOf(context, slide, before) { slide.shapes.load('items/id'); await context.sync(); return slide.shapes.items.filter(s => !before.has(s.id)); }
+  async function tagAsVisual(context, shapes, vid) { if (!vid || !shapes.length) return; try { shapes.forEach(s => s.tags.add('AIVB_V', vid)); await context.sync(); } catch (e) { console.warn('Could not tag the new icon', e); } }
   async function replaceIcon(key, label) {
     await run(`Icon replaced by “${label}”.`, async context => {
       const { top } = await selection(context);
@@ -125,7 +136,11 @@
       const slides = context.presentation.getSelectedSlides(); slides.load('items/id'); await context.sync();
       const slide = slides.items[0];
       const prims = comp(key, (x + r) / 2 - D / 2, (y + b) / 2 - D / 2, D, c);
+      const vid = await visualIdOf(context, top);
+      slide.shapes.load('items/id'); await context.sync();
+      const before = new Set(slide.shapes.items.map(s => s.id));
       await drawOnSlide(context, slide, prims, label, null);
+      await tagAsVisual(context, await newShapesOf(context, slide, before), vid);
       top.forEach(s => s.delete());
       await context.sync();
     });
@@ -167,10 +182,14 @@
       const x = Math.min(...top.map(s => s.left)), y = Math.min(...top.map(s => s.top)), r = Math.max(...top.map(s => s.left + s.width)), b = Math.max(...top.map(s => s.top + s.height));
       const D = Math.max(Math.min(r - x, b - y), 56), box = { left: (x + r) / 2 - D / 2, top: (y + b) / 2 - D / 2 };
       const data = await b64of(`/assets/${/\//.test(slug) ? slug : '3dicons/' + slug}.png`);
+      const vid = await visualIdOf(context, top), slides = context.presentation.getSelectedSlides(); slides.load('items/id'); await context.sync();
+      const slide = slides.items[0]; slide.shapes.load('items/id'); await context.sync();
+      const before = new Set(slide.shapes.items.map(s => s.id));
       top.forEach(s => s.delete());
       await context.sync();
       await new Promise((res, rej) => Office.context.document.setSelectedDataAsync(data, { coercionType: Office.CoercionType.Image, imageLeft: box.left, imageTop: box.top, imageWidth: D, imageHeight: D },
         a => a.status === Office.AsyncResultStatus.Succeeded ? res() : rej(new Error((a.error && a.error.message) || 'the picture could not be inserted'))));
+      await tagAsVisual(context, await newShapesOf(context, slide, before), vid);
     });
   }
   const wire3d = picks => picks.querySelectorAll('.pic3d').forEach(b => { b.onclick = () => replacePicture(b.dataset.slug, b.dataset.name); });

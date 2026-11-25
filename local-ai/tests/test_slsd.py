@@ -241,15 +241,15 @@ def t_manifest(port_up):
     home = root.find('.//v:OfficeTab', ns)
     hs = {s.get('id'): s.get('DefaultValue') for s in root.iter() if s.tag.endswith('}String')}
     hl = [hs.get(c.find('v:Label', ns).get('resid')) for c in home.iter('{%s}Control' % ns['v'])] if home is not None else []
-    check('ribbon', 'Home tab: SL Editor, SL Design, SL Animation', home is not None and home.get('id') == 'TabHome' and hl == ['SL Editor', 'SL Design', 'SL Animation'], hl)
+    check('ribbon', 'Home tab: SL Editor and the SL Design & Animation access (10.26)', home is not None and home.get('id') == 'TabHome' and hl == ['SL Editor', 'SL Design & Animation'], hl)
     tabs = root.findall('.//v:CustomTab', ns)
     strings = {s.get('id'): s.get('DefaultValue') for s in root.iter() if s.tag.endswith('}String')}
     check('ribbon', 'one custom tab "SL Editor"', len(tabs) == 1 and strings.get(tabs[0].find('v:Label', ns).get('resid')) == 'SL Editor')
     groups = tabs[0].findall('v:Group', ns)
     labels = [strings[g.find('v:Label', ns).get('resid')] for g in groups]
-    check('ribbon', 'groups Design | SL Templates | Miscellaneous | Shape Rename | SL Design | SL Animation', labels == ['Design', 'SL Templates', 'Miscellaneous', 'Shape Rename', 'SL Design', 'SL Animation'], labels)
+    check('ribbon', 'groups Design | SL Templates | Miscellaneous | Shape Rename | SL Design & Animation', labels == ['Design', 'SL Templates', 'Miscellaneous', 'Shape Rename', 'SL Design & Animation'], labels)
     ctl = {strings[c.find('v:Label', ns).get('resid')]: c for c in tabs[0].iter('{%s}Control' % ns['v'])}
-    want = ['Alternative Design', 'AI SL Smart Design', 'SL Design', 'SL Animation', 'Several slides', 'Edit a visual', 'Add Footer Note', 'Add Blue Codebox', 'Add Black Codebox', 'Add Footer Info',
+    want = ['Alternative Design', 'AI SL Smart Design', 'SL Design & Animation', 'Several slides', 'Edit a visual', 'Add Footer Note', 'Add Blue Codebox', 'Add Black Codebox', 'Add Footer Info',
             'Add Problem Solution', 'Add Problem Solution Image', 'Remove Animations', 'Delete Empty Boxes', 'Text', 'Heading']
     check('ribbon', 'every original SL Smart Design button, the AI buttons and SL Design / SL Animation', sorted(ctl) == sorted(want), sorted(set(want) ^ set(ctl)))
     design = [strings[c.find('v:Label', ns).get('resid')] for c in groups[0].findall('v:Control', ns)]

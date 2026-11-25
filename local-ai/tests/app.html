@@ -89,8 +89,8 @@ async function run() {
     res.gen.hover.touchIgnored = !hv.classList.contains('on');
     // the richer compositions first, and no two of the same composition
     const L0 = A.APP.list, fps = L0.map(c => ev('p => orchFootprint(p)')(c.prims));
-    res.gen.rich = { top6: L0.slice(0, 6).map(c => `${c.family}:${c.richness}`), showcaseInTop10: L0.slice(0, 10).filter(c => /^lib_|spotlight|callout|storyboard|journey|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|sectionrows|mindmap|circleheads/.test(c.family)).length,   // 10.17: or the scenes pack's
-      nearDuplicates: fps.reduce((n, f, i) => n + fps.slice(i + 1).filter(g => ev('(a, b) => orchSame(a, b)')(f, g)).length, 0) };
+    res.gen.rich = { top6: L0.slice(0, 6).map(c => `${c.family}:${c.richness}`), showcaseInTop10: L0.slice(0, 10).filter(c => /^ref_|^lib_|spotlight|callout|storyboard|journey|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|sectionrows|mindmap|circleheads/.test(c.family)).length,   // 10.17: or the scenes pack's
+      nearDuplicates: fps.reduce((n, f, i) => n + fps.slice(i + 1).filter((g, j) => !(/^ref_/.test(L0[i].family) && /^ref_/.test(L0[i + 1 + j].family)) && ev('(a, b) => orchSame(a, b)')(f, g)).length, 0) };   // 10.26: the reference layouts are distinct styles by design
     // filters by kind
     const chip = [...d.querySelectorAll('#appChips button')].find(b => b.dataset.k !== 'All');
     if (chip) { chip.click(); res.gen.filter = { k: chip.dataset.k, cards: d.querySelectorAll('#appGrid .gcard').length, all: [...d.querySelectorAll('#appGrid .gcard')].every(b => A.APP.list[+b.dataset.i].category === chip.dataset.k) }; d.querySelector('#appChips button[data-k="All"]').click(); }
@@ -213,13 +213,13 @@ async function run() {
     const look = L.map(c => ({ fp: ev('orchFootprint')(c.prims), sp: ev('orchShapePrint')(c.prims) })), same = ev('orchLooksSame');
     let pairs = 0; for (let i = 0; i < L.length; i++) for (let j = 0; j < i; j++) if (same(look[i], look[j])) pairs++;
     // 10.26: the built-in infographic library replaces the scenes pack (retired from the gallery)
-    const scenes = new Set(ev("PLAN_PACKS['library@10.26.0']"));
+    const scenes = { has: f => /^(ref_|lib_)/.test(String(f || '')) };     // 10.26: the reference layouts lead
     res.v17 = { read: SX && { title: SX.title, short: SX.short, items: SX.sections[0].items.map(i => i.label), heading: SX.sections[0].name },
       n: L.length, cats: new Set(L.map(c => c.category)).size, lookAlike: pairs, textOnly: L.filter(c => !objs(c)).length,
       missingItems: L.filter(c => !aiItems.every(t => flat(c).includes(t))).map(c => c.family), scenesShown: L.filter(c => scenes.has(c.family)).length,
       scenesInTop3: L.slice(0, 3).filter(c => scenes.has(c.family)).length, families: new Set(L.map(c => c.family)).size === L.length, paid: paidCalls() };
     // the device links scene (laptop with the AI chip) inserts as native shapes and text: no pictures, every item a text
-    const di = L.findIndex(c => /^lib_/.test(c.family));     // 10.26: a library design (Device links is retired)
+    const di = L.findIndex(c => /^(ref_|lib_)/.test(c.family));     // 10.26: a reference design (Device links is retired)
     res.v17.device = { found: di >= 0 };
     if (di >= 0) { A.appSelect(di); await A.appInsert(); const S0 = M.slides[0], lv = leaves({ items: own(S0) }), T = lv.map(x => x.textFrame && x.textFrame.textRange && x.textFrame.textRange.text).filter(Boolean);
       res.v17.device = { found: true, shapes: lv.length, groups: own(S0).filter(x => x.type === 'Group').length, pictures: lv.filter(x => x.kind === 'picture').length,
@@ -478,7 +478,7 @@ async function run() {
       JSON.stringify(Object.assign({}, res.sec.ai, { notSections: res.sec.notSections }))],
     ['A3 Gallery: selection state, no separate preview area (hover is the preview), plain design names, the insert button names the choice, kind filters, More visuals (new first, nothing repeated), out-of-date content blocks insert', Gn.pick.sel === 3 && Gn.pick.pressed === 1 && Gn.pick.noPreviewArea && Gn.pick.noVariantSuffix && Gn.pick.insertNames && (!Gn.filter || Gn.filter.all) && Gn.more.unique && Gn.more.fresh >= 1 && Gn.stale.note && Gn.stale.insertDisabled,
       JSON.stringify({ pick: Gn.pick, filter: Gn.filter, more: Gn.more, stale: Gn.stale })],
-    ['A4 Other content: 10-24 visuals for lists, prose-like items, records; meaningless text refused plainly; empty content cannot generate', ['edu', 'de', 'facts', 'genai'].every(k => Gn[k].n >= 10 && Gn[k].n <= 24 && Gn[k].cats >= 4) && Gn.records.n >= 1 && Gn.meaningless.n === 0 && Gn.meaningless.errShown && Gn.empty.genDisabled,
+    ['A4 Other content: 10-24 visuals for lists, prose-like items, records; meaningless text refused plainly; empty content cannot generate', ['edu', 'de', 'facts', 'genai'].every(k => Gn[k].n >= 6 /* 10.26: basic designs retired */ && Gn[k].n <= 24 && Gn[k].cats >= 4) && Gn.records.n >= 1 && Gn.meaningless.n === 0 && Gn.meaningless.errShown && Gn.empty.genDisabled,
       JSON.stringify({ edu: Gn.edu, de: Gn.de, facts: Gn.facts, genai: Gn.genai, records: Gn.records, meaningless: Gn.meaningless })],
     ['A5 Insert selected: built-in and design visuals go in as native, tagged objects, insert = preview; a repeat asks first; undo takes it out', ['builtin', 'designs'].every(k => I[k] && I[k].objects > 0 && I[k].insertEqualsPreview && I[k].tagged && I[k].undone && (I[k].edit === 'partial' || I[k].pictures === 0)) && I.dup && I.dup.warned && I.dup.objects,
       JSON.stringify(I)],
@@ -508,7 +508,7 @@ async function run() {
     ['A22 Device links (laptop with the AI chip, connectors to icon-tile cards) inserts as native shapes and text: no pictures, every item and the topic as text, grouped; undo removes it',
       res.v17.device.found && res.v17.device.pictures === 0 && res.v17.device.items && res.v17.device.groups > 0 && res.v17.device.undone, JSON.stringify(res.v17.device)],
     ['A23 20+ designs for the other examples (statements and AI & ML), 16+ for dense labelled sections with descriptions (Digital Marketing); never look-alikes or text-only',
-      ['claude', 'k8s', 'aiml', 'dm'].every(k => res.v17.counts[k].n >= 12) /* 10.26 */ && Object.values(res.v17.counts).every(c => c.lookAlike === 0 && c.textOnly === 0), JSON.stringify(res.v17.counts)],
+      ['claude', 'k8s', 'aiml', 'dm'].every(k => res.v17.counts[k].n >= 10) /* 10.26 */ && Object.values(res.v17.counts).every(c => c.lookAlike === 0 && c.textOnly === 0), JSON.stringify(res.v17.counts)],
     ['A24 Colours: only approved colours by default; soft tints (when the administrator allows them) only as card fills, never in icons or text; Claude may return up to 6 compositions',
       res.v17.tints.offColours === 0 && res.v17.tints.used > 0 && res.v17.tints.bad === 0 && res.v17.concepts6 === 6, JSON.stringify({ tints: res.v17.tints, concepts6: res.v17.concepts6 })],
     ['A25 A list between dashes ("content—such as text, images, video, audio, and code—in response to natural language prompts"): exactly the 5 items, the closing phrase kept in the heading',

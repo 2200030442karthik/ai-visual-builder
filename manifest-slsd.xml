@@ -278,8 +278,8 @@
                   </Action>
                 </Control>
               </Group>
-              <Group id="SLED.Design">
-                <Label resid="SLEDDesign.Label"/>
+              <Group id="SLED.Access">
+                <Label resid="SLEDAccess.Label"/>
                 <Icon>
                   <bt:Image size="16" resid="Icon.sldesign.16"/>
                   <bt:Image size="32" resid="Icon.sldesign.32"/>
@@ -298,29 +298,6 @@
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>sledOpenDesign</FunctionName>
-                  </Action>
-                </Control>
-              </Group>
-              <Group id="SLED.Anim">
-                <Label resid="SLEDAnim.Label"/>
-                <Icon>
-                  <bt:Image size="16" resid="Icon.slanimation.16"/>
-                  <bt:Image size="32" resid="Icon.slanimation.32"/>
-                  <bt:Image size="80" resid="Icon.slanimation.80"/>
-                </Icon>
-                <Control xsi:type="Button" id="SLED.OpenAnim">
-                  <Label resid="SLEDOpenAnim.Label"/>
-                  <Supertip>
-                    <Title resid="SLEDOpenAnim.Label"/>
-                    <Description resid="SLEDOpenAnim.Tip"/>
-                  </Supertip>
-                  <Icon>
-                    <bt:Image size="16" resid="Icon.slanimation.16"/>
-                    <bt:Image size="32" resid="Icon.slanimation.32"/>
-                    <bt:Image size="80" resid="Icon.slanimation.80"/>
-                  </Icon>
-                  <Action xsi:type="ExecuteFunction">
-                    <FunctionName>sledOpenAnimation</FunctionName>
                   </Action>
                 </Control>
               </Group>
@@ -363,21 +340,6 @@
                   </Icon>
                   <Action xsi:type="ExecuteFunction">
                     <FunctionName>sledOpenDesign</FunctionName>
-                  </Action>
-                </Control>
-                <Control xsi:type="Button" id="AIVB10.HomeEdit">
-                  <Label resid="SLEDOpenAnim.Label"/>
-                  <Supertip>
-                    <Title resid="SLEDOpenAnim.Label"/>
-                    <Description resid="SLEDOpenAnim.Tip"/>
-                  </Supertip>
-                  <Icon>
-                    <bt:Image size="16" resid="Icon.slanimation.16"/>
-                    <bt:Image size="32" resid="Icon.slanimation.32"/>
-                    <bt:Image size="80" resid="Icon.slanimation.80"/>
-                  </Icon>
-                  <Action xsi:type="ExecuteFunction">
-                    <FunctionName>sledOpenAnimation</FunctionName>
                   </Action>
                 </Control>
               </Group>
@@ -427,9 +389,6 @@
         <bt:Image id="Icon.sldesign.16" DefaultValue="https://localhost:44317/assets/v4/slsd/sldesign-16.png"/>
         <bt:Image id="Icon.sldesign.32" DefaultValue="https://localhost:44317/assets/v4/slsd/sldesign-32.png"/>
         <bt:Image id="Icon.sldesign.80" DefaultValue="https://localhost:44317/assets/v4/slsd/sldesign-80.png"/>
-        <bt:Image id="Icon.slanimation.16" DefaultValue="https://localhost:44317/assets/v4/slsd/slanimation-16.png"/>
-        <bt:Image id="Icon.slanimation.32" DefaultValue="https://localhost:44317/assets/v4/slsd/slanimation-32.png"/>
-        <bt:Image id="Icon.slanimation.80" DefaultValue="https://localhost:44317/assets/v4/slsd/slanimation-80.png"/>
         <bt:Image id="Icon.sleditor.16" DefaultValue="https://localhost:44317/assets/v4/icon-16.png"/>
         <bt:Image id="Icon.sleditor.32" DefaultValue="https://localhost:44317/assets/v4/icon-32.png"/>
         <bt:Image id="Icon.sleditor.80" DefaultValue="https://localhost:44317/assets/v4/icon-80.png"/>
@@ -459,10 +418,8 @@
         <bt:String id="SLSDRename.Label" DefaultValue="Shape Rename"/>
         <bt:String id="SLSDRenText.Label" DefaultValue="Text"/>
         <bt:String id="SLSDRenHead.Label" DefaultValue="Heading"/>
-        <bt:String id="SLEDDesign.Label" DefaultValue="SL Design"/>
-        <bt:String id="SLEDOpenDesign.Label" DefaultValue="SL Design"/>
-        <bt:String id="SLEDAnim.Label" DefaultValue="SL Animation"/>
-        <bt:String id="SLEDOpenAnim.Label" DefaultValue="SL Animation"/>
+        <bt:String id="SLEDAccess.Label" DefaultValue="SL Design &amp; Animation"/>
+        <bt:String id="SLEDOpenDesign.Label" DefaultValue="SL Design &amp; Animation"/>
         <bt:String id="Group.AISLSD.Label" DefaultValue="SL Editor"/>
         <bt:String id="SLEDHome.Label" DefaultValue="SL Editor"/>
       </bt:ShortStrings>
@@ -482,9 +439,8 @@
         <bt:String id="SLSDDelEmpty.Tip" DefaultValue="Delete the empty text boxes and placeholders on every slide."/>
         <bt:String id="SLSDRenText.Tip" DefaultValue="Name the selected shapes Text_1, Text_2 ... in the order you selected them."/>
         <bt:String id="SLSDRenHead.Tip" DefaultValue="Name the selected shapes T_Text_1, T_Text_2 ... in the order you selected them."/>
-        <bt:String id="SLEDOpenDesign.Tip" DefaultValue="Brand shapes, text boxes, bullets, layout templates, brandlines and speaker notes."/>
-        <bt:String id="SLEDOpenAnim.Tip" DefaultValue="Entrance and exit animations, bulk timing shift, transitions, audio and video export."/>
-        <bt:String id="SLEDHome.Tip" DefaultValue="Open SL Editor: AI SL Smart Design (AI infographics and editing), SL Design and SL Animation."/>
+        <bt:String id="SLEDOpenDesign.Tip" DefaultValue="Access to the SL Design and SL Animation tabs: enter the access key from your administrator."/>
+        <bt:String id="SLEDHome.Tip" DefaultValue="Open SL Editor: AI SL Smart Design (AI infographics, editing and the SL Smart Design tools)."/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>

@@ -24,6 +24,10 @@ foreach ($dir in 'packs', 'assets', 'vendor') {
     if ($LASTEXITCODE -ge 8) { throw "Copying $dir failed (robocopy $LASTEXITCODE)." }
 }
 
+# 2b. the SL Design and SL Animation access bundle (encrypted; deploy\team-keys), so the access page works here
+$fb = Join-Path $PSScriptRoot 'team-keys\features-bundle.json'
+if (Test-Path $fb) { Copy-Item $fb (Join-Path $App 'features-bundle.json') -Force }
+
 # 3. the ribbon manifest (new buttons or a new version), with this installation's add-in Id and port
 $py = Join-Path $AppDir 'runtime\python.exe'
 $mf = Join-Path $AppDir 'catalog\manifest-slsd.xml'

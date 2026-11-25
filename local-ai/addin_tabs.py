@@ -129,6 +129,9 @@ def install(src, data_dir):
         dst, bak = os.path.join(addin_dir(), name + '.ppam'), os.path.join(keep, name + '.ppam')
         here = open(dst, 'rb').read() if os.path.exists(dst) else None
         rec = st.get(name, {})
+        if name == LOCKED:
+            done[name] = install_locked(src, dst, bak, here, st)
+            continue
         if here is not None and sha(here) == rec.get('hidden_sha') and os.path.exists(bak):
             orig = open(bak, 'rb').read()                       # installed before: our copy; its original is kept
         elif here is not None and tabs(here):
@@ -160,13 +163,42 @@ def install(src, data_dir):
     return done
 
 
+LOCKED = 'SL_Audomation'       # 10.26: SL Design and SL Animation - visible but locked until access is given (features.py)
+
+
+def install_locked(src, dst, bak, here, st):
+    """The LOCKED SL_Audomation (tabs visible, every button disabled, no macro code); this PC's own original, if it had
+    one, is kept for the uninstaller. Access (features.py, the SL Editor service) puts the real add-in in its place."""
+    import features as F
+    p = os.path.join(src, LOCKED + '.ppam') if src else ''
+    if not (p and os.path.exists(p)):
+        return 'not available'
+    locked = open(p, 'rb').read()
+    if not F.is_locked(locked):
+        raise ValueError('the package must carry the LOCKED SL_Audomation (deploy/build-stage.ps1 makes it)')
+    if here is not None and not F.is_locked(here) and tabs(here) and not os.path.exists(bak):
+        _write(bak, here)                                      # this PC's own add-in, from before SL Editor
+    _write(dst, locked)
+    register(LOCKED)
+    st[LOCKED] = {'locked_sha': sha(locked), 'hidden_sha': sha(locked), 'at': time.strftime('%Y-%m-%dT%H:%M:%S')}
+    return 'installed (locked)'
+
+
 def restore(data_dir):
     st, keep, done = _read_json(os.path.join(data_dir, STATE)), os.path.join(data_dir, 'addins-original'), {}
     for name in ADDINS:
         dst, bak = os.path.join(addin_dir(), name + '.ppam'), os.path.join(keep, name + '.ppam')
+        here = open(dst, 'rb').read() if os.path.exists(dst) else None
+        if name == LOCKED:                 # the locked copy, or the real one access put there: back to this PC's own, or none
+            if os.path.exists(bak):
+                shutil.copyfile(bak, dst)
+                done[name] = 'restored'
+            elif here is not None:
+                os.remove(dst)
+                done[name] = 'removed'
+            continue
         if not os.path.exists(bak):
             continue
-        here = open(dst, 'rb').read() if os.path.exists(dst) else None
         if here is not None and sha(here) != (st.get(name) or {}).get('hidden_sha'):
             done[name] = 'left as it is (changed since)'
             continue

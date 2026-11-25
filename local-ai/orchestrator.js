@@ -121,18 +121,24 @@ const ORCH_RETIRED = /^(isostack|poster|ecosystem|concepttiles|bento|devicelinks
 /* 10.25: the sentence in a box ("Key message", "Statement banner", "Statement with icon", "Key statement"): not an
    infographic. Shown only when no other design exists for the text (Claude breaks a paragraph into its key ideas). */
 const ORCH_PLAIN = /^(statement|key_message|s-key|s-banner|s-icon)$/;
+const ORCH_BASIC = /^(cards|split|grid|chevrons|stairs|vsteps|arrowband|columns|rows|numcards|keystatement|layers|layered|stair|lib_.*)$/;
 const orchPlain = c => ORCH_PLAIN.test(String(c.family || '').replace(/:\d+$/, ''));
 function orchRank(all, max, shown, strict) {
   const seen = new Set(), fam = new Set(), pool = [], prints = [];
-  const live = all.filter(c => c && c.prims && c.prims.length && !ORCH_RETIRED.test(String(c.family || '').replace(/:\d+$/, '')));
+  let live = all.filter(c => c && c.prims && c.prims.length && !ORCH_RETIRED.test(String(c.family || '').replace(/:\d+$/, '')));
+  // 10.26 (owner's review): when the reference layouts fit the content (4 or more), the basic designs the owner rejected
+  // (numbered cards, split panels, feature columns, vertical steps, chevrons, icon grid, structured list, staircase,
+  // arrow band, statement spotlight, layered architecture) are left out; the richer built-in designs follow the
+  // reference ones. Content the reference layouts cannot draw (sections, records) keeps every design.
+  if (live.filter(c => c.ref).length >= 4) live = live.filter(c => c.ref || !ORCH_BASIC.test(String(c.family || '').replace(/:\d+$/, '')));
   const rich = live.filter(c => !orchPlain(c));
   (rich.length ? rich : live).map(c => Object.assign(c, { score: orchScore(c) })).sort((a, b) => b.score - a.score).forEach(c => {
     // an AI service's own drawings are each their own design; its plan drawn here competes by family like the rest
     const sig = orchSig(c.prims), fk = c.own ? c.id : c.category + '|' + c.family, fp = c.footprint || (c.footprint = orchFootprint(c.prims));
-    const look = { fp, sp: c.shapeprint || (c.shapeprint = orchShapePrint(c.prims)), lib: c.lib };
+    const look = { fp, sp: c.shapeprint || (c.shapeprint = orchShapePrint(c.prims)), lib: c.lib, ref: c.ref };
     // 10.26: the library's variants of one layout are each their own design (other holders, cards, marks, tones);
     // two different layouts that look the same are still look-alikes
-    if (seen.has(sig) || fam.has(fk) || (shown && shown.has(fk)) || prints.some(q => !(q.lib && q.lib === c.lib) && (orchSame(q.fp, fp) || orchLooksSame(q, look)))) return;
+    if (seen.has(sig) || fam.has(fk) || (shown && shown.has(fk)) || prints.some(q => !(q.lib && q.lib === c.lib) && !(q.ref && c.ref) && (orchSame(q.fp, fp) || orchLooksSame(q, look)))) return;
     seen.add(sig); fam.add(fk); prints.push(look); pool.push(c);
   });
   // 10.16: never padded with weak designs - when six or more designs with objects and hierarchy exist, the plain
@@ -322,8 +328,40 @@ async function orchPlanInit(ctx) {
 }
 /* 10.26: the built-in infographic library (packs/library-10.26.js): 25 layouts x 120 variants. Each round offers the
    next variant of every layout that suits the text, so Generate shows one of each and every "More visuals" new ones. */
+/* 10.26 (owner's review): the generic library variants read as basic - retired from the gallery (kept for editing
+   visuals already inserted); the reference layouts (packs/reference-10.26.js) lead instead. */
+registerEngine({ id: 'reference', kind: 'native', order: 14,
+  available: () => typeof REF !== 'undefined' && REF.layouts.length > 0,
+  run: async ctx => orchReference(ctx, 20),
+  more: async ctx => orchReference(ctx, 10) });
+async function orchReference(ctx, max) {
+  const m = await orchPlanInit(ctx);
+  if (!m) return [];
+  const rf = m.ref || (m.ref = { round: 0, at: 0, P: m.d.plan, names: m.d.density === 'names', layouts: REF.layouts.filter(L => !L.why(m.d.plan)), bad: {} });
+  if (!rf.layouts.length && !rf.names && m.plan.items.some(i => i.detail)) { rf.P = planNames(m.plan); rf.names = true; rf.layouts = REF.layouts.filter(L => !L.why(rf.P)); }
+  const facts = orchFacts(m.plan), out = [];
+  // round 0: every layout in a colour per point; round 1: in one colour; then other colour schemes
+  for (let guard = 0; out.length < max && rf.round < 20 && guard < 200; guard++) {
+    if (!rf.layouts.some(L => !rf.bad[L.key])) break;
+    if (rf.at >= rf.layouts.length) { rf.at = 0; rf.round++; if (out.length) break; continue; }
+    const L = rf.layouts[rf.at++];
+    if (rf.bad[L.key]) continue;
+    const key = `ref_${L.key}_${rf.round % 2 ? 'c' : 'm'}`, style = { accent: Math.floor(rf.round / 2) * 3 % 10, spacing: 'fill' };
+    const Ps = Object.assign({}, rf.P, { style: Object.assign({}, rf.P.style, style) });
+    let r = planRender(Ps, key, ctx.R);
+    if (r.ok && orchMissing(r.prims, facts).length) { const c = planRender(Ps, 'cap:' + key, ctx.R); if (c.ok && orchMissing(c.prims, facts).length < orchMissing(r.prims, facts).length) r = c; }
+    if (!r.ok) { if (rf.round < 2) rf.bad[L.key] = 1; continue; }
+    const names = rf.names, plan = rf.P;
+    out.push({ id: 'R:' + key + ':' + r.style.accent + (names ? ':n' : ''), engine: 'designs', ref: L.key, lib: 'ref:' + L.key, title: r.name + (names ? ' · point names only' : ''), family: key + ':' + r.style.accent,
+      category: 'Reference: ' + L.name, prims: r.prims, edit: r.prims.some(p => p.t === 'image') ? 'partial' : 'full', complete: !names && !orchMissing(r.prims, facts).length, slides: 1, rich: true,
+      relevant: true, base: 110 - (names ? 6 : 0) - Math.min(rf.round, 6), why: r.kind,
+      fit: orchFits(orchPlanBuild(m.plan, r.key, r.style, names ? 'names' : 'full')),
+      insert: async () => { ST.designs = [{ r, plan, full: m.plan, density: names ? 'names' : 'full', from: 'your text' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });
+  }
+  return out;
+}
 registerEngine({ id: 'library', kind: 'native', order: 15,
-  available: () => typeof LIB !== 'undefined' && LIB.layouts.length > 0,
+  available: () => false,      // 10.26: retired from the gallery (see "reference")
   run: async ctx => orchLibrary(ctx, 18),
   more: async ctx => orchLibrary(ctx, 12) });
 async function orchLibrary(ctx, max) {

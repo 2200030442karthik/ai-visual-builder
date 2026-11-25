@@ -9,7 +9,7 @@
 #   powershell -File deploy\build-stage.ps1 -Bundle deploy\team-keys\activation-bundle.json
 #     [-RuntimeFrom <folder with python.exe + Lib\site-packages\anthropic>]   (default: deploy\runtime-win)
 #     [-PythonZip <python-3.14.7-embed-amd64.zip>]                            (build a fresh runtime instead)
-param([Parameter(Mandatory = $true)][string]$Bundle, [string]$RuntimeFrom, [string]$PythonZip, [string]$Out)
+param([Parameter(Mandatory = $true)][string]$Bundle, [string]$Features, [string]$RuntimeFrom, [string]$PythonZip, [string]$Out)
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
 $La = Join-Path $Root 'local-ai'
@@ -84,7 +84,14 @@ foreach ($n in 'SL_Smart_Design_v2_Key_Dec_25', 'SL_Audomation') {
         if ($st -and $st -ne 'null' -and $st -match 'true') { $ok = $f; break }        # an original: its tabs visible
     }
     if (-not $ok) { throw "No original $n.ppam on this PC (PowerPoint's add-in folder): SL Editor needs it for its tabs." }
-    Copy-Item $ok (Join-Path $ad "$n.ppam")
+    if ($n -eq 'SL_Audomation') {
+        # 10.26: SL Design and SL Animation ship LOCKED (ribbon visible, buttons disabled, no macro code); the real add-in
+        # is only in features-bundle.json, encrypted - an SLDA access key unlocks it (local-ai\features.py)
+        & python (Join-Path $La 'features.py') locked --addin $ok --out (Join-Path $ad "$n.ppam") | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw 'The locked SL_Audomation could not be made.' }
+        if (-not $Features) { throw 'SL Editor needs the SL Design and SL Animation bundle (-Features features-bundle.json).' }
+        Copy-Item $Features (Join-Path $app 'features-bundle.json')
+    } else { Copy-Item $ok (Join-Path $ad "$n.ppam") }
 }
 
 # 3. Manifest: the ONE SL Smart Design tab (Alternative Design, AI Visual Builder, Several slides, Edit a visual,

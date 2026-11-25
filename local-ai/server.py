@@ -42,6 +42,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import access as A
 import activation as ACT
+import features as FEAT
 import claude_visual as C
 
 VERSION = '10.22'
@@ -128,9 +129,9 @@ STATIC['/activate.html'] = ('activate.html', 'text/html; charset=utf-8')
 # Pages and scripts are always served: the panel page is also the SL Smart Design tab's function file (one runtime), and
 # gate.js shows the activation form over the panel. Without activation only these APIs answer: status, the activation
 # itself, and SL Smart Design's own commands and the panel opening (SL Smart Design has its own licence check).
-ACT_FREE_GET = ('/api/status', '/api/activation', '/api/slsd/status', '/api/bridge/next', '/api/bridge/status')
+ACT_FREE_GET = ('/api/status', '/api/activation', '/api/features', '/api/slsd/status', '/api/bridge/next', '/api/bridge/status')
 # 10.24: /api/claude/icon is no longer free of activation - it can spend Claude credits
-ACT_FREE_POST = ('/api/activate', '/api/slsd/run', '/api/bridge/open', '/api/bridge/ack')
+ACT_FREE_POST = ('/api/activate', '/api/features/activate', '/api/slsd/run', '/api/bridge/open', '/api/bridge/ack')
 
 
 def activation_state(force=False):
@@ -160,6 +161,70 @@ def activation_try(b):
     log('activation ' + ('done' if res.get('ok') else 'refused (' + str(res.get('reason')) + ')'))
     activation_state(force=True)
     return {k: res.get(k) for k in ('ok', 'reason', 'message', 'label', 'expires', 'days_left', 'services') if k in res}
+# ---------------------------------------------------------------- 10.26: SL Design and SL Animation access (features.py)
+FEAT_BUNDLE = os.environ.get('AIVB_FEATURES') or os.path.join(HERE, FEAT.BUNDLE_NAME)
+FEAT_TRIES, FEAT_LOCK = [], threading.Lock()
+
+
+def feat_locked():
+    """The package's LOCKED SL_Audomation (put back when access ends), or None."""
+    for p in (os.path.join(HERE, '..', 'addins', FEAT.ADDIN + '.ppam'), os.path.join(HERE, 'addins', FEAT.ADDIN + '.ppam')):
+        try:
+            with open(p, 'rb') as f:
+                b = f.read()
+            if FEAT.is_locked(b):
+                return b
+        except OSError:
+            pass
+    return None
+
+
+def features_state(clean=False):
+    if not os.path.exists(FEAT_BUNDLE):
+        return {'ok': False, 'reason': 'not-in-package', 'message': 'SL Design and SL Animation are not part of this installation.'}
+    try:
+        return FEAT.status(DATA_DIR, FEAT_BUNDLE, clean=clean, locked_addin=feat_locked() if clean else None)
+    except Exception as e:      # never stops the service
+        log(f'features: {type(e).__name__}')
+        return {'ok': False, 'reason': 'error', 'message': 'The access could not be checked.'}
+
+
+def _addin_live(on):
+    if sys.platform != 'win32' or TEST_NO_PAID:
+        return False
+    try:
+        import slsd_com
+        return slsd_com.set_addin_loaded(FEAT.ADDIN, on)
+    except Exception:
+        return False
+
+
+def features_try(b):
+    """The panel's access page: at most 10 attempts a minute; the key is never logged. PowerPoint keeps running: the
+    add-in is unloaded, replaced by the real one and loaded again."""
+    now = time.time()
+    with FEAT_LOCK:
+        FEAT_TRIES[:] = [x for x in FEAT_TRIES if now - x < 60]
+        if len(FEAT_TRIES) >= 10:
+            raise NapkinError('Too many attempts. Wait a minute, then try again.', 429)
+        FEAT_TRIES.append(now)
+    if not os.path.exists(FEAT_BUNDLE):
+        return features_state()
+    key = str(b.get('key') or '')[:80]
+    g, err = FEAT.unlock(FEAT.load_bundle(FEAT_BUNDLE), key)
+    if not g:
+        log('features: access refused')
+        return {'ok': False, 'reason': 'invalid', 'message': err}
+    was = _addin_live(False)
+    res = FEAT.activate(key, DATA_DIR, FEAT_BUNDLE)
+    live = _addin_live(True) if was else False
+    log('features: access ' + ('given' if res.get('ok') else 'refused'))
+    out = {k: res.get(k) for k in ('ok', 'reason', 'message', 'label', 'expires', 'days_left') if k in res}
+    out['live'] = bool(live and res.get('placed'))
+    out['restart'] = bool(res.get('ok') and not out['live'])
+    return out
+
+
 CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' https://appsforoffice.microsoft.com; "
        "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://appsforoffice.microsoft.com; "
        "font-src 'self' data:; connect-src 'self' https://*.microsoft.com https://*.office.com https://*.office.net; "
@@ -946,6 +1011,8 @@ class Handler(BaseHTTPRequestHandler):
         act = activation_state()
         if path == '/api/activation':
             return self.send(200, act)
+        if path == '/api/features':
+            return self.send(200, features_state())
         if not act['ok'] and path not in ACT_FREE_GET:
             return self.fail(403, NOT_ACTIVATED)
         try:
@@ -1016,6 +1083,8 @@ class Handler(BaseHTTPRequestHandler):
             b = json.loads(self.rfile.read(n) or b'{}')
             if path == '/api/activate':
                 return self.send(200, activation_try(b))
+            if path == '/api/features/activate':
+                return self.send(200, features_try(b))
             if path not in ACT_FREE_POST and not activation_state()['ok']:
                 return self.fail(403, NOT_ACTIVATED)
             # a test panel host never makes a paid request (the tests use saved results and stand-ins)
@@ -1116,6 +1185,8 @@ def main():
         ctx.load_cert_chain(cert, key)
         # the handshake happens in each request's own thread (Handler.setup), not in the accept loop
         srv.socket = ctx.wrap_socket(srv.socket, server_side=True, do_handshake_on_connect=False)
+    if not HOSTED and not TEST_NO_PAID:    # expired, withdrawn or copied access: the locked copy back; access given: the real add-in
+        threading.Thread(target=features_state, kwargs={'clean': True}, daemon=True, name='features').start()
     if os.environ.get('AIVB_SLSD_UNIFY') == '1' and not HOSTED and sys.platform == 'win32':
         threading.Thread(target=slsd_tab_loop, daemon=True, name='slsd-tab').start()
     log(f'AI Visual Builder {VERSION} on ' + (f'port {PORT} (hosted for {", ".join(sorted(ALLOWED_HOSTS))})' if HOSTED else f'{SCHEME}://localhost:{PORT}/') + '  (Ctrl+C to stop)')
