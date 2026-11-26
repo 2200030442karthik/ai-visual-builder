@@ -169,7 +169,7 @@ async function run() {
     res.v16.concepts.badRejected = !ev('(raw) => { const p = planFromClaude(raw).plan; return orchConceptDesigns("claude", p).some(c => c.title === "Hero and tiles"); }')(bad);
     const ci = L.findIndex(c => c.concept);
     if (ci >= 0) { M.reset(); await gate(); A.appSelect(ci); await A.appInsert(); const S0 = M.slides[0], lv = leaves({ items: own(S0) }), T = lv.map(x => x.textFrame && x.textFrame.textRange && x.textFrame.textRange.text).filter(Boolean);
-      res.v16.concepts.inserted = { shapes: lv.length, texts: T.length, items: ['Written copy', 'Code-based animations', 'Presentations', 'AI-marked text'].every(t => T.includes(t)), pictures: lv.filter(x => x.kind === 'picture').length };
+      res.v16.concepts.inserted = { shapes: lv.length, texts: T.length, items: ['Written copy', 'Code-based animations', 'Presentations', 'AI-marked text'].every(t => T.includes(t)), pictures: lv.filter(x => x.kind === 'picture' && x.name !== 'Icon (AI Visual)').length };
       await ev('removeLast()'); }
     // the large gallery: published to the host, shown by the dialog page (a frame here), select and insert from it
     fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'off', claude: 'off', policy: 'never' }); await gate(); M.reset(); await gate();
@@ -222,7 +222,7 @@ async function run() {
     const di = L.findIndex(c => /^(ref_|lib_)/.test(c.family));     // 10.26: a reference design (Device links is retired)
     res.v17.device = { found: di >= 0 };
     if (di >= 0) { A.appSelect(di); await A.appInsert(); const S0 = M.slides[0], lv = leaves({ items: own(S0) }), T = lv.map(x => x.textFrame && x.textFrame.textRange && x.textFrame.textRange.text).filter(Boolean);
-      res.v17.device = { found: true, shapes: lv.length, groups: own(S0).filter(x => x.type === 'Group').length, pictures: lv.filter(x => x.kind === 'picture').length,
+      res.v17.device = { found: true, shapes: lv.length, groups: own(S0).filter(x => x.type === 'Group').length, pictures: lv.filter(x => x.kind === 'picture' && x.name !== 'Icon (AI Visual)').length,
         items: ['Foundational concepts', 'Everyday writing and research assistants', 'Structured learning courses', 'AI'].every(t => T.includes(t)) };
       await ev('removeLast()'); res.v17.device.undone = own(M.slides[0]).length === 0; }
     // the other example texts: 20+ designs (dense labelled sections with descriptions: 16+), no look-alikes among them
@@ -361,7 +361,7 @@ async function run() {
       const want = L[i].prims.filter(p => p.text).map(p => String(p.text)).sort();
       await A.appInsert();
       const s = M.slides[0], T = leaves(s).filter(x => x.type === 'TextBox' || (x.type === 'GeometricShape' && x.textFrame && x.textFrame.textRange.text)).map(x => String(x.textFrame.textRange.text)).filter(t => t.trim() && !/^Click/.test(t)).sort();
-      kinds[eng] = { title: L[i].title, status: status().slice(0, 200), objects: own(s).length, native: leaves(s).filter(x => x.kind !== 'picture' && x.type !== 'Placeholder').length, pictures: leaves(s).filter(x => x.kind === 'picture').length, edit: L[i].edit,
+      kinds[eng] = { title: L[i].title, status: status().slice(0, 200), objects: own(s).length, native: leaves(s).filter(x => x.kind !== 'picture' && x.type !== 'Placeholder').length, pictures: leaves(s).filter(x => x.kind === 'picture' && x.name !== 'Icon (AI Visual)').length, edit: L[i].edit,
         insertEqualsPreview: JSON.stringify(want) === JSON.stringify(T), tagged: leaves(s).some(x => { try { return !x.tags.getItemOrNullObject('AIVB_V').isNullObject; } catch (e) { return false; } }) };
       if (eng === 'designs') { await A.appInsert(); kinds.dup = { warned: /just inserted/.test(status()), objects: own(s).length === kinds[eng].objects }; }
       await ev('removeLast()'); kinds[eng].undone = own(M.slides[0]).length === 0;
