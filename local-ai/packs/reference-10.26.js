@@ -38,6 +38,11 @@ registerPack('reference', '10.26.0', () => {
   const col = i => accent(MONO ? 0 : i);
   /* the point's icon: white on its colour (inv) or in its colour on white */
   function icon(key, x, y, s, c, g, inv) {
+    // 10.27: a library icon (iconlib.js) in white on its colour, or in its colour; a logo on a white plate
+    if (/^L:/.test(String(key))) {
+      if (inv && iconIsLogo(key)) return [box('roundRect', x - s * 0.04, y - s * 0.04, s * 1.08, s * 1.08, { fill: W, grp: g }), ...comp(key, x + s * 0.1, y + s * 0.1, s * 0.8, c).map(p => Object.assign(p, { grp: g }))];
+      return comp(key, x, y, s, inv ? W : c).map(p => Object.assign(p, { grp: g }));
+    }
     const flip = q => (q && String(q).toUpperCase() === W ? c : q ? W : q);
     return comp(key || 'none', x, y, s, c).map(p => {
       const q = Object.assign({}, p, { grp: g });
@@ -156,7 +161,7 @@ registerPack('reference', '10.26.0', () => {
     return out; } };
 
   // 7. hub fan (reference: "Drafting professional emails" ... from the email icon)
-  const topicIcon = P => { try { const s = conceptScores(P.title || '', ''); const k = s && s.find(x => CMP[x.key]); return k ? k.key : 'none'; } catch (e) { return 'none'; } };
+  const topicIcon = P => { const L0 = typeof iconLibBest === 'function' && iconLibBest(P.title, 'layers'); if (L0) return L0; try { const s = conceptScores(P.title || '', ''); const k = s && s.find(x => CMP[x.key]); return k ? k.key : 'none'; } catch (e) { return 'none'; } };
   L.rfan = { name: 'Hub fan', n: [3, 6], why: P => (String(P.title || '').trim() ? '' : 'needs the topic for its hub'), build(P, R, o) {
     const out = [], n = P.items.length, H = Math.min(150, R.h * 0.4), D = Math.min(o.D, n > 4 ? 56 : 72), tx = R.x + H + 180 + D + 20, tw = R.x + R.w - tx;
     if (!allFit(P, tw, o.s, 2)) return planNo('a point does not fit beside its icon');

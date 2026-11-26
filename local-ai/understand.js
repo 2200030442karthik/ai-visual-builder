@@ -407,7 +407,9 @@ function recordModel(text) {
   }
   // 10.24: a record holds data ("Project ID: V10_TEST_2026", "Owner: Priya", "Price: ₹5,499.50"); points with their
   // descriptions ("Data collection: gather raw data from sources") are a list of concepts, drawn by every layout
-  const data = f => /[\d@#$%₹€£=_()\\/]/.test(f.value) || wordCount(f.value) <= 2;
+  // 10.27: a phrase of four or more words is a description even with a figure in it ("Generate 10 risks across ...",
+  // "Align to PMBOK 7 and ISO 31000"): the RCTFC prompt is a list of points, not a record of values
+  const data = f => /[=_\\]/.test(f.value) || wordCount(f.value) <= 2 || (wordCount(f.value) <= 3 && /[\d@#$%₹€£()/]/.test(f.value));
   return rec.fields.length >= 3 && rec.fields.filter(data).length * 2 >= rec.fields.length ? rec : null;
 }
 /* A record drawn natively in R: 'pairs' (a coloured key beside its value, two columns), 'table' (one row per field) or

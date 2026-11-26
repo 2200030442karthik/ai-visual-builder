@@ -86,13 +86,15 @@ function brandPrim(p, stats) {
     return q;
   }
   if (q.t === 'image') return q;                       // pictures are made in the standard where they are made
-  ['fill', 'line', 'color'].forEach(k => { if (q[k] && k !== 'color' && !approved(q[k], q.cmp ? 'part' : k)) { q[k] = brandColor(q[k]); stats.recolored++; } });
+  // 10.27: the owner's reference style (Lesson 2 cards, packs/lesson2-10.27.js): a light tint of a palette colour with a
+  // thin border of the same colour, kept as drawn (q.keep)
+  if (!q.keep) ['fill', 'line', 'color'].forEach(k => { if (q[k] && k !== 'color' && !approved(q[k], q.cmp ? 'part' : k)) { q[k] = brandColor(q[k]); stats.recolored++; } });
   if (q.t === 'line' && q.color && !APPROVED.has(q.color)) { q.color = brandColor(q.color); stats.recolored++; }
-  if (q.grp && q.t === 'shape') {                      // a part of a pictorial icon: flat and filled
+  if (q.grp && q.t === 'shape' && !q.keep) {                      // a part of a pictorial icon: flat and filled
     if (!q.fill && q.line) { if (q.dash) { stats.outlines++; return null; } q.fill = q.line; stats.outlines++; }
     else if (q.fill === '#FFFFFF' && q.line) { q.fill = '#D9D9D9'; stats.outlines++; }
     delete q.line; delete q.lineW; delete q.dash;
-  } else if (q.t === 'shape' && q.fill && q.line) {   // flat: no outlines around filled shapes; a white outlined frame becomes a solid light panel
+  } else if (q.t === 'shape' && q.fill && q.line && !q.keep) {   // flat: no outlines around filled shapes; a white outlined frame becomes a solid light panel
     if (q.fill === '#FFFFFF') { q.fill = '#F2F2F2'; stats.outlines++; }
     delete q.line; delete q.lineW;
   }

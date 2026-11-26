@@ -92,23 +92,30 @@ function sectionsRead(text) {
   const lines = sectionsFix(text).replace(/\r\n?/g, '\n').split('\n');
   const secs = [], before = [];
   let cur = null;
-  for (const raw of lines) {
-    const l = raw.trim();
+  const bulletNext = i => { for (let j = i + 1; j < lines.length; j++) { const t = lines[j].trim(); if (t) return /^(?:[-*•▪●◦–]|\d+[.)])\s+\S/.test(t); } return false; };
+  for (let li = 0; li < lines.length; li++) {
+    const l = lines[li].trim();
     if (!l) continue;
-    const m = SEC_LINE.exec(l), known = m && sectionKind(m[1]) !== 'other';
-    if (m && (known || m[1].split(/\s+/).length <= 4) && (m[2].trim() || known)) {
+    const m = /^(?:[-*•▪●◦–]|\d+[.)])\s/.test(l) && !/:/.test(l) ? null : SEC_LINE.exec(l), known = m && sectionKind(m[1]) !== 'other';
+    // 10.27: a header line of its own ("Output:") with bullets under it is a section too
+    if (m && (known || m[1].split(/\s+/).length <= 4) && (m[2].trim() || known || bulletNext(li))) {
       cur = { name: m[1].trim(), kind: sectionKind(m[1]), body: m[2].trim(), known };
       secs.push(cur);
     } else if (cur) cur.body += '\n' + l;
     else before.push(l);
   }
   if (!secs.length) return null;
+  // 10.27: lists under their own header lines ("Data sources:" / "- Excel files" ...) are sections whatever their names;
+  // a first line "Power BI: Data Sources to Dashboards" above them is the title, not a section
+  const listy = s => !String(s.body).split('\n')[0].trim() && /\n\s*(?:[-*•]|\d+[.)])\s+\S/.test('\n' + s.body);
+  if (secs.length >= 3 && !before.length && !listy(secs[0]) && !/\n/.test(secs[0].body) && secs.slice(1).every(listy)) { const t = secs.shift(); before.push(t.name + ': ' + t.body); }
+  const free = secs.length >= 2 && secs.every(listy);
   // 10.23: an outcome written as one sentence ("Outcome: Gain insights into needs, priorities, and assumptions") is one
   // statement, not a list of its commas
   const sentence = s => /^(?:outcomes?|results?|impact|goals?|purpose)$/i.test(s.name.trim()) && !/\n/.test(s.body.trim()) && s.body.split(/[,;]/)[0].trim().split(/\s+/).length >= 4;
   secs.forEach(s => { s.items = sentence(s) ? [{ label: secCap(s.body.trim().replace(/[.;:]+$/, '')), detail: '' }] : secItems(s.body); });
   const usable = secs.filter(s => s.items.length >= 1);
-  const ok = usable.length >= 2 && usable.filter(s => s.known).length >= 1 && usable.every(s => s.items.length <= 8) ||
+  const ok = usable.length >= 2 && (free || usable.filter(s => s.known).length >= 1) && usable.every(s => s.items.length <= 8) ||
     usable.length === 1 && usable[0].known && usable[0].items.length >= 3 && usable[0].items.length <= 8;
   if (!ok || usable.length > 4 || before.length > 2 || before.some(l => l.length > 160)) return null;
   if (usable.reduce((a, s) => a + s.items.length, 0) > 12) return null;

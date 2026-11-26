@@ -418,7 +418,9 @@ function iconsFor(items) {
 let grpSeq = 0;
 function comp(key, x, y, s, c, name) {
   const g = 'g' + (++grpSeq), nm = name || CMP_NAMES[key];
-  return (CMP[key] || CMP.none)(x, y, s, c).map(p => Object.assign(p, { grp: g, grpName: nm, cmp: key }));
+  // 10.27: an icon of the library (iconlib.js, key L:<name>) is drawn as a picture; a key it does not know draws nothing
+  const f = CMP[key] || (typeof iconFn === 'function' && iconFn(key)) || (/^L:/.test(String(key)) ? (() => []) : CMP.none);
+  return f(x, y, s, c).map(p => Object.assign(p, { grp: g, grpName: nm, cmp: key }));
 }
 
 /* The points of a list, without its framing: the title repeated as a line, and introductory or explanatory sentences
@@ -472,6 +474,9 @@ function contentPoints(sc, untitled) {
     if (topic && norm(it.label) === topic) return intro.push(it.label);
     // a title line without a blank line after it: "Machine learning workflow" above the stages
     if (i === 0 && untitled && sc.items.length >= 4 && wordCount(it.label) <= 6 && TITLE_WORDS.test(it.label) && !/[.!?]$/.test(it.label)) { sc.topic = it.label.replace(/:$/, ''); return intro.push(it.label); }
+    // 10.27: a first line in Title Case above points that are not ("AI Support for Everyday Admin Work" / "Drafting emails")
+    if (i === 0 && untitled && sc.items.length >= 4 && !it.detail && wordCount(it.label) <= 9 && !/[.!?:]$/.test(it.label) && titleCaseLine(it.label) &&
+      sc.items.slice(1).filter(o => titleCaseLine(o.label)).length <= (sc.items.length - 1) / 3) { sc.topic = it.label; return intro.push(it.label); }
     // "... in five stages: Data collection" (an introduction joined to the first point)
     const c = /^(.+?\b(?:stages?|steps?|phases?|parts?|types?|categories|components?|following)\b[^:]*):\s*(\S.*)$/i.exec(it.label);
     if (c && wordCount(c[1]) >= 4 && wordCount(c[2]) <= 5) { intro.push(c[1] + ':'); return keep.push(Object.assign({}, it, { label: c[2] })); }

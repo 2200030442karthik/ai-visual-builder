@@ -100,8 +100,11 @@ const orchLooksSame = (a, b) => orchJac(a.sp, b.sp) >= 0.72 && orchJac(a.fp, b.f
 /* 10.21.1: a deck is not the same design slide after slide - the families inserted last (ORCH.recent, newest first)
    step back a little; relevance (+30) still decides when the text states a relation */
 const orchRecentPenalty = c => { const i = (ORCH.recent || []).indexOf(c.family); return i < 0 ? 0 : [12, 9, 6, 4][i] || 0; };
+/* 10.27: the layout a design draws (its colour and one-colour versions are the same layout) */
+const orchLayoutKey = c => c.ref ? 'ref_' + c.ref : String(c.family || '').replace(/:\d+$/, '').replace(/_[mc]$/, '');
 function orchScore(c) {
-  let s = c.base - orchRecentPenalty(c);
+  // 10.27: what this user inserted before (learn.py): often-used layouts rise, the last few inserted ones step back
+  let s = c.base - orchRecentPenalty(c) + (typeof learnBoost === 'function' ? learnBoost(orchLayoutKey(c)) : 0);
   s += c.complete === false ? -25 : 10;
   s += c.edit === 'full' ? 8 : 0;
   c.richness = c.richness != null ? c.richness : orchRichness(c.prims);
@@ -117,11 +120,11 @@ function orchScore(c) {
    with a stray rule (poster), a small grey hub (ecosystem). Kept in the packs for editing visuals already inserted. */
 // 10.26: the scenes pack and the concept tiles / bento grid ("Ring and cards", "Split panel", "Icon band", "Folder tabs",
 // "Device links", "Circuit board", ...) are set aside: the built-in infographic library (packs/library-10.26.js) replaces them
-const ORCH_RETIRED = /^(isostack|poster|ecosystem|concepttiles|bento|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|sectionrows|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|mindmap|circleheads)$/;
+const ORCH_RETIRED = /^(isostack|poster|ecosystem|concepttiles|bento|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|sectionrows|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|mindmap|circleheads|avletters|avgrouprows)$/;
 /* 10.25: the sentence in a box ("Key message", "Statement banner", "Statement with icon", "Key statement"): not an
    infographic. Shown only when no other design exists for the text (Claude breaks a paragraph into its key ideas). */
 const ORCH_PLAIN = /^(statement|key_message|s-key|s-banner|s-icon)$/;
-const ORCH_BASIC = /^(cards|split|grid|chevrons|stairs|vsteps|arrowband|columns|rows|numcards|keystatement|layers|layered|stair|lib_.*)$/;
+const ORCH_BASIC = /^(cards|split|grid|chevrons|stairs|vsteps|arrowband|columns|rows|numcards|keystatement|layers|layered|stair|aviconline|badgecards|lib_.*)$/;
 const orchPlain = c => ORCH_PLAIN.test(String(c.family || '').replace(/:\d+$/, ''));
 function orchRank(all, max, shown, strict) {
   const seen = new Set(), fam = new Set(), pool = [], prints = [];
@@ -134,7 +137,8 @@ function orchRank(all, max, shown, strict) {
   const rich = live.filter(c => !orchPlain(c));
   (rich.length ? rich : live).map(c => Object.assign(c, { score: orchScore(c) })).sort((a, b) => b.score - a.score).forEach(c => {
     // an AI service's own drawings are each their own design; its plan drawn here competes by family like the rest
-    const sig = orchSig(c.prims), fk = c.own ? c.id : c.category + '|' + c.family, fp = c.footprint || (c.footprint = orchFootprint(c.prims));
+    // 10.27: one design per layout (a layout in its colour and in one colour, or in other colours, is a repeat)
+    const sig = orchSig(c.prims), fk = c.own ? c.id : c.category + '|' + orchLayoutKey(c), fp = c.footprint || (c.footprint = orchFootprint(c.prims));
     const look = { fp, sp: c.shapeprint || (c.shapeprint = orchShapePrint(c.prims)), lib: c.lib, ref: c.ref };
     // 10.26: the library's variants of one layout are each their own design (other holders, cards, marks, tones);
     // two different layouts that look the same are still look-alikes
@@ -174,6 +178,7 @@ async function orchGenerate(text, o, onStage) {
   if (!o.more && memo.list && memo.list.length) { orchNote('reused the visuals made for this text', { n: memo.list.length }); return { list: memo.list, note: '', paid: { used: false, from: memo.paidFrom }, reused: true }; }
   ctx.memo = memo;
   onStage('Reading your content…');
+  if (typeof iconLibReady === 'function') await iconLibReady(4000);      // 10.27: the icons of the points
   const free = ORCH.engines.filter(e => e.kind === 'native' && e.available(ctx));
   for (const e of free) {
     try { const got = await e.run(ctx); orchNote(`${e.id}: ${got.length} candidates`); memo.cands.push(...got); }
@@ -244,6 +249,7 @@ async function orchGenerate(text, o, onStage) {
   if (requests) memo.paidTried = true;
   const list = orchRank(memo.cands.slice(), ORCH_MAX);
   memo.list = list;
+  if (typeof learnSend === 'function') learnSend({ kind: 'shown', layouts: [...new Set(list.map(orchLayoutKey))] });
   ORCH.last = { text, list, policy, log: ORCH.log.slice(-20) };
   return { list, note: list.length ? note : '', paid: { used: paidUsed, from: memo.paidFrom } };
 }
@@ -258,14 +264,14 @@ async function orchMore(text, onStage) {
   }
   // new ones first, then the ones already shown; 10.16: a family already in the gallery is not offered again in other
   // colours or spacing (V10.15's "More visuals" repeated Topic banner, Section panels, ... in other colours)
-  const shownFam = new Set((memo.list || []).map(c => c.own ? c.id : c.category + '|' + c.family));
+  const shownFam = new Set((memo.list || []).map(c => c.own ? c.id : c.category + '|' + orchLayoutKey(c)));
   // the gallery's standard holds for the additions too: when Generate had enough complete designs with objects, More
   // visuals adds only such designs (or none, with a note) - never the weaker ones it left out
   const strict = (memo.list || []).filter(c => c.complete !== false && !c.own).length >= 6 || (memo.list || []).every(c => c.complete !== false);
   let fresh = orchRank(memo.cands.filter(c => !before.has(c.id)), ORCH_MAX, shownFam, strict);
   // 10.25: when the new layouts run out, the shown ones in other colour schemes and spacing (each look once), so
   // "More visuals" keeps giving new options click after click
-  if (fresh.length < 6) {
+  if (false) {     // 10.27 (owner's review): no more repeats of shown layouts in other colours
     memo.variantRound = (memo.variantRound || 0) + 1;
     for (let k = 0; k < 3 && fresh.length < 6; k++) {
       for (const e of ORCH.engines.filter(x => x.kind === 'native' && x.more && x.available(ctx))) {
@@ -321,7 +327,9 @@ async function orchPlanInit(ctx) {
   if (!m.plan) {
     const prep = await PANELS.napkin.prepared(ctx.text);
     if (prep.error || prep.record || (prep.points || []).length < 2) return null;
-    const plan = planFromPrep(prep), d = planAtDensity(plan, ctx.R, 'auto');
+    const plan = planFromPrep(prep);
+    await orchIconPick(plan, ctx.hash);
+    const d = planAtDensity(plan, ctx.R, 'auto');
     Object.assign(m, { plan, d, seen: new Set() });
   }
   return m;
@@ -340,21 +348,20 @@ async function orchReference(ctx, max) {
   const rf = m.ref || (m.ref = { round: 0, at: 0, P: m.d.plan, names: m.d.density === 'names', layouts: REF.layouts.filter(L => !L.why(m.d.plan)), bad: {} });
   if (!rf.layouts.length && !rf.names && m.plan.items.some(i => i.detail)) { rf.P = planNames(m.plan); rf.names = true; rf.layouts = REF.layouts.filter(L => !L.why(rf.P)); }
   const facts = orchFacts(m.plan), out = [];
-  // round 0: every layout in a colour per point; round 1: in one colour; then other colour schemes
-  for (let guard = 0; out.length < max && rf.round < 20 && guard < 200; guard++) {
-    if (!rf.layouts.some(L => !rf.bad[L.key])) break;
-    if (rf.at >= rf.layouts.length) { rf.at = 0; rf.round++; if (out.length) break; continue; }
-    const L = rf.layouts[rf.at++];
-    if (rf.bad[L.key]) continue;
-    const key = `ref_${L.key}_${rf.round % 2 ? 'c' : 'm'}`, style = { accent: Math.floor(rf.round / 2) * 3 % 10, spacing: 'fill' };
+  // 10.27 (owner's review: 77 visuals showed 3-4 layouts again and again): every layout once - in a colour per point or
+  // in one colour, alternately - and never again in other colours; "More visuals" continues with the layouts not shown
+  for (; out.length < max && rf.at < rf.layouts.length;) {
+    const idx = rf.at, L = rf.layouts[rf.at++];
+    const key = `ref_${L.key}_${idx % 3 === 2 ? 'c' : 'm'}`, style = { accent: 0, spacing: 'fill' };
     const Ps = Object.assign({}, rf.P, { style: Object.assign({}, rf.P.style, style) });
     let r = planRender(Ps, key, ctx.R);
-    if (r.ok && orchMissing(r.prims, facts).length) { const c = planRender(Ps, 'cap:' + key, ctx.R); if (c.ok && orchMissing(c.prims, facts).length < orchMissing(r.prims, facts).length) r = c; }
-    if (!r.ok) { if (rf.round < 2) rf.bad[L.key] = 1; continue; }
+    if (!r.ok) r = planRender(Ps, key.replace(/_[mc]$/, s => (s === '_m' ? '_c' : '_m')), ctx.R);
+    if (r.ok && orchMissing(r.prims, facts).length) { const c = planRender(Ps, 'cap:' + r.key, ctx.R); if (c.ok && orchMissing(c.prims, facts).length < orchMissing(r.prims, facts).length) r = c; }
+    if (!r.ok) continue;
     const names = rf.names, plan = rf.P;
     out.push({ id: 'R:' + key + ':' + r.style.accent + (names ? ':n' : ''), engine: 'designs', ref: L.key, lib: 'ref:' + L.key, title: r.name + (names ? ' · point names only' : ''), family: key + ':' + r.style.accent,
-      category: 'Reference: ' + L.name, prims: r.prims, edit: r.prims.some(p => p.t === 'image') ? 'partial' : 'full', complete: !names && !orchMissing(r.prims, facts).length, slides: 1, rich: true,
-      relevant: true, base: 110 - (names ? 6 : 0) - Math.min(rf.round, 6), why: r.kind,
+      category: 'Reference: ' + L.name, prims: r.prims, edit: r.prims.some(p => p.t === 'image' && !p.icon) ? 'partial' : 'full', complete: !names && !orchMissing(r.prims, facts).length, slides: 1, rich: true,
+      relevant: true, base: 110 + (L.lesson2 ? 6 : 0) - (names ? 6 : 0), why: r.kind, points: plan.items.map(i => [i.label, i.icon]),
       fit: orchFits(orchPlanBuild(m.plan, r.key, r.style, names ? 'names' : 'full')),
       insert: async () => { ST.designs = [{ r, plan, full: m.plan, density: names ? 'names' : 'full', from: 'your text' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });
   }
@@ -390,7 +397,7 @@ async function orchLibrary(ctx, max) {
     lib.fails[L.key] = 0;
     const names = lib.names, plan = lib.P;
     out.push({ id: 'L:' + key + ':' + r.style.accent + (names ? ':n' : ''), engine: 'designs', lib: L.key, title: r.name + (names ? ' · point names only' : ''), family: key,
-      category: 'Library: ' + L.name, prims: r.prims, edit: r.prims.some(p => p.t === 'image') ? 'partial' : 'full', complete: !names && !orchMissing(r.prims, facts).length, slides: 1, rich: true,
+      category: 'Library: ' + L.name, prims: r.prims, edit: r.prims.some(p => p.t === 'image' && !p.icon) ? 'partial' : 'full', complete: !names && !orchMissing(r.prims, facts).length, slides: 1, rich: true,
       relevant: L.cat !== 'List' && L.cat !== 'Concept', base: 90 + (L.cat === 'Cycle' || L.cat === 'Hierarchy' ? 8 : L.cat === 'Process' ? 4 : 0) - (names ? 6 : 0), why: r.kind,
       fit: orchFits(orchPlanBuild(m.plan, r.key, r.style, names ? 'names' : 'full')),
       insert: async () => { ST.designs = [{ r, plan, full: m.plan, density: names ? 'names' : 'full', from: 'your text' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });
@@ -417,7 +424,7 @@ async function orchDesigns(ctx, max) {
   }
   const packOf = r => PLAN_LAYOUTS[r.key] && PLAN_LAYOUTS[r.key].pack || '';
   const out = list.map(r => ({ id: 'd:' + planDesignKey(r), engine: 'designs', title: r.name + (planStyleName(r.style) ? ' · ' + planStyleName(r.style) : ''), family: r.family, category: orchCategory(r.family + ' ' + r.key),
-    prims: r.prims, edit: r.prims.some(p => p.t === 'image') ? 'partial' : 'full', complete: m.d.density === 'full' && !orchMissing(r.prims, orchFacts(m.plan)).length, slides: 1, rich: /modern|pro|showcase|learning|concepts|scenes|antv|infographics/.test(packOf(r)),
+    prims: r.prims, edit: r.prims.some(p => p.t === 'image' && !p.icon) ? 'partial' : 'full', complete: m.d.density === 'full' && !orchMissing(r.prims, orchFacts(m.plan)).length, slides: 1, rich: /modern|pro|showcase|learning|concepts|scenes|antv|infographics/.test(packOf(r)),
     relevant: orchRelevance(r.key, m.d.plan) >= 30,
     base: 62 + orchPackBonus(r.key) + orchAppeal(r.key) + orchRelevance(r.key, m.d.plan) + orchVariety(ctx.text, r.family) - (m.d.density === 'names' ? 6 : 0) - (sec && !/learning|concepts|scenes/.test(packOf(r)) && orchRelevance(r.key, m.d.plan) <= 0 ? 8 : 0), why: r.kind,
     fit: orchFits(orchPlanBuild(m.plan, r.key, r.style, m.d.density)),
@@ -518,6 +525,7 @@ function orchProvider(key) {
    never asks again; a point Claude gives no usable icon for keeps the catalogue's object. */
 const CLAUDE_ICONS_FOR = 'aivb.claude_icons_for.v1';
 async function orchClaudeIcons(R, text, ask) {
+  if (typeof ICONLIB !== 'undefined' && ICONLIB.ready) return;     // 10.27: the icon library's icons (Claude chooses among them)
   const plan = R.items && (R.items.plan || (R.items.find(i => i.plan) || {}).plan);
   if (!plan || !Array.isArray(plan.items) || !plan.items.length || typeof registerCustomIcon !== 'function') return;
   const h = hashText(String(text || '') + '|' + plan.items.map(i => i.label).join('|'));
@@ -550,6 +558,7 @@ const CLAUDE_ICONS_BY = 'aivb.claude_icons_by.v1';
 const iconLabelKey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 async function orchClaudeIconsEarly(ctx) {
   try {
+    if (typeof ICONLIB !== 'undefined' && ICONLIB.ready) return;
     if (typeof registerCustomIcon !== 'function') return;
     const prep = await PANELS.napkin.prepared(ctx.text);
     const pts = (prep && prep.points || []).filter(p => p && p.label).slice(0, 8);
@@ -628,3 +637,30 @@ registerEngine(orchProvider('claude'));
    itself the same way: registerEngine({ id: 'visualx', kind: 'native'|'paid', order, available(ctx), run(ctx) ->
    candidates, cached?(ctx), more?(ctx) }). Its candidates are ranked with all others; the app needs no change. A
    candidate with style: 'rich' is shown under the gallery's "Rich" filter once one exists (app.js ORCH_FILTERS). */
+
+/* 10.27: Claude chooses each point's icon among the library's best candidates (one small request per text, kept on this
+   PC), with this user's earlier choices as examples (learn.py). Without Claude, the library's own match stays. */
+const ICON_PICKS = 'aivb.icon_picks.v1';
+async function orchIconPick(plan, hash) {
+  try {
+    if (typeof ICONLIB === 'undefined' || !ICONLIB.ready || !plan || !Array.isArray(plan.items) || plan.items.length < 2) return;
+    const sv = state.svc || {}, on = sv.claude && sv.claude.enabled && orchPolicy() !== 'never';
+    let kept = {}; try { kept = JSON.parse(localStorage.getItem(ICON_PICKS) || '{}'); } catch (e) { kept = {}; }
+    const h = hash + '|' + plan.items.map(i => i.label).join('|');
+    let names = kept[h];
+    if (!names && on) {
+      const items = plan.items.slice(0, 10).map(it => ({ label: it.label, detail: it.detail || '',
+        cands: iconCandidates(it.label, it.detail || '').map(c => ICONLIB.icons[c.i].name).slice(0, 12) }));
+      const res = await Promise.race([api('/api/icons/pick', { items, topic: plan.title || '' }, 20000), new Promise(r => setTimeout(() => r(null), 15000))]);
+      if (res && res.ok && Array.isArray(res.icons)) {
+        names = res.icons; kept[h] = names;
+        const all = Object.keys(kept); if (all.length > 300) delete kept[all[0]];
+        try { localStorage.setItem(ICON_PICKS, JSON.stringify(kept)); } catch (e) { /* not kept */ }
+        orchNote('icons chosen by Claude: ' + names.filter(Boolean).length + ' of ' + items.length);
+      } else orchNote('icons: library match (' + ((res && res.error) || 'Claude gave no choice') + ')');
+    }
+    if (!names) return;
+    const used = new Set();
+    names.forEach((n, i) => { const it = plan.items[i]; if (!it || !n || !ICONLIB.byName.has(n) || used.has(n)) return; used.add(n); it.icon = iconKeyOf(ICONLIB.byName.get(n)); });
+  } catch (e) { orchNote('icon choice failed: ' + errText(e)); }
+}

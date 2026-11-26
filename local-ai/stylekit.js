@@ -139,10 +139,16 @@
       const vid = await visualIdOf(context, top);
       slide.shapes.load('items/id'); await context.sync();
       const before = new Set(slide.shapes.items.map(s => s.id));
-      await drawOnSlide(context, slide, prims, label, null);
+      // 10.27: the icon library's icons are SVG pictures (recolourable); the point's name learns the choice (learn.py)
+      top.forEach(s => s.load('name')); await context.sync();
+      const point = (top.map(s => String(s.name || '').replace(/\s*\(AI Visual\)\s*$/, '').replace(/\s*icon$/i, '')).find(n => n && !/^(Group|Picture|Graphic|Oval|Rectangle)\b/.test(n))) || '';
+      const shapes = prims.filter(p => p.t !== 'image'), pics = prims.filter(p => p.t === 'image');
+      if (shapes.length) await drawOnSlide(context, slide, shapes, label, null);
+      if (pics.length) { context.presentation.setSelectedSlides([slide.id]); await context.sync(); for (const p of pics) await insertSvgAt(p.svg, p); }
       await tagAsVisual(context, await newShapesOf(context, slide, before), vid);
       top.forEach(s => s.delete());
       await context.sync();
+      if (point && /^L:/.test(key) && typeof learnSend === 'function') learnSend({ kind: 'icon', icons: [[point, key]] });
     });
   }
   /* 10.25: 3D picture icons (3dicons v1, CC0): rendered 3D objects inserted as pictures (not recolourable shapes) */
@@ -203,9 +209,11 @@
       return;
     }
     if (!desc) { note('Describe the icon first.', true); return; }
-    const seen = new Set(), found = conceptScores(desc, '').filter(x => CMP[x.key] && !seen.has(x.key) && seen.add(x.key)).slice(0, 5);
+    // 10.27: the icon library's best matches first (iconlib.js, 5,700 icons from the team's asset share), then the catalogue's
+    const seen = new Set(), lib = typeof ICONLIB !== 'undefined' && ICONLIB.ready ? iconCandidates(desc, '').slice(0, 12).map(c => ({ key: iconKeyOf(c.i), name: ICONLIB.icons[c.i].name.replace(/^(logos|simple)-/, '').replace(/-/g, ' ') })) : [];
+    const found = lib.concat(conceptScores(desc, '').filter(x => CMP[x.key] && !seen.has(x.key) && seen.add(x.key)).slice(0, lib.length ? 2 : 5));
     const pick = (key, name) => `<button type="button" class="iconPick" data-key="${esc2(key)}" data-name="${esc2(name)}" title="${esc2(name)}">${thumbOf(key)}<span>${esc2(name)}</span></button>`;
-    picks.innerHTML = (found.length ? '<div class="iconSrc">Library <span class="badge src builtin">Built-in</span></div>' + found.map(x => pick(x.key, x.name)).join('') : '');
+    picks.innerHTML = (found.length ? '<div class="iconSrc">Icon library <span class="badge src builtin">Built-in</span></div>' + found.map(x => pick(x.key, x.name)).join('') : '');
     const wire = () => { picks.querySelectorAll('.iconPick:not(.pic3d)').forEach(b => { b.onclick = () => replaceIcon(b.dataset.key, b.dataset.name); }); wire3d(picks); };
     const p3 = await find3d(desc, 6);
     if (p3.length) picks.insertAdjacentHTML('beforeend', '<div class="iconSrc">3D pictures <span class="badge src builtin">3dicons · Fluent 3D</span></div>' + p3.map(pick3d).join(''));
@@ -213,7 +221,7 @@
     note(`Asking Claude for a ${SK.style === '3d' ? '3D' : 'flat'} “${desc}” icon…`);
     try {
       const res = await api('/api/claude/icon', { description: desc, style: SK.style }, 90000);
-      if (!res || !res.ok || !res.icon) { note(((res && res.error) || 'Claude could not design it.') + (found.length ? ' Pick a library icon above.' : ''), !found.length); return; }
+      if (!res || !res.ok || !res.icon) { note(found.length ? `${lib.length} matching library icons are shown above: select the icon to replace on the slide, then click one.` + (res && res.reason ? ` (A new drawing by Claude is not available: ${res.reason}.)` : '') : ((res && res.error) || 'Claude could not design it.'), !found.length); return; }
       const key = registerCustomIcon(res.icon); saveCustomIcon(key, res.icon);
       picks.insertAdjacentHTML('beforeend', `<div class="iconSrc">${res.source === 'claude' ? 'Designed by Claude' : 'Ready-made'} <span class="badge src ${res.source === 'claude' ? 'claude' : 'builtin'}">${res.source === 'claude' ? 'Claude' : 'Ready-made'}</span></div>` + pick(key, res.icon.label || desc));
       wire();

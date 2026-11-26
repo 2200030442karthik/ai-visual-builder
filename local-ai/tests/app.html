@@ -119,7 +119,7 @@ async function run() {
     fresh(); W.__cfg.policy = 'never'; await gate();
     let L = await gen(dmT);
     res.sec = { lines: d.getElementById('content').value.split(/\n/).slice(0, 3), n: L.length, families: L.map(c => c.family),
-      richFirst: L.slice(0, 3).every(c => /^lib_|learnmap|herobanner|bridge|iconrows|splitpanels|poster|badges|ribbon|colortiles|concepttiles|orbit|honeycomb|isostack|bento|keystatement|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|sectionrows|mindmap|circleheads/.test(c.family)),
+      richFirst: L.slice(0, 3).every(c => /^ref_|^lib_|learnmap|herobanner|bridge|iconrows|splitpanels|poster|badges|ribbon|colortiles|concepttiles|orbit|honeycomb|isostack|bento|keystatement|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|sectionrows|mindmap|circleheads/.test(c.family)),
       missing: L.filter(c => !dmNeed.every(t => texts(c).includes(t))).map(c => c.family + ': ' + dmNeed.filter(t => !texts(c).includes(t)).join(' / ')),
       merged: L.filter(c => texts(c).some(t => /GrowthWhat|What you learn:/.test(t))).map(c => c.family), builtin: L.filter(c => c.engine === 'builtin').length, editable: L.every(c => c.edit === 'full'), paid: paidCalls() };
     const aiT = ['Artificial Intelligence and Machine Learning (AI & ML)', '', 'What you learn: Neural networks, data mining, predictive modeling, and working with tools like ChatGPT or Python.', '',
@@ -237,10 +237,10 @@ async function run() {
     }
     // soft tints: off by default (only approved colours); allowed by the administrator, they appear only as card fills
     const approved = new Set(ev('[...TEMPLATE.accents, ...TEMPLATE.neutrals]'));
-    const offColours = L.flatMap(c => c.prims).filter(p => (p.fill && !approved.has(p.fill)) || (p.color && !approved.has(p.color))).length;
+    const offColours = L.flatMap(c => c.prims).filter(p => !p.keep /* 10.27: the owner's Lesson 2 cards */ && (p.fill && !approved.has(p.fill)) || (p.color && !approved.has(p.color))).length;
     W.eval('TEMPLATE.softTints = true; 1'); fresh();
     const LT = await gen(aiT), tintSet = new Set(ev('[...SOFT_SET]'));
-    const tintFills = LT.flatMap(c => c.prims).filter(p => tintSet.has(p.fill)), tintBad = LT.flatMap(c => c.prims).filter(p => (p.fill && !approved.has(p.fill) && !tintSet.has(p.fill)) || (p.color && !approved.has(p.color)) || (p.cmp && tintSet.has(p.fill)));
+    const tintFills = LT.flatMap(c => c.prims).filter(p => tintSet.has(p.fill)), tintBad = LT.flatMap(c => c.prims).filter(p => !p.keep && (p.fill && !approved.has(p.fill) && !tintSet.has(p.fill)) || (p.color && !approved.has(p.color)) || (p.cmp && tintSet.has(p.fill)));
     W.eval('TEMPLATE.softTints = false; 1'); fresh();
     res.v17.tints = { offColours, used: tintFills.length, bad: tintBad.length, n: LT.length };
     // Claude may return up to six compositions of its own (V10.16: four)
@@ -519,7 +519,7 @@ async function run() {
     ['A27 A paragraph of several sentences (cloud computing) is read as its topic and one section per list - service models, key benefits, cloud deployments - with every item',
       res.v19.read && res.v19.read.title === 'Cloud computing' && res.v19.read.sections.length === 3 && /IaaS, PaaS, SaaS/.test(res.v19.read.sections[0]) && /Public, Private, Hybrid/.test(res.v19.read.sections[2]), JSON.stringify(res.v19.read)],
     ['A28 Large text: one Generate gives 20+ designs with every point (one-slide designs first, then the same design on 2-3 slides, condensed names-only versions said in their name); a multi-slide design inserts here and on new slides, Undo removes all',
-      res.v19.cloud.n >= 10 /* 10.26: the scenes that fitted it are retired */ && !res.v19.cloud.incomplete.length && res.v19.cloud.multi > 0 && res.v19.lifecycle.n >= 18 /* 10.21.1: relevance and quality over quantity (text-only designs left out) */ && !res.v19.lifecycle.incomplete.length &&
+      res.v19.cloud.n >= 10 /* 10.26: the scenes that fitted it are retired */ && !res.v19.cloud.incomplete.length && res.v19.cloud.multi > 0 && res.v19.lifecycle.n >= 16 /* 10.27: one design per layout; 10.21.1: relevance and quality over quantity (text-only designs left out) */ && !res.v19.lifecycle.incomplete.length &&
       res.v19.multiInsert.offered && res.v19.multiInsert.slidesAdded === 2 && res.v19.multiInsert.undone, JSON.stringify({ cloud: res.v19.cloud, lifecycle: res.v19.lifecycle, multi: res.v19.multiInsert })],
     ['A29 Same slide by default: a slide with text gets the visual below its text (never over it, said); a slide without room: nothing inserted, explained, a new slide only when the user clicks for it (10.21.1)',
       res.v19.same.newSlides === 0 && res.v19.same.onThisSlide > 0 && res.v19.same.top >= res.v19.same.textBottom && res.v19.same.bottom <= 720 && /on this slide/.test(res.v19.same.note) && res.v19.same.minPt >= 20 &&

@@ -44,6 +44,7 @@ import access as A
 import activation as ACT
 import features as FEAT
 import claude_visual as C
+import learn as L
 
 VERSION = '10.22'
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -56,7 +57,9 @@ DATA_DIR = os.environ.get('AIVB_DATA_DIR') or os.path.join(os.environ.get('LOCAL
 STATIC = {'/': ('v10.html', 'text/html; charset=utf-8'), '/v10.html': ('v10.html', 'text/html; charset=utf-8'),
           '/gallery-dialog.html': ('gallery-dialog.html', 'text/html; charset=utf-8'),
           '/slsd-notice.html': ('slsd-notice.html', 'text/html; charset=utf-8'),
-          **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'sections', 'original', 'faithful', 'napkin', 'studio', 'orchestrator', 'app', 'bridge', 'slsd', 'gate', 'antv', 'stylekit', 'sleditor')},
+          **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'sections', 'original', 'faithful', 'napkin', 'studio', 'orchestrator', 'app', 'bridge', 'slsd', 'gate', 'antv', 'stylekit', 'sleditor', 'iconlib')},
+          # 10.27: the icon library of the visuals (deploy/make-iconlib.py, from the team's asset share)
+          '/assets/iconlib/iconlib.json': ('assets/iconlib/iconlib.json', 'application/json'),
           # the ribbon's icons (manifest-v10.xml), served by this host like the panel itself
           **{f'/assets/icon-{n}.png': (f'assets/icon-{n}.png', 'image/png') for n in (16, 32, 64, 80)},
           # 10.20.1: the SL Smart Design tab's icons (manifest-slsd.xml; made by sl-smart-design/make_icons.py)
@@ -640,6 +643,19 @@ def claude_icons(b, who=None):
     return C.generate_icons(C.settings(DATA_DIR), items, timeout_s=max(60, CONFIG.get('claude_timeout_s', 30)), style=str(b.get('style') or '3d'))
 
 
+def icons_pick(b, who=None):
+    """10.27: Claude chooses each point's icon among the library's candidates (with this user's earlier choices as examples)."""
+    items = b.get('items') if isinstance(b.get('items'), list) else []
+    if not items:
+        raise NapkinError('No points given.', 400)
+    if TEST_NO_PAID or CONFIG['paid_policy'] == 'never':
+        return {'ok': False, 'source': 'off', 'error': 'Claude is switched off by the administrator.', 'icons': [None] * min(10, len(items))}
+    res = C.pick_icons(C.settings(DATA_DIR), items, str(b.get('topic') or ''), L.examples(DATA_DIR))
+    if res.get('source') == 'off':
+        log('icons pick: ' + res.get('error', ''))
+    return res
+
+
 def claude_icon(b, who=None):
     desc = str(b.get('description') or b.get('prompt') or '').strip()
     if not desc:
@@ -1037,6 +1053,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, {'server': VERSION, 'access': access, 'napkin': napkin, 'claude': claude, 'orchestrate': orchestrate,
                                        'brand': {'soft_tints': CONFIG['soft_tints'] is True, 'sme_space': CONFIG['sme_space'] is True}, 'slsd': {'mac_bridge': mac_bridge_on()},
                                        'activation': act})
+            if path == '/api/learn':      # 10.27: a test host neither reads nor writes this PC's learning
+                return self.send(200, {'icons': {}, 'layouts': {}, 'recent': []} if TEST_NO_PAID else L.state(DATA_DIR))
             if path == '/api/gallery':
                 return self.send(200, gallery_get(arg('k')))
             if path == '/api/bridge/next':
@@ -1100,6 +1118,11 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/claude/visual':
                 who = self.authorized()
                 return who and self.send(200, claude_create(b, who))
+            if path == '/api/learn':
+                return self.send(200, {'ok': True, 'test': True} if TEST_NO_PAID else L.record(DATA_DIR, b))
+            if path == '/api/icons/pick':
+                who = self.authorized()
+                return who and self.send(200, icons_pick(b, who))
             if path == '/api/claude/icons':
                 who = self.authorized()
                 return who and self.send(200, claude_icons(b, who))

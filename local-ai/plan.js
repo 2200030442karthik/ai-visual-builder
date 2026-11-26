@@ -682,7 +682,11 @@ function planIcons(items) {
     return [...m.values()].sort((a, b) => b.score - a.score || a.order - b.order);
   });
   iconAssign(lists, 3).forEach((pick, i) => { items[i].icon = pick ? pick.key : 'none'; });
+  // 10.27: the icon library's matching icons (iconlib.js): every point an icon that depicts it, never the empty marker
+  if (typeof iconLibAssign === 'function') iconLibAssign(items, PLAN_TOPIC);
 }
+/* the topic of the plan being made (planIcons' fallback for a point nothing matches) */
+let PLAN_TOPIC = '';
 /* Claude's plan (the JSON of claude_visual.py PLAN_SCHEMA) -> a checked plan; problems name what was repaired. */
 function planFromClaude(raw) {
   const problems = [];

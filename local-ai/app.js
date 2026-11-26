@@ -371,6 +371,8 @@ async function appInsert(opts) {
     if (ok) {
       APP.lastIns = { ref: state.lastInsert, id: c.id }; APP.dupOk = '';
       if (c.family) ORCH.recent = [c.family].concat((ORCH.recent || []).filter(f => f !== c.family)).slice(0, 4);   // 10.21.1: deck variety
+      // 10.27: what was chosen teaches the next visuals (learn.py): this layout and the icons of its points
+      if (typeof learnSend === 'function') learnSend({ kind: 'insert', layout: typeof orchLayoutKey === 'function' ? orchLayoutKey(c) : c.family, icons: (c.points || []).filter(p => /^L:/.test(String(p[1]))) });
       const extra = state.lastInsert && (state.lastInsert.extraSlides || []).length, k = state.lastFit || 1;
       appSay(`Inserted “${appName(c)}”${moved ? ' on a new slide after this one, as you chose' : state.lastInsert && state.lastInsert.newSlide ? ' on a new slide' : ' on this slide'}` +
         `${extra ? ` and ${extra} more slide${extra > 1 ? 's' : ''}` : ''}${k < 0.995 ? `, scaled to ${Math.round(k * 100)} % to fit beside the text` : ''}. Every text and shape is editable in PowerPoint. Undo last insert takes it out.`);
