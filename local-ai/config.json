@@ -1,0 +1,11 @@
+{
+  "port": 44317,
+  "napkin_base": "https://api.napkin.ai",
+  "napkin_max_per_day": 0,
+  "napkin_timeout_s": 60,
+  "paid_policy": "always",
+  "paid_order": [
+    "claude",
+    "napkin"
+  ]
+}

@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AI Visual Builder V10.15. A separate add-in from V9 (different Id), so both can be installed side by side.
+     The panel is served on this PC by local-ai\server.py (https://localhost:44317); it must be running, otherwise
+     PowerPoint shows "Sorry, we can't load the add-in". -->
+<OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="TaskPaneApp">
+  <Id>08d15d9d-8629-4583-b67d-5f80143dde6d</Id>
+  <Version>10.20.0.2</Version>
+  <ProviderName>AI Visual Builder</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="AI Visual Builder"/>
+  <Description DefaultValue="Turns your slide content into editable infographics in the Simplilearn template."/>
+  <IconUrl DefaultValue="https://localhost:44317/assets/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https://localhost:44317/assets/icon-64.png"/>
+  <SupportUrl DefaultValue="https://2200030442karthik.github.io/ai-visual-builder/"/>
+  <AppDomains><AppDomain>https://localhost:44317</AppDomain></AppDomains>
+  <Hosts><Host Name="Presentation"/></Hosts>
+  <Requirements><Sets DefaultMinVersion="1.1"><Set Name="PowerPointApi" MinVersion="1.5"/><Set Name="SharedRuntime" MinVersion="1.1"/></Sets></Requirements>
+  <DefaultSettings><SourceLocation DefaultValue="https://localhost:44317/v10.html"/></DefaultSettings>
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Presentation">
+        <!-- 10.20: one shared runtime (the panel keeps running when hidden) so the SL Smart Design ribbon's AI Visual Builder
+             button can open it with Office.addin.showAsTaskpane() (local-ai\bridge.js); Several slides and Edit a visual are
+             functions of that runtime -->
+        <Runtimes>
+          <Runtime resid="Taskpane.Url" lifetime="long"/>
+        </Runtimes>
+        <DesktopFormFactor>
+          <GetStarted>
+            <Title resid="GetStarted.Title"/>
+            <Description resid="GetStarted.Description"/>
+            <LearnMoreUrl resid="GetStarted.LearnMoreUrl"/>
+          </GetStarted>
+          <FunctionFile resid="Taskpane.Url"/>
+          <!-- 10.15: the main entry is the "AI Visuals" button beside "Alternative Design" on the SL Smart Design tab (a VBA
+               add-in: local-ai\sl-smart-design). A web add-in cannot put a button on a VBA add-in's tab, so that button
+               runs local-ai\open-panel.ps1, which presses this group's button. This group, at the end of the Home tab,
+               is that button and the entry on PCs without SL Smart Design. Three buttons open the same task pane on a
+               section. -->
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="AIVB10.Group">
+                <Label resid="Group.Label"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon.16"/>
+                  <bt:Image size="32" resid="Icon.32"/>
+                  <bt:Image size="80" resid="Icon.80"/>
+                </Icon>
+                <Control xsi:type="Button" id="AIVB10.Open">
+                  <Label resid="Button.Label"/>
+                  <Supertip>
+                    <Title resid="Button.Label"/>
+                    <Description resid="Button.Tooltip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16"/>
+                    <bt:Image size="32" resid="Icon.32"/>
+                    <bt:Image size="80" resid="Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>AIVisualBuilderV10Pane</TaskpaneId>
+                    <SourceLocation resid="Taskpane.Url"/>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="AIVB10.Slides">
+                  <Label resid="Slides.Label"/>
+                  <Supertip>
+                    <Title resid="Slides.Label"/>
+                    <Description resid="Slides.Tooltip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16"/>
+                    <bt:Image size="32" resid="Icon.32"/>
+                    <bt:Image size="80" resid="Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>aivbOpenSlides</FunctionName>
+                  </Action>
+                </Control>
+                <Control xsi:type="Button" id="AIVB10.Edit">
+                  <Label resid="Edit.Label"/>
+                  <Supertip>
+                    <Title resid="Edit.Label"/>
+                    <Description resid="Edit.Tooltip"/>
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Icon.16"/>
+                    <bt:Image size="32" resid="Icon.32"/>
+                    <bt:Image size="80" resid="Icon.80"/>
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>aivbOpenEdit</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Icon.16" DefaultValue="https://localhost:44317/assets/icon-16.png"/>
+        <bt:Image id="Icon.32" DefaultValue="https://localhost:44317/assets/icon-32.png"/>
+        <bt:Image id="Icon.80" DefaultValue="https://localhost:44317/assets/icon-80.png"/>
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:44317/v10.html"/>
+        <bt:Url id="Slides.Url" DefaultValue="https://localhost:44317/v10.html?open=slides"/>
+        <bt:Url id="Edit.Url" DefaultValue="https://localhost:44317/v10.html?open=edit"/>
+        <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://localhost:44317/v10.html"/>
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="GetStarted.Title" DefaultValue="AI Visual Builder is ready"/>
+        <bt:String id="Group.Label" DefaultValue="AI Visual Builder"/>
+        <bt:String id="Button.Label" DefaultValue="Generate visuals"/>
+        <bt:String id="Slides.Label" DefaultValue="Several slides"/>
+        <bt:String id="Edit.Label" DefaultValue="Edit a visual"/>
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="GetStarted.Description" DefaultValue="SL Smart Design tab > AI Visuals (or Home tab > AI Visual Builder > Generate visuals). If it does not load, run local-ai\Start AI Visual Builder.bat."/>
+        <bt:String id="Button.Tooltip" DefaultValue="Turn your content into editable infographics: paste it, generate, pick one and insert."/>
+        <bt:String id="Slides.Tooltip" DefaultValue="Spread long content over several slides, each with its own editable visual."/>
+        <bt:String id="Edit.Tooltip" DefaultValue="Change the texts, icons, colours or layout of a visual you inserted."/>
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>

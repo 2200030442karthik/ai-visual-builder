@@ -1,0 +1,548 @@
+<!doctype html>
+<!-- V10.13 acceptance: the simple app (app.js) and its hidden engine choice (orchestrator.js). Loads the real panel
+     (v10.html) with the strict PowerPoint stand-in (mock.js). Napkin and Claude are stand-ins inside the page (saved
+     real results; every provider call is counted) - the test panel host refuses paid requests anyway (server.py
+     TEST_NO_PAID). Writes JSON into <pre id="out">; #evidence holds the gallery for the screenshot. -->
+<html><head><meta charset="utf-8"><title>V10.15 app tests</title><script src="/tests/samples.js"></script><script src="/tests/mock.js"></script>
+<style>body{font:12px Segoe UI,Arial} iframe{width:420px;height:900px} #evidence{width:1240px}</style></head>
+<body><iframe id="f" src="/v10.html"></iframe><iframe id="g" src="about:blank"></iframe><pre id="out">running</pre><div id="evidence"></div>
+<script>
+const out = document.getElementById('out'), errors = [], wait = ms => new Promise(r => setTimeout(r, ms));
+const STYLE = 'EHH64S9R64R64C9DCMSKCSHD6GTPADHDC4SKJC1D68WP6CK66DJ32RV4CGVG';
+const loaded = async (F, path) => { for (let i = 0; i < 300; i++) { try { if (F.contentWindow.location.pathname === '/v10.html' && (!/^\?/.test(path) || F.contentWindow.location.search === path) && F.contentDocument.readyState === 'complete' && F.contentWindow.__app) return; } catch (e) {} await wait(100); } throw new Error('the panel did not load: ' + path); };
+async function run() {
+  const F = document.getElementById('f');
+  await loaded(F, '/v10.html');
+  const W = F.contentWindow, ev = x => W.eval(x), d = W.document;      // the panel's document, once it has loaded
+  W.addEventListener('error', e => errors.push(String(e.message)));
+  installMock(W);
+  const M = W.__mock; M.realGroups = true;
+  ev('state.inOffice = true; state.canGroup = true; state.canRotate = true; 1');
+  try { W.localStorage.clear(); } catch (e) {}
+  const samples = Object.fromEntries(EXAMPLES), fx = async n => (await fetch('/tests/fixtures/' + n)).text(), res = { ui: {}, gen: {}, ins: {}, paid: {}, flows: {}, dev: {}, errors };
+  const A = W.__app, status = () => d.getElementById('status').textContent, vis = id => { const e = d.getElementById(id); return !!e && e.offsetParent !== null; };
+  const leaves = s => s.items.flatMap(x => x.type === 'Group' ? x.group.shapes.items : [x]), own = s => s.items.filter(x => x.type !== 'Placeholder');
+
+  /* the stand-in panel host and providers: every provider call counted; C.napkin / C.claude say what each answers */
+  const ACC = `access: { configured: true, mode: 'windows', authorized: true, user: 'test', reason: '', template: { layout_name: 'Content_Slide', fingerprint: { shapes: { 'content placeholder': [101.7, 205, 1078.5, 435.2], 'heading placeholder': [101.7, 119.1, 1078.5, 71.2], 'section tag strip': [1287.2, 0, 80.8, 720.3] }, tolerance: 3 } } }`;
+  W.__cfg = { napkin: 'off', claude: 'off', policy: 'when-needed' };
+  W.__svc = () => { const C = W.__cfg; return eval(`({ server: '10.13.0', ${ACC}, napkin: { configured: true, enabled: ${'C.napkin !== "off"'}, used_today: 0, max_per_day: 20, style_id: '${STYLE}', variations: [1, 4], last: true },
+    claude: { configured: true, enabled: ${'C.claude !== "off"'}, sdk: true, model: 'claude-opus-5-5', effort: 'high', prices: [4, 20], variations: [1, 4], last: true }, orchestrate: { paid: C.policy, order: 'auto', engines: C.engines || 1 } })`); };
+  W.__calls = [];
+  ev(`api = async (path, body) => { const C = window.__cfg;
+    if (/^\\/api\\/(napkin|claude)\\//.test(path)) window.__calls.push(path);
+    if (path.startsWith('/api/napkin/visual')) return { id: 'job-n', status: 'pending', style_id: '${STYLE}', style_rejected: false };
+    if (path.startsWith('/api/napkin/last')) return C.napkinLast || {};
+    if (path.startsWith('/api/napkin/status')) return C.napkin === 'fail' ? { status: 'failed', files: 0, error: 'test failure' } : { status: 'completed', files: C.napkinFiles.length, style_id: '${STYLE}' };
+    if (path.startsWith('/api/claude/visual')) return { id: 'job-c', status: 'pending', format: 'plan' };
+    if (path.startsWith('/api/claude/last')) return C.claudeLast || {};
+    if (path.startsWith('/api/claude/status')) return C.claude === 'fail' ? { status: 'failed', files: 0, error: 'test failure' } : { status: 'completed', files: 1, usage: { input_tokens: 1, output_tokens: 1 }, seconds: 1, model: 'claude-opus-5-5', effort: 'high', cost_usd: 0.01 };
+    return window.__svc(); }; 1`);
+  W.fetch0 = W.fetch0 || W.fetch.bind(W);          // the real fetch (10.16: the large gallery's host calls)
+  W.fetch = async url => { url = String(url); W.__calls.push(url); const C = W.__cfg, i = +(/[?&]i=(\d+)/.exec(url) || [0, 0])[1];
+    if (/\/api\/claude\/file/.test(url)) return new Response(C.claudePlanFor || C.claudePlan, { status: 200 });
+    return new Response(C.napkinFiles[i % C.napkinFiles.length], { status: 200 }); };
+  const gate = async () => { M.layoutName = 'Content_Slide'; await ev('refreshStatus()'); await ev('checkSlide()'); ev('showGate(); updateButtons(); 1'); };
+  await gate();
+  const edu = []; for (let i = 0; i < 4; i++) edu.push(await fx(`napkin-edu-${i}.svg`));
+  W.__cfg.napkinFiles = edu; W.__cfg.claudePlan = await fx('claude-dataeng-plan.json');
+  const gen = async text => { d.getElementById('content').value = text; d.getElementById('content').dispatchEvent(new W.Event('input')); await A.appGenerate(); return A.APP.list; };
+  const fresh = () => { A.ORCH.memo.clear(); try { W.localStorage.removeItem('aivb.paid.v1'); } catch (e) {} W.__calls = []; ev('state.runText = ""; state.sections = []; 1');
+    ['napkin', 'claude'].forEach(k => { W['__' + k].N.result = null; }); };
+  const paidCalls = () => W.__calls.filter(u => /\/api\/(napkin|claude)\/visual/.test(u)).length;
+
+  /* ===== U: what the user sees ===== */
+  const technical = ['aiStatus', 'setupBox', 'analysePanel', 'analyse', 'step3', 'perfBox', 'perf', 'napkinPanel', 'claudePanel', 'napkinVar', 'napkinOk', 'napkinLast', 'claudeLast', 'insert', 'insertAll', 'stPlanRow', 'stTab_designs'];
+  res.ui.before = { technicalVisible: technical.filter(vis), simple: d.body.classList.contains('simple'), version: !!(d.querySelector('h1 > span') && d.querySelector('h1 > span').offsetParent !== null),
+    sub: d.querySelector('.sub').offsetParent !== null, gen: vis('appGen') && d.getElementById('appGen').textContent.trim(), empty: vis('appEmpty'), insertBar: vis('appInsert'), stPanel: vis('stPanel') };
+
+  /* ===== G: one button: analysis inside, 10-20 varied editable visuals, selection, preview ===== */
+  {
+    const L = await gen(samples['ML workflow (5 stages, intro)']);
+    const sigs = L.map(c => ev('p => signature(p)')(c.prims));
+    res.gen.ml = { n: L.length, cats: [...new Set(L.map(c => c.category))], families: L.map(c => c.family), uniqueLayouts: new Set(sigs).size === sigs.length, analysed: ev('state.sections.length') > 0 && ev('state.runText') === samples['ML workflow (5 stages, intro)'].trim(),
+      analyseClicked: d.getElementById('analyse').textContent !== 'Analyze content' ? 'analysis ran (button text changed)' : 'not run', cards: d.querySelectorAll('#appGrid .gcard').length, thumbs: 0, editable: L.filter(c => c.edit === 'full' || /^av/.test(c.family)).length,   // 10.24: an AntV 3D structure keeps its 3D bodies as pictures (said on its card)
+      selected: d.querySelectorAll('#appGrid .gcard.sel').length, status: status().slice(0, 160), timingsVisible: vis('perfBox'), providerWords: /request|token|credit/i.test(d.getElementById('appMain').textContent), paid: paidCalls() };
+    await wait(400); res.gen.ml.thumbs = d.querySelectorAll('#appGrid .gcard .gthumb svg').length;
+    d.querySelectorAll('#appGrid .gcard')[3].click();
+    // 10.15: no separate preview area (the hover popup is the preview); the insert button names the chosen design
+    const pickName = d.querySelectorAll('#appGrid .gcard')[3].querySelector('.gname').textContent;
+    res.gen.pick = { sel: A.APP.sel, pressed: d.querySelectorAll('#appGrid .gcard[aria-pressed="true"]').length, name: pickName, insertNames: d.getElementById('appInsert').textContent.includes(pickName) || /Content Slide|PowerPoint/.test(d.getElementById('appInsert').textContent),
+      noPreviewArea: !vis('appPv'), noVariantSuffix: ![...d.querySelectorAll('#appGrid .gname')].some(e => / · /.test(e.textContent)) };
+    // 10.21: numbered designs; arrow keys move the choice; the insert button names the number
+    { const cs = [...d.querySelectorAll('#appGrid .gcard')], nums = cs.map(c => (c.querySelector('.gnum') || {}).textContent);
+      cs[3].focus(); cs[3].dispatchEvent(new W.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); const right = A.APP.sel;
+      d.activeElement.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Home', bubbles: true })); const home = A.APP.sel;
+      res.v21nav = { nums: nums.slice(0, 6).join(','), seq: nums.every((t, k) => t === String(+cs[k].dataset.i + 1)), label: cs[0].getAttribute('aria-label'), right, home,
+        focus: d.activeElement === d.querySelectorAll('#appGrid .gcard')[0], insert: d.getElementById('appInsert').textContent };
+      cs[3].click(); }
+    await wait(250);   // the keyboard scroll settles (a scroll closes hover previews)
+    // 10.14: resting the pointer on a card shows it large, without a click; it never covers the card; leaving closes it
+    const card = d.querySelectorAll('#appGrid .gcard')[5], cr = card.getBoundingClientRect();
+    card.dispatchEvent(new W.PointerEvent('pointerenter', { pointerType: 'mouse' })); await wait(300);
+    const hv = d.getElementById('appHover'), hr = hv && hv.getBoundingClientRect();
+    res.gen.hover = { shown: !!hv && hv.classList.contains('on'), svg: !!(hv && hv.querySelector('svg')), title: hv && hv.querySelector('.ht').textContent, sameAsCard: hv && hv.querySelector('.ht').textContent === card.querySelector('.gname').textContent,
+      wider: !!hr && hr.width > cr.width * 1.6, coversCard: !!hr && !(hr.bottom <= cr.top + 1 || hr.top >= cr.bottom - 1), selectedUnchanged: A.APP.sel === 3 };
+    card.dispatchEvent(new W.PointerEvent('pointerleave', { pointerType: 'mouse' })); await wait(50);
+    res.gen.hover.closed = !hv.classList.contains('on');
+    const tc = d.querySelectorAll('#appGrid .gcard')[1]; tc.dispatchEvent(new W.PointerEvent('pointerenter', { pointerType: 'touch' })); await wait(300);
+    res.gen.hover.touchIgnored = !hv.classList.contains('on');
+    // the richer compositions first, and no two of the same composition
+    const L0 = A.APP.list, fps = L0.map(c => ev('p => orchFootprint(p)')(c.prims));
+    res.gen.rich = { top6: L0.slice(0, 6).map(c => `${c.family}:${c.richness}`), showcaseInTop10: L0.slice(0, 10).filter(c => /^ref_|^lib_|spotlight|callout|storyboard|journey|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|sectionrows|mindmap|circleheads/.test(c.family)).length,   // 10.17: or the scenes pack's
+      nearDuplicates: fps.reduce((n, f, i) => n + fps.slice(i + 1).filter((g, j) => !(/^ref_/.test(L0[i].family) && /^ref_/.test(L0[i + 1 + j].family)) && ev('(a, b) => orchSame(a, b)')(f, g)).length, 0) };   // 10.26: the reference layouts are distinct styles by design
+    // filters by kind
+    const chip = [...d.querySelectorAll('#appChips button')].find(b => b.dataset.k !== 'All');
+    if (chip) { chip.click(); res.gen.filter = { k: chip.dataset.k, cards: d.querySelectorAll('#appGrid .gcard').length, all: [...d.querySelectorAll('#appGrid .gcard')].every(b => A.APP.list[+b.dataset.i].category === chip.dataset.k) }; d.querySelector('#appChips button[data-k="All"]').click(); }
+    // more visuals: new ones first, nothing repeated
+    const before = new Set(A.APP.list.map(c => c.id));
+    await A.appMore();
+    res.gen.more = { fresh: A.APP.list.filter(c => !before.has(c.id)).length, total: A.APP.list.length, unique: new Set(A.APP.list.map(c => c.id)).size === A.APP.list.length, status: status().slice(0, 120) };
+    // the content changes: the gallery is out of date, insert waits for Generate
+    d.getElementById('content').value += '\n6. Monitoring'; d.getElementById('content').dispatchEvent(new W.Event('input'));
+    res.gen.stale = { note: vis('appStale'), insertDisabled: d.getElementById('appInsert').disabled };
+    // other content kinds
+    for (const [k, t] of [['edu', 'Educational content'], ['de', 'Data engineering platform (8 concepts)'], ['facts', 'Quick facts'], ['records', 'Project scores'], ['genai', 'Generative AI (list)']]) {
+      const L2 = await gen(samples[t]); res.gen[k] = { n: L2.length, cats: [...new Set(L2.map(c => c.category))].length, err: d.getElementById('appErr').textContent };
+    }
+    // nothing to show: meaningless text is refused, nothing drawn, said plainly
+    const L3 = await gen(samples['Meaningless text']);
+    res.gen.meaningless = { n: L3.length, err: d.getElementById('appErr').textContent.slice(0, 160), errShown: vis('appErr') };
+    res.gen.empty = (() => { d.getElementById('content').value = ''; d.getElementById('content').dispatchEvent(new W.Event('input')); return { genDisabled: d.getElementById('appGen').disabled }; })();
+  }
+
+  /* ===== S (10.15): content written as labelled sections - "What you learn" / "Best for" ===== */
+  {
+    const texts = c => c.prims.concat(...(c.nextPrims || [])).filter(p => p.text).map(p => String(p.text));   // 10.19: a design on several slides: all of them
+    const dmT = 'Digital Marketing and Social Media GrowthWhat you learn: Search Engine Optimization (SEO), paid advertising, email campaigns, and audience building on platforms like TikTok and LinkedIn. Best for: Launching side hustles, promoting brands, or growing digital content.';
+    const dmNeed = ['What you learn', 'Best for', 'SEO', 'Paid advertising', 'Email campaigns', 'Audience building', 'Launching side hustles', 'Promoting brands', 'Growing digital content'];
+    fresh(); W.__cfg.policy = 'never'; await gate();
+    let L = await gen(dmT);
+    res.sec = { lines: d.getElementById('content').value.split(/\n/).slice(0, 3), n: L.length, families: L.map(c => c.family),
+      richFirst: L.slice(0, 3).every(c => /^ref_|^lib_|learnmap|herobanner|bridge|iconrows|splitpanels|poster|badges|ribbon|colortiles|concepttiles|orbit|honeycomb|isostack|bento|keystatement|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|sectionrows|mindmap|circleheads/.test(c.family)),
+      missing: L.filter(c => !dmNeed.every(t => texts(c).includes(t))).map(c => c.family + ': ' + dmNeed.filter(t => !texts(c).includes(t)).join(' / ')),
+      merged: L.filter(c => texts(c).some(t => /GrowthWhat|What you learn:/.test(t))).map(c => c.family), builtin: L.filter(c => c.engine === 'builtin').length, editable: L.every(c => c.edit === 'full'), paid: paidCalls() };
+    const aiT = ['Artificial Intelligence and Machine Learning (AI & ML)', '', 'What you learn: Neural networks, data mining, predictive modeling, and working with tools like ChatGPT or Python.', '',
+      'Best for: Building smart apps, data analysis, and high-demand tech careers.'].join(String.fromCharCode(10));
+    const aiNeed = ['AI & ML', 'What you learn', 'Best for', 'Neural networks', 'Data mining', 'Predictive modeling', 'ChatGPT or Python', 'Building smart apps', 'Data analysis', 'High-demand tech careers'];
+    L = await gen(aiT);
+    const lm = L.find(c => c.family === 'learnmap');
+    res.sec.ai = { n: L.length, cats: [...new Set(L.map(c => c.category))].length, learnmap: !!lm, learnmapComplete: !!lm && aiNeed.every(t => texts(lm).includes(t)), hero: !!lm && lm.prims.some(p => p.cmp === 'brain'),
+      objects: !!lm && new Set(lm.prims.filter(p => p.cmp && p.cmp !== 'none').map(p => p.cmp)).size };
+    const pr = await W.__napkin.prepared(aiT);
+    res.sec.ai.sent = { points: pr.points.map(p => p.label), groups: [...new Set(pr.points.map(p => p.group))], content: pr.content.slice(0, 200) };
+    const li = L.indexOf(lm);
+    if (li >= 0) { M.reset(); await gate(); A.appSelect(li); await A.appInsert(); const S0 = M.slides[0], lv = leaves({ items: own(S0) });
+      res.sec.ai.inserted = { objects: own(S0).length, texts: lv.filter(x => x.textFrame && x.textFrame.textRange && x.textFrame.textRange.text).length }; await ev('removeLast()'); }
+    // a plain list and prose are not read as sections
+    res.sec.notSections = ['ML workflow (5 stages, intro)', 'Educational content'].map(k => !ev('t => !!sectionsRead(t)')(samples[k]));
+  }
+
+  /* ===== V (10.16): one statement, distinct designs, Claude's own compositions (saved answer), the large gallery ===== */
+  {
+    const flat = c => c.prims.filter(p => p.text).map(p => String(p.text)).join(' ').replace(/\s+/g, ' ').toLowerCase();
+    const objs = c => new Set(c.prims.filter(p => p.cmp && p.cmp !== 'none').map(p => p.grp)).size;
+    const stT = 'Claude ai helps you create, organize, and edit diverse types of content—from written copy and code-based animations to presentations and AI-marked text';
+    const stNeed = ['claude ai', 'create', 'organize', 'edit', 'diverse types of content', 'written copy', 'code-based animations', 'presentations', 'ai-marked text'];
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'off', claude: 'off', policy: 'never' }); await gate();
+    const SX = ev('t => statementRead(t)')(stT);
+    let L = await gen(stT);
+    const look = L.map(c => ({ fp: ev('orchFootprint')(c.prims), sp: ev('orchShapePrint')(c.prims) })), same = ev('orchLooksSame');
+    let pairs = 0; for (let i = 0; i < L.length; i++) for (let j = 0; j < i; j++) if (same(look[i], look[j])) pairs++;
+    res.v16 = { read: SX && { short: SX.short, verbs: SX.statement.verbs, items: SX.sections[0].items.map(i => i.label), heading: SX.sections[0].name },
+      n: L.length, cats: new Set(L.map(c => c.category)).size, textOnly: L.filter(c => !objs(c)).length, lookAlike: pairs,
+      incomplete: L.filter(c => !stNeed.every(t => flat(c).includes(t))).map(c => c.family + ': ' + stNeed.filter(t => !flat(c).includes(t)).join('/')),
+      builtin: L.filter(c => c.engine === 'builtin').length, wholeSentence: L.filter(c => c.prims.some(p => p.text && String(p.text).length > 120)).length, paid: paidCalls() };
+    // More visuals: never a family already shown (V10.15 repeated them in other colours), never a weaker design
+    const fams = new Set(L.map(c => c.family)), r2 = await W.eval('orchMore')(stT, () => {}), fresh2 = r2.list.slice(0, r2.fresh);
+    res.v16.more = { fresh: fresh2.length, repeats: fresh2.filter(c => fams.has(c.family)).map(c => c.family), incomplete: fresh2.filter(c => !stNeed.every(t => flat(c).includes(t))).length };
+    // a statement is no longer "exact": with the AI services on and policy when-needed, one request may be made for it
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'ok', claude: 'off', policy: 'when-needed', napkinLast: {}, claudeLast: {} }); await gate();
+    await gen(stT); res.v16.statementAI = paidCalls();
+    // Claude's own compositions: the saved (hand-written) plan answer with three concepts
+    const fx16 = await fx('claude-statement-plan.json');
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'off', claude: 'ok', policy: 'always', claudePlanFor: fx16, napkinLast: {}, claudeLast: {} }); await gate();
+    L = await gen(stT);
+    const C = L.filter(c => c.concept);
+    res.v16.concepts = { n: C.length, names: C.map(c => c.title), editable: C.every(c => c.edit === 'full'), complete: C.every(c => stNeed.every(t => flat(c).includes(t))), own: C.every(c => c.engine === 'claude'), paid: paidCalls() };
+    const bad = JSON.parse(fx16); bad.concepts[0].elements.push(Object.assign({}, bad.concepts[0].elements[10], { x: 1000, w: 400 }));   // a text past the right edge
+    res.v16.concepts.badRejected = !ev('(raw) => { const p = planFromClaude(raw).plan; return orchConceptDesigns("claude", p).some(c => c.title === "Hero and tiles"); }')(bad);
+    const ci = L.findIndex(c => c.concept);
+    if (ci >= 0) { M.reset(); await gate(); A.appSelect(ci); await A.appInsert(); const S0 = M.slides[0], lv = leaves({ items: own(S0) }), T = lv.map(x => x.textFrame && x.textFrame.textRange && x.textFrame.textRange.text).filter(Boolean);
+      res.v16.concepts.inserted = { shapes: lv.length, texts: T.length, items: ['Written copy', 'Code-based animations', 'Presentations', 'AI-marked text'].every(t => T.includes(t)), pictures: lv.filter(x => x.kind === 'picture' && x.name !== 'Icon (AI Visual)').length };
+      await ev('removeLast()'); }
+    // the large gallery: published to the host, shown by the dialog page (a frame here), select and insert from it
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'off', claude: 'off', policy: 'never' }); await gate(); M.reset(); await gate();
+    L = await gen(stT);
+    const realApi = W.eval('api');
+    W.eval("window.__api0 = api; api = async (p, b, t) => p.startsWith('/api/gallery') ? window.__realApi(p, b, t) : window.__api0(p, b, t); 1");
+    W.__realApi = async (p, b) => { const r = await W.fetch0(p, { method: 'POST', headers: { 'X-AIVB-Client': '1', 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); return r.json(); };
+    res.v16.gallery = { button: !d.getElementById('appLarge').hidden };
+    W.eval("GAL.open = true; galPublish(''); 1");
+    await new Promise(r => setTimeout(r, 700));
+    const fr = d.createElement('iframe'); fr.style.cssText = 'width:1300px;height:900px'; fr.src = '/gallery-dialog.html?k=' + W.eval('galKey()'); d.body.appendChild(fr);
+    let dw = null; for (let i = 0; i < 60; i++) { await new Promise(r => setTimeout(r, 200)); dw = fr.contentWindow; if (dw && dw.document && dw.document.querySelectorAll('.card').length) break; }
+    const cards = dw.document.querySelectorAll('.card');
+    res.v16.gallery.cards = cards.length; res.v16.gallery.n = L.length;
+    res.v16.gallery.thumbs = [...cards].filter(c => c.querySelector('svg')).length;
+    { const kd = k => dw.document.dispatchEvent(new dw.KeyboardEvent('keydown', { key: k, bubbles: true }));   // 10.21: numbers, arrow keys
+      kd('Home'); kd('ArrowRight'); await new Promise(r => setTimeout(r, 300));
+      res.v21dlg = { nums: [...cards].slice(0, 4).map(c => (c.querySelector('.no') || {}).textContent).join(','), sel: dw.document.querySelector('.card.sel') && dw.document.querySelector('.card.sel').dataset.i,
+        panelSel: A.APP.sel, insert: dw.document.getElementById('insert').textContent }; }
+    cards[1].click(); await new Promise(r => setTimeout(r, 400)); res.v16.gallery.selected = A.APP.sel === 1;
+    const before = W.eval('state.lastInsert');
+    dw.document.getElementById('insert').click();
+    for (let i = 0; i < 40 && W.eval('state.lastInsert') === before; i++) await new Promise(r => setTimeout(r, 200));
+    await new Promise(r => setTimeout(r, 1300));
+    res.v16.gallery.inserted = (W.eval('state.lastInsert') || {}).ids ? W.eval('state.lastInsert').ids.length : 0;
+    res.v16.gallery.note = dw.document.getElementById('note').textContent.slice(0, 120);
+    const bk = await W.fetch0('/api/gallery?k=' + '0'.repeat(32), { headers: { 'X-AIVB-Client': '1' } }); res.v16.gallery.unknownKey = bk.status;
+    await ev('removeLast()'); W.eval('galClose(); api = window.__api0; 1'); fr.remove();
+    W.__cfg.claudePlanFor = null;            // the later tests use their own saved answers
+  }
+
+  /* ===== W (10.17): 20+ distinct designs from one Generate, the scenes pack, the slide's title and subtitle, soft tints ===== */
+  {
+    const flat = c => c.prims.filter(p => p.text).map(p => String(p.text)).join(' ').replace(/\s+/g, ' ').toLowerCase();
+    const objs = c => new Set(c.prims.filter(p => p.cmp && p.cmp !== 'none').map(p => p.grp)).size;
+    const aiT = 'Artificial Intelligence\nAI\nThe best content about artificial intelligence covers foundational concepts, everyday writing and research assistants, and structured learning courses';
+    const aiItems = ['foundational concepts', 'everyday writing and research assistants', 'structured learning courses'];
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'off', claude: 'off', policy: 'never' }); await gate(); M.reset(); await gate();
+    const SX = ev('t => statementRead(t)')(aiT);
+    let L = await gen(aiT);
+    const look = L.map(c => ({ fp: ev('orchFootprint')(c.prims), sp: ev('orchShapePrint')(c.prims) })), same = ev('orchLooksSame');
+    let pairs = 0; for (let i = 0; i < L.length; i++) for (let j = 0; j < i; j++) if (same(look[i], look[j])) pairs++;
+    // 10.26: the built-in infographic library replaces the scenes pack (retired from the gallery)
+    const scenes = { has: f => /^(ref_|lib_)/.test(String(f || '')) };     // 10.26: the reference layouts lead
+    res.v17 = { read: SX && { title: SX.title, short: SX.short, items: SX.sections[0].items.map(i => i.label), heading: SX.sections[0].name },
+      n: L.length, cats: new Set(L.map(c => c.category)).size, lookAlike: pairs, textOnly: L.filter(c => !objs(c)).length,
+      missingItems: L.filter(c => !aiItems.every(t => flat(c).includes(t))).map(c => c.family), scenesShown: L.filter(c => scenes.has(c.family)).length,
+      scenesInTop3: L.slice(0, 3).filter(c => scenes.has(c.family)).length, families: new Set(L.map(c => c.family)).size === L.length, paid: paidCalls() };
+    // the device links scene (laptop with the AI chip) inserts as native shapes and text: no pictures, every item a text
+    const di = L.findIndex(c => /^(ref_|lib_)/.test(c.family));     // 10.26: a reference design (Device links is retired)
+    res.v17.device = { found: di >= 0 };
+    if (di >= 0) { A.appSelect(di); await A.appInsert(); const S0 = M.slides[0], lv = leaves({ items: own(S0) }), T = lv.map(x => x.textFrame && x.textFrame.textRange && x.textFrame.textRange.text).filter(Boolean);
+      res.v17.device = { found: true, shapes: lv.length, groups: own(S0).filter(x => x.type === 'Group').length, pictures: lv.filter(x => x.kind === 'picture' && x.name !== 'Icon (AI Visual)').length,
+        items: ['Foundational concepts', 'Everyday writing and research assistants', 'Structured learning courses', 'AI'].every(t => T.includes(t)) };
+      await ev('removeLast()'); res.v17.device.undone = own(M.slides[0]).length === 0; }
+    // the other example texts: 20+ designs (dense labelled sections with descriptions: 16+), no look-alikes among them
+    res.v17.counts = {};
+    for (const [k, t] of [['claude', 'Claude ai helps you create, organize, and edit diverse types of content—from written copy and code-based animations to presentations and AI-marked text'],
+      ['k8s', 'Kubernetes automates deployment, scaling, and management of containerized applications.'],
+      ['aiml', 'Artificial Intelligence and Machine Learning (AI & ML)\n\nWhat you learn: Neural networks, data mining, predictive modeling, and working with tools like ChatGPT or Python.\n\nBest for: Building smart apps, data analysis, and high-demand tech careers.'],
+      ['dm', 'Digital Marketing and Social Media Growth\nWhat you learn: Search Engine Optimization (SEO), paid advertising, email campaigns, and audience building on platforms like TikTok and LinkedIn.\nBest for: Launching side hustles, promoting brands, or growing digital content.']]) {
+      fresh(); const L2 = await gen(t), lk = L2.map(c => ({ fp: ev('orchFootprint')(c.prims), sp: ev('orchShapePrint')(c.prims) }));
+      let pp = 0; for (let i = 0; i < L2.length; i++) for (let j = 0; j < i; j++) if (same(lk[i], lk[j])) pp++;
+      res.v17.counts[k] = { n: L2.length, lookAlike: pp, textOnly: L2.filter(c => !objs(c)).length };
+    }
+    // soft tints: off by default (only approved colours); allowed by the administrator, they appear only as card fills
+    const approved = new Set(ev('[...TEMPLATE.accents, ...TEMPLATE.neutrals]'));
+    const offColours = L.flatMap(c => c.prims).filter(p => !p.keep /* 10.27: the owner's Lesson 2 cards */ && (p.fill && !approved.has(p.fill)) || (p.color && !approved.has(p.color))).length;
+    W.eval('TEMPLATE.softTints = true; 1'); fresh();
+    const LT = await gen(aiT), tintSet = new Set(ev('[...SOFT_SET]'));
+    const tintFills = LT.flatMap(c => c.prims).filter(p => tintSet.has(p.fill)), tintBad = LT.flatMap(c => c.prims).filter(p => !p.keep && (p.fill && !approved.has(p.fill) && !tintSet.has(p.fill)) || (p.color && !approved.has(p.color)) || (p.cmp && tintSet.has(p.fill)));
+    W.eval('TEMPLATE.softTints = false; 1'); fresh();
+    res.v17.tints = { offColours, used: tintFills.length, bad: tintBad.length, n: LT.length };
+    // Claude may return up to six compositions of its own (V10.16: four)
+    const fx17 = JSON.parse(await fx('claude-statement-plan.json')); fx17.concepts = fx17.concepts.concat(fx17.concepts);
+    res.v17.concepts6 = ev('(raw) => planFromClaude(raw).plan.concepts.length')(fx17);
+  }
+
+  /* ===== X (10.18): a list between dashes; both AI services for a new text when the administrator allows it ===== */
+  {
+    const gT = 'Generative AI (GenAI) is a branch of artificial intelligence that creates original content—such as text, images, video, audio, and code—in response to natural language prompts';
+    const g = ev('t => statementRead(t)')(gT);
+    res.v18 = { read: g && { items: g.sections[0].items.map(i => i.label), heading: g.sections[0].name } };
+    // both stand-ins answer for the Educational content sample (Napkin: saved real outputs; Claude: a plan of the text)
+    const eT = samples['Educational content'], pe = await W.__napkin.prepared(eT);
+    const fxC = JSON.stringify({ title: pe.title || 'Educational content', headline: 'What makes content educational', takeaway: '', hero: 'book', relation: 'independent', groups: [],
+      items: pe.points.map((q, i) => ({ id: 'e' + i, label: q.label, detail: '', role: 'concept', pictorial: 'book', icon_hint: '', group: '' })), flow: [], layouts: ['spotlight', 'storyboard', 'pillars', 'hub'], custom: { name: '', zones: [], connectors: [] } });
+    for (const engines of [1, 2]) {
+      fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'ok', claude: 'ok', policy: 'when-needed', engines, claudePlanFor: fxC, napkinLast: {}, claudeLast: {} }); await gate();
+      const L = await gen(eT);
+      res.v18['engines' + engines] = { paid: paidCalls(), napkinAsked: W.__calls.filter(u => /napkin\/visual/.test(u)).length, claudeAsked: W.__calls.filter(u => /claude\/visual/.test(u)).length,
+        fromAI: [...new Set(L.filter(c => c.engine === 'napkin' || c.engine === 'claude').map(c => c.engine))], n: L.length };
+    }
+    W.__cfg = Object.assign(W.__cfg, { napkin: 'off', claude: 'off', policy: 'never', engines: 1, claudePlanFor: null }); await gate(); fresh();   // the next tests start clean
+  }
+
+  /* ===== Y (10.19): large text, same-slide insertion, gallery closes, icon layering, LVC type ===== */
+  {
+    res.v19 = {};
+    const cT = 'Cloud computing delivers computing services over the internet so organizations no longer need to own and maintain physical data centers. ' +
+      'It offers three main service models: Infrastructure as a Service (IaaS) provides virtual machines, storage and networks; Platform as a Service (PaaS) provides tools to build and deploy applications; ' +
+      'and Software as a Service (SaaS) delivers ready-to-use applications through a browser. Key benefits include lower upfront costs, on-demand scalability, global availability and faster innovation. ' +
+      'Organizations can choose public, private or hybrid cloud deployments depending on their security, compliance and cost needs.';
+    const dT = 'Data Science Lifecycle\n- Problem definition: understand the business question and success metrics\n- Data collection: gather data from databases, APIs and files\n' +
+      '- Data cleaning: handle missing values, duplicates and outliers\n- Exploratory analysis: find patterns with statistics and charts\n- Feature engineering: create variables that improve the model\n' +
+      '- Modeling: train and compare machine learning algorithms\n- Evaluation: measure accuracy, precision and recall\n- Deployment: put the model into production and monitor it';
+    const pr = ev('t => paragraphRead(t)')(cT);
+    res.v19.read = pr && { title: pr.title, sections: pr.sections.map(s => s.name + ': ' + s.items.map(i => i.label).join(', ')) };
+    const all = c => (c.prims || []).concat(...(c.nextPrims || [])), txt = c => all(c).filter(p => p.text).map(p => String(p.text)).join(' ').toLowerCase();
+    const cloudFacts = ['cloud computing', 'iaas', 'paas', 'saas', 'lower upfront costs', 'on-demand scalability', 'global availability', 'faster innovation', 'public', 'private', 'hybrid', 'service models', 'key benefits', 'cloud deployments'];
+    fresh(); let L = await gen(cT);
+    res.v19.cloud = { n: L.length, multi: L.filter(c => c.slides > 1).length, names: L.filter(c => c.condensed).length, firstOneSlide: L[0] && L[0].slides === 1,
+      incomplete: L.filter(c => cloudFacts.some(f => !txt(c).includes(f))).map(c => c.title).slice(0, 5) };
+    // a design on several slides: the first part here, the rest on new slides after it; Undo takes all of it out
+    { const i = L.findIndex(c => c.slides === 3);
+      M.reset(); await gate(); const n0 = M.slides.length; A.appSelect(i); await A.appInsert();
+      const added = M.slides.length - n0; await W.eval('removeLast()');
+      res.v19.multiInsert = { offered: i >= 0, slidesAdded: added, undone: M.slides.length === n0 }; }
+    fresh(); L = await gen(dT);
+    res.v19.lifecycle = { n: L.length, incomplete: L.filter(c => ['problem definition', 'data collection', 'data cleaning', 'exploratory analysis', 'feature engineering', 'modeling', 'evaluation', 'deployment'].some(f => !txt(c).includes(f))).map(c => c.title).slice(0, 5) };
+    // same slide by default: below the slide's own text (its placeholder holds two lines), scaled when needed; a slide
+    // with no room: automatically on a new slide after it (said); never over the text
+    const kT = 'Kubernetes automates deployment, scaling, and management of containerized applications.';
+    fresh(); L = await gen(kT);
+    const ph = () => M.slides[0].items.find(x => x.name === 'Content Placeholder 2');
+    const flatG = L => L.flatMap(x => x.group ? flatG(x.group.shapes.items) : [x]);   // members of the inserted groups
+    const sameSlide = async (text, i) => {
+      M.reset(); await gate(); A.APP.lastIns = null; ph().textFrame.textRange.text = text; const n0 = M.slides.length, before = new Set(M.slides[0].items.map(x => x.id));
+      A.appSelect(i); await A.appInsert();
+      const mine = M.slides[0].items.filter(x => !before.has(x.id)), boxes = mine.map(x => [x.top, x.top + x.height]);
+      const sizes = flatG(M.slides.flatMap(sl => sl.items).filter(x => !before.has(x.id))).filter(x => x.textFrame && String(x.textFrame.textRange.text || '').trim()).map(x => x.textFrame.textRange.font.size).filter(v => v > 0);
+      const box = d.getElementById('appFit');
+      return { newSlides: M.slides.length - n0, onThisSlide: mine.length, top: mine.length ? Math.round(Math.min(...boxes.map(b => b[0]))) : null, bottom: mine.length ? Math.round(Math.max(...boxes.map(b => b[1]))) : null,
+        note: d.getElementById('status').textContent.slice(0, 260), fit: W.eval('state.lastFit'), minPt: sizes.length ? Math.min(...sizes) : null, offer: !box.hidden, offerButtons: box.hidden ? [] : [...box.querySelectorAll('button')].map(b => b.textContent) };
+    };
+    // 10.21.1: after an offer, a click on one of its buttons (a design that fits here, or a new slide) - only then is anything inserted
+    const takeOffer = async which => {
+      const n0 = M.slides.length, before = new Set(M.slides.flatMap(sl => sl.items).map(x => x.id)), b = [...d.querySelectorAll('#appFit button')].find(x => which === 'new' ? x.dataset.new : !x.dataset.new);
+      if (!b) return { clicked: false };
+      b.click(); await new Promise(r => setTimeout(r, 300)); for (let k = 0; k < 60 && A.APP.busy; k++) await new Promise(r => setTimeout(r, 100)); await new Promise(r => setTimeout(r, 300));
+      const mine = M.slides[0].items.filter(x => !before.has(x.id)), sizes = flatG(M.slides.flatMap(sl => sl.items).filter(x => !before.has(x.id))).filter(x => x.textFrame && String(x.textFrame.textRange.text || '').trim()).map(x => x.textFrame.textRange.font.size).filter(v => v > 0);
+      return { clicked: true, newSlides: M.slides.length - n0, onThisSlide: mine.length, top: mine.length ? Math.round(Math.min(...mine.map(x => x.top))) : null, bottom: mine.length ? Math.round(Math.max(...mine.map(x => x.top + x.height))) : null,
+        minPt: sizes.length ? Math.min(...sizes) : null, note: d.getElementById('status').textContent.slice(0, 200) };
+    };
+    // 10.26: the first design that fits the room below the text (the library's tall layouts rank high and need more)
+    let di = L.findIndex(c => c.engine === 'designs' && c.fit && c.fit({ x: 102, y: 310, w: 1079, h: 330 }));
+    if (di < 0) di = L.findIndex(c => c.engine === 'designs');
+    res.v19.same = await sameSlide(kT, di);
+    res.v19.same.textBottom = Math.round(205 + ev('textUsedHeight')(kT, 1079, 24));
+    // 10.21: a slide whose text leaves room for the visual only below 70 % (5 lines): kept on this slide now
+    res.v21tight = await sameSlide(Array.from({ length: 5 }, (_, k) => 'Line ' + (k + 1) + ' of the text that fills part of the content placeholder').join('\n'), di);
+    res.v21tight.textBottom = Math.round(205 + ev('textUsedHeight')(Array.from({ length: 5 }, (_, k) => 'Line ' + (k + 1) + ' of the text that fills part of the content placeholder').join('\n'), 1079, 24));
+    if (res.v21tight.offer) res.v21tight.alt = await takeOffer('alt');
+    res.v19.full = await sameSlide(Array.from({ length: 14 }, (_, k) => 'Line ' + (k + 1) + ' of the text that fills the whole content placeholder of this slide').join('\n'), di);
+    if (res.v19.full.offer) res.v19.full.asked = await takeOffer('new');
+    await W.eval('removeLast()');
+    // the large gallery closes after Insert (back to PowerPoint); "Open large gallery" opens it again
+    M.reset(); await gate(); fresh(); L = await gen(kT);
+    W.eval("GAL.open = true; 1");
+    W.postMessage({ aivbGallery: JSON.stringify({ action: 'insert', i: 2 }) }, W.location.origin);
+    for (let k = 0; k < 40 && W.eval('GAL.open'); k++) await new Promise(r => setTimeout(r, 200));
+    res.v19.gallery = { inserted: !!(W.eval('state.lastInsert') || {}).ids, closed: !W.eval('GAL.open') };
+    await W.eval('removeLast()');
+    // icon layering: a card whose label is drawn last, with an icon (its own group) drawn on it - the icon stays in front
+    M.reset(); await gate();
+    const prims = [{ t: 'shape', g: 'roundRect', x: 200, y: 260, w: 300, h: 200, fill: '#E8F1FB', grp: 'card' }, { t: 'shape', g: 'ellipse', x: 230, y: 280, w: 60, h: 60, fill: '#3645A9', grp: 'icon', cmp: 'body' },
+      { t: 'shape', g: 'rect', x: 245, y: 295, w: 30, h: 30, fill: '#FFFFFF', grp: 'icon', cmp: 'detail' }, { t: 'text', text: 'Card label', x: 300, y: 290, w: 180, h: 40, size: 22, grp: 'card' }];
+    await W.PowerPoint.run(async ctx => { const s = ctx.presentation.getSelectedSlides().getItemAt(0); await W.drawOnSlide(ctx, s, prims, 'layer test', null); });
+    const top = M.slides[0].items.map(x => x.type === 'Group' ? (x.group.shapes.items.some(y => /ellipse/i.test(y.kind)) ? 'icon' : 'card') : x.kind);
+    res.v19.layers = { order: top.join(','), iconAboveCard: top.indexOf('icon') > top.indexOf('card'), restacked: (M.zorders || 0) > 0 };
+    const fixed = ev('fixPaintOrder')([prims[1], prims[0], prims[3]]);
+    res.v19.paint = fixed.map(p => p.g || 'text').join(',');
+    // LVC type: 22 pt text, 24 pt headings, nothing else; sentence case (names the text capitalises kept)
+    fresh(); L = await gen(samples['Educational content']);
+    const sizes = new Set(L.flatMap(c => all(c).filter(p => p.text).map(p => p.size)));
+    W.eval("brandSource('Learn to build apps with tools like ChatGPT or Python. Deploy them on Kubernetes.'); 1");
+    res.v19.type = { sizes: [...sizes].sort(), sentence: ['What You Learn', 'Hands-On Projects With Python', 'Working With ChatGPT', 'Neural networks', 'AI Tools For Kubernetes'].map(t => ev('sentenceCase')(t)) };
+    fresh();
+  }
+
+  /* ===== I: insertion of each kind, editable; duplicate guard; undo ===== */
+  {
+    const L = await gen(samples['Educational content']);
+    const kinds = {};
+    for (const eng of ['builtin', 'designs']) {
+      const i = L.findIndex(c => c.engine === eng);
+      if (i < 0) { kinds[eng] = 'none offered'; continue; }
+      M.reset(); await gate(); A.appSelect(i);
+      const want = L[i].prims.filter(p => p.text).map(p => String(p.text)).sort();
+      await A.appInsert();
+      const s = M.slides[0], T = leaves(s).filter(x => x.type === 'TextBox' || (x.type === 'GeometricShape' && x.textFrame && x.textFrame.textRange.text)).map(x => String(x.textFrame.textRange.text)).filter(t => t.trim() && !/^Click/.test(t)).sort();
+      kinds[eng] = { title: L[i].title, status: status().slice(0, 200), objects: own(s).length, native: leaves(s).filter(x => x.kind !== 'picture' && x.type !== 'Placeholder').length, pictures: leaves(s).filter(x => x.kind === 'picture' && x.name !== 'Icon (AI Visual)').length, edit: L[i].edit,
+        insertEqualsPreview: JSON.stringify(want) === JSON.stringify(T), tagged: leaves(s).some(x => { try { return !x.tags.getItemOrNullObject('AIVB_V').isNullObject; } catch (e) { return false; } }) };
+      if (eng === 'designs') { await A.appInsert(); kinds.dup = { warned: /just inserted/.test(status()), objects: own(s).length === kinds[eng].objects }; }
+      await ev('removeLast()'); kinds[eng].undone = own(M.slides[0]).length === 0;
+    }
+    res.ins = kinds;
+  }
+
+  /* ===== P: the hidden engine choice: policy, reuse of kept results, cost control, fallback ===== */
+  {
+    const prose = samples['Explanatory paragraph'], eduT = samples['Educational content'];
+    // never: no paid request even for prose
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'ok', claude: 'ok', policy: 'never', napkinLast: {}, claudeLast: {} }); await gate();
+    let L = await gen(prose); res.paid.never = { paid: paidCalls(), n: L.length, engines: [...new Set(L.map(c => c.engine))] };
+    // when-needed: records of exact values stay built in (no request); a list of concepts gets one request, Napkin first
+    fresh(); W.__cfg.policy = 'when-needed'; await gate();
+    L = await gen(samples['Project scores']); res.paid.notNeeded = { paid: paidCalls(), n: L.length, log: A.ORCH.log.slice(-1)[0].what };
+    fresh(); await gate();
+    L = await gen(eduT); res.paid.whenNeeded = { paid: paidCalls(), napkinFirst: W.__calls.findIndex(u => /napkin\/visual/.test(u)) === W.__calls.findIndex(u => /\/visual/.test(u)) && W.__calls.some(u => /napkin\/visual/.test(u)),
+      route: (A.ORCH.log.find(x => /paid policy/.test(x.what)) || {}).what, napkin: L.filter(c => c.engine === 'napkin').length };
+    // technical structure (a flow with functions across it): Claude first, and its plan drawn in the showcase compositions
+    fresh(); W.__cfg.policy = 'always'; await gate();
+    L = await gen(samples['Data engineering platform (8 concepts)']);
+    const cl = L.filter(c => c.engine === 'claude');
+    res.paid.hybrid = { claudeFirst: W.__calls.filter(u => /\/visual/.test(u))[0] || '', napkinAsked: W.__calls.filter(u => /napkin\/visual/.test(u)).length, claude: cl.length, families: cl.map(c => c.family),
+      editable: cl.every(c => c.edit === 'full' && c.prims.some(p => p.text)), route: (A.ORCH.log.find(x => /paid policy/.test(x.what) && /technical/.test(x.what)) || {}).what };
+    const ci = L.findIndex(c => c.engine === 'claude');
+    if (ci >= 0) { M.reset(); await gate(); A.appSelect(ci); await A.appInsert(); res.paid.hybrid.inserted = own(M.slides[0]).length > 0 && !/Claude/.test(status()); await ev('removeLast()'); }
+    // always, Napkin answers (the Educational content designs): one request, its designs as editable objects among the rest
+    fresh(); W.__cfg.policy = 'always'; await gate();
+    L = await gen(eduT);
+    const nk = L.filter(c => c.engine === 'napkin');
+    res.paid.always = { paid: paidCalls(), napkin: nk.length, total: L.length, editable: nk.every(c => c.prims.some(p => p.t === 'text')), status: status().slice(0, 200), providerNamed: /Napkin|Claude/.test(status()), srcShown: [...d.querySelectorAll('#appGrid .badge.src.napkin')].some(b => /^Napkin/.test(b.textContent)) };
+    // the same text again: no new request (reused in this session)
+    W.__calls = []; L = await gen(eduT + ' '); res.paid.again = { paid: paidCalls(), n: L.length };
+    // a new session on the same text: the kept result is reused (free) - and without it, the 24-hour guard stops a resend
+    A.ORCH.memo.clear(); W.__calls = []; ['napkin'].forEach(k => { W['__' + k].N.result = null; });
+    W.__cfg.napkinLast = { id: 'job-last', format: 'svg', asked: 4, source: eduT.trim() };
+    L = await gen(eduT); res.paid.kept = { paid: paidCalls(), napkin: L.filter(c => c.engine === 'napkin').length, lastRead: W.__calls.filter(u => /napkin\/last/.test(u)).length };
+    A.ORCH.memo.clear(); W.__calls = []; W.__napkin.N.result = null; W.__cfg.napkinLast = {};
+    L = await gen(eduT); res.paid.guard = { paid: paidCalls(), log: A.ORCH.log.slice(-3).map(x => x.what) };
+    // insert an AI-designed one: editable objects, friendly status
+    const ni = A.APP.list.findIndex(c => c.engine === 'napkin');
+    fresh(); W.__cfg.policy = 'always'; await gate(); L = await gen(eduT);
+    const k2 = L.findIndex(c => c.engine === 'napkin');
+    if (k2 >= 0) { M.reset(); await gate(); A.appSelect(k2); await A.appInsert(); const s = M.slides.find(x => own(x).length) || M.slides[0];
+      res.paid.insert = { title: L[k2].title, slides: M.slides.length, texts: leaves(s).filter(x => x.type === 'TextBox').length, pictures: leaves(s).filter(x => x.kind === 'picture').length, status: status().slice(0, 220), providerNamed: /Napkin|Claude|request/.test(status()) };
+      await ev('removeLast()'); res.paid.insert.undone = M.slides.reduce((a, x) => a + own(x).length, 0) === 0 && M.slides.length === 1; }
+    // fallback: Napkin (first for concepts) fails -> Claude is asked (a plan of this text); both fail -> the free visuals
+    const pe = await W.__napkin.prepared(eduT);
+    W.__cfg.claudePlanFor = JSON.stringify({ title: pe.title || 'Educational content', headline: 'What makes content educational', takeaway: '', hero: 'book', relation: 'independent', groups: [],
+      items: pe.points.map((q, i) => ({ id: 'e' + i, label: q.label, detail: '', role: 'concept', pictorial: 'book', icon_hint: '', group: '' })), flow: [], layouts: ['spotlight', 'storyboard', 'pillars', 'hub'], custom: { name: '', zones: [], connectors: [] } });
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'fail', claude: 'ok', policy: 'always' }); await gate();
+    L = await gen(eduT);
+    W.__cfg.claudePlanFor = '';
+    res.paid.fallback = { engines: [...new Set(L.map(c => c.engine))], claudeFamilies: L.filter(c => c.engine === 'claude').map(c => c.family), napkinAsked: W.__calls.filter(u => /napkin\/visual/.test(u)).length, claudeAsked: W.__calls.filter(u => /claude\/visual/.test(u)).length, n: L.length, log: A.ORCH.log.slice(-4).map(x => x.what) };
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'fail', claude: 'fail', policy: 'always' }); await gate();
+    L = await gen(samples['Data engineering platform (8 concepts)']);
+    res.paid.allFail = { n: L.length, engines: [...new Set(L.map(c => c.engine))], status: status().slice(0, 200), paid: paidCalls() };
+    // a provider not configured: not tried
+    fresh(); W.__cfg = Object.assign(W.__cfg, { napkin: 'off', claude: 'off', policy: 'always' }); await gate();
+    L = await gen(prose); res.paid.unavailable = { paid: paidCalls(), n: L.length };
+    W.__cfg.policy = 'when-needed'; await gate();
+  }
+
+  /* ===== F: several slides and edit a visual from the app ===== */
+  {
+    M.reset(); await gate(); fresh();
+    await gen(samples['Data engineering platform (8 concepts)']);
+    d.getElementById('appSlides').click();
+    res.flows.slides = { open: vis('stPanel'), title: d.getElementById('stAppTitle').textContent, tab: d.getElementById('stTab_slides').classList.contains('sel') };
+    await W.__studio.planTheSlides();
+    const n0 = M.slides.length; await W.__studio.insertSlides();
+    res.flows.slides.inserted = M.slides.length - n0; res.flows.slides.status = status().slice(0, 140);
+    await ev('removeLast()'); res.flows.slides.removed = M.slides.length === n0;
+    await ev(`PowerPoint.run(async c => { c.presentation.setSelectedSlides(['${M.slides[0].id}']); })`);   // PowerPoint selects a slide that is still there
+    // insert a design, then edit it
+    const L = A.APP.list, i = L.findIndex(c => c.engine === 'designs'); A.appSelect(i); await A.appInsert();
+    d.getElementById('appEdit').click();
+    res.flows.edit = { open: vis('stPanel'), title: d.getElementById('stAppTitle').textContent, tab: d.getElementById('stTab_edit').classList.contains('sel') };
+    const vshape = leaves(M.slides[0]).find(x => { try { return !x.tags.getItemOrNullObject('AIVB_V').isNullObject; } catch (e) { return false; } });
+    M.selShapes = [vshape]; await W.__studio.editLoad();
+    res.flows.edit.loaded = !!W.__studio.ST.edit; res.flows.edit.status = status().slice(0, 140);
+    M.selShapes = []; d.getElementById('stAppClose').click(); res.flows.closed = !vis('stPanel');
+    await ev('removeLast()');
+  }
+  res.ui.after = { technicalVisible: technical.filter(vis) };
+
+  /* ===== D: ribbon deep links and the developer mode (a second copy of the panel) ===== */
+  {
+    const G = document.getElementById('g');
+    for (const [k, q] of [['edit', '?open=edit'], ['slides', '?open=slides'], ['dev', '?dev=1'], ['back', '?dev=0']]) {
+      G.src = '/v10.html' + q; await wait(300); await loaded(G, q); await wait(300);
+      const D = G.contentDocument, v = id => { const e = D.getElementById(id); return !!e && e.offsetParent !== null; };
+      res.dev[k] = { simple: D.body.classList.contains('simple'), stPanel: v('stPanel'), editTab: D.getElementById('stTab_edit').classList.contains('sel'), slidesTab: D.getElementById('stTab_slides').classList.contains('sel'),
+        aiStatus: v('aiStatus'), napkin: v('napkinPanel'), analyse: v('analyse'), perf: !!D.getElementById('perfBox') && D.getElementById('perfBox').offsetParent !== null, devbar: !!D.querySelector('.devbar'), version: !!(D.querySelector('h1 > span') && D.querySelector('h1 > span').offsetParent !== null) };
+    }
+  }
+
+  // the gallery for the screenshot
+  { const L = await gen(samples['Educational content']); document.getElementById('evidence').innerHTML = '<div style="display:grid;grid-template-columns:repeat(5,240px);gap:6px">' + L.map(c => `<div style="border:1px solid #ccc;padding:3px">${W.thumb(c.prims)}<b>${c.title}</b><br>${c.category} · ${c.edit === 'full' ? 'Editable' : 'Editable, icons as pictures'}</div>`).join('') + '</div>'; }
+
+  const U = res.ui, Gn = res.gen, I = res.ins, Pd = res.paid, Fl = res.flows, Dv = res.dev;
+  res.acceptance = [
+    ['A1 Normal UI: no version, host status, setup, analysis step, timings, provider sections, "how many", credit tick, re-check buttons, plan source, raw insert controls', U.before.simple && !U.before.technicalVisible.length && !U.before.version && !U.before.sub && U.before.gen === 'Generate visuals' && U.before.empty && U.before.insertBar && !U.before.stPanel && !U.after.technicalVisible.length,
+      JSON.stringify(U)],
+    ['A2 One button: Generate runs the analysis itself and gives 10-24 varied, editable visuals (10.17: up to 24) (no duplicates), no provider words, no timings', Gn.ml.n >= 10 && Gn.ml.n <= 24 && Gn.ml.cats.length >= 5 && Gn.ml.uniqueLayouts && Gn.ml.analysed && Gn.ml.cards === Gn.ml.n && Gn.ml.thumbs >= Math.min(8, Gn.ml.n) && Gn.ml.editable === Gn.ml.n && Gn.ml.selected === 1 && !Gn.ml.timingsVisible && !Gn.ml.providerWords && Gn.ml.paid === 0,
+      JSON.stringify(Gn.ml)],
+    ['A13 Hover preview: the design large after a short rest, beside (not over) its card, closed on leaving; touch ignored; selection unchanged', Gn.hover.shown && Gn.hover.svg && Gn.hover.sameAsCard && Gn.hover.wider && !Gn.hover.coversCard && Gn.hover.closed && Gn.hover.touchIgnored && Gn.hover.selectedUnchanged,
+      JSON.stringify(Gn.hover)],
+    ['A14 Richer and varied: hero-style showcase or scene designs among the first 10; no two designs with the same composition', Gn.rich.showcaseInTop10 >= 2 && Gn.rich.nearDuplicates === 0, JSON.stringify(Gn.rich)],
+    ['A15 Labelled sections ("What you learn" / "Best for"): a glued label is separated; both sections and every item on every design (none drops a section, no merged heading); the learner-style compositions first; 6+ designs (10.16: never padded with weaker or look-alike ones); all editable; no request with policy never', res.sec.lines.length >= 3 && /Growth$/.test(res.sec.lines[0]) && /^What you learn:/.test(res.sec.lines[1]) && res.sec.n >= 6 && !res.sec.missing.length && !res.sec.merged.length && res.sec.richFirst && res.sec.builtin === 0 && res.sec.editable && res.sec.paid === 0,
+      JSON.stringify(Object.assign({}, res.sec, { ai: undefined }))],
+    ['A16 AI & ML summary: 10+ designs; the learning map (hero with the brain, both sections, every item, an object for each) inserts as native objects; the AI services are sent both sections and every item; plain lists and prose are not read as sections', res.sec.ai.n >= 10 && res.sec.ai.learnmapComplete && res.sec.ai.hero && res.sec.ai.objects >= 7 && res.sec.ai.inserted && res.sec.ai.inserted.objects > 0 && res.sec.ai.sent.points.length === 7 && res.sec.ai.sent.groups.length === 2 && res.sec.notSections.every(Boolean),
+      JSON.stringify(Object.assign({}, res.sec.ai, { notSections: res.sec.notSections }))],
+    ['A3 Gallery: selection state, no separate preview area (hover is the preview), plain design names, the insert button names the choice, kind filters, More visuals (new first, nothing repeated), out-of-date content blocks insert', Gn.pick.sel === 3 && Gn.pick.pressed === 1 && Gn.pick.noPreviewArea && Gn.pick.noVariantSuffix && Gn.pick.insertNames && (!Gn.filter || Gn.filter.all) && Gn.more.unique && Gn.more.fresh >= 1 && Gn.stale.note && Gn.stale.insertDisabled,
+      JSON.stringify({ pick: Gn.pick, filter: Gn.filter, more: Gn.more, stale: Gn.stale })],
+    ['A4 Other content: 10-24 visuals for lists, prose-like items, records; meaningless text refused plainly; empty content cannot generate', ['edu', 'de', 'facts', 'genai'].every(k => Gn[k].n >= 6 /* 10.26: basic designs retired */ && Gn[k].n <= 24 && Gn[k].cats >= 4) && Gn.records.n >= 1 && Gn.meaningless.n === 0 && Gn.meaningless.errShown && Gn.empty.genDisabled,
+      JSON.stringify({ edu: Gn.edu, de: Gn.de, facts: Gn.facts, genai: Gn.genai, records: Gn.records, meaningless: Gn.meaningless })],
+    ['A5 Insert selected: built-in and design visuals go in as native, tagged objects, insert = preview; a repeat asks first; undo takes it out', ['builtin', 'designs'].every(k => I[k] && I[k].objects > 0 && I[k].insertEqualsPreview && I[k].tagged && I[k].undone && (I[k].edit === 'partial' || I[k].pictures === 0)) && I.dup && I.dup.warned && I.dup.objects,
+      JSON.stringify(I)],
+    ['A6 AI services by policy and content: never -> none; when-needed -> none for records, one (Napkin first) for concepts; always -> one request, its designs editable, not named in the status; 10.24: each card names its source (Napkin)', Pd.never.paid === 0 && Pd.notNeeded.paid === 0 && Pd.whenNeeded.paid === 1 && Pd.whenNeeded.napkinFirst && Pd.whenNeeded.napkin >= 1 && Pd.always.paid === 1 && Pd.always.napkin >= 1 && Pd.always.editable && !Pd.always.providerNamed && Pd.always.srcShown,
+      JSON.stringify({ never: Pd.never, notNeeded: Pd.notNeeded, whenNeeded: Pd.whenNeeded, always: Pd.always })],
+    ['A12 Hybrid: technical structure goes to Claude first; its plan is drawn as 6+ different editable compositions and inserts; Napkin not asked', /claude\/visual/.test(Pd.hybrid.claudeFirst) && Pd.hybrid.napkinAsked === 0 && Pd.hybrid.claude >= 6 && new Set(Pd.hybrid.families).size >= 5 && Pd.hybrid.editable && Pd.hybrid.inserted,
+      JSON.stringify(Pd.hybrid)],
+    ['A7 Cost control: the same text again -> no request; a kept result for the text -> reused (no request); otherwise not resent within 24 hours', Pd.again.paid === 0 && Pd.kept.paid === 0 && Pd.kept.napkin >= 1 && Pd.guard.paid === 0 && Pd.guard.log.some(x => /24 hours/.test(x)),
+      JSON.stringify({ again: Pd.again, kept: Pd.kept, guard: Pd.guard })],
+    ['A8 Fallback: Napkin fails -> Claude asked and its plan shown in hero-style designs too; both fail -> the free visuals with a plain note; a provider not set up is not tried', Pd.fallback.napkinAsked === 1 && Pd.fallback.claudeAsked === 1 && Pd.fallback.engines.includes('claude') && Pd.fallback.claudeFamilies.some(f => /spotlight|storyboard|callout|pillars/.test(f)) && Pd.allFail.n >= 10 && Pd.allFail.engines.every(e => e === 'builtin' || e === 'designs') && Pd.unavailable.paid === 0,
+      JSON.stringify({ fallback: Pd.fallback, allFail: Pd.allFail, unavailable: Pd.unavailable })],
+    ['A9 An AI-designed visual inserts as editable text and shapes; the status never names the provider; undo removes it', !!Pd.insert && Pd.insert.texts > 0 && !Pd.insert.providerNamed && Pd.insert.undone, JSON.stringify(Pd.insert)],
+    ['A10 Several slides and Edit a visual open from the app and still work (insert, remove, load an inserted visual)', Fl.slides.open && Fl.slides.tab && Fl.slides.inserted >= 2 && Fl.slides.removed && Fl.edit.open && Fl.edit.tab && Fl.edit.loaded && Fl.closed, JSON.stringify(Fl)],
+    ['A11 Ribbon deep links open the panel on Edit / Several slides; developer mode shows every technical section again, ?dev=0 leaves it', Dv.edit.simple && Dv.edit.stPanel && Dv.edit.editTab && Dv.slides.slidesTab && Dv.slides.stPanel && !Dv.dev.simple && Dv.dev.aiStatus && Dv.dev.napkin && Dv.dev.analyse && Dv.dev.devbar && Dv.dev.version && Dv.back.simple && !Dv.back.aiStatus,
+      JSON.stringify(Dv)],
+    ['A17 One statement (Claude AI): read as subject, what it does and its 4 examples; 6+ designs in 5+ categories, every one with objects and every fact (no sentence banner, no built-in banner, no look-alikes); no request with policy never',
+      !!res.v16.read && res.v16.read.short === 'Claude AI' && res.v16.read.verbs.join() === 'Create,Organize,Edit' && res.v16.read.items.length === 4 && res.v16.n >= 6 && res.v16.cats >= 5 && !res.v16.textOnly && !res.v16.incomplete.length && !res.v16.builtin && !res.v16.wholeSentence && !res.v16.lookAlike && res.v16.paid === 0,
+      JSON.stringify(Object.assign({}, res.v16, { concepts: undefined, gallery: undefined }))],
+    ['A18 More visuals never repeats a family already shown and never adds a weaker design; a statement may now go to the AI services (when-needed)', !res.v16.more.repeats.length && !res.v16.more.incomplete && res.v16.statementAI === 1, JSON.stringify({ more: res.v16.more, statementAI: res.v16.statementAI })],
+    ["A19 Claude's own compositions (saved answer): 3 concepts drawn as native, editable designs with every fact; one that breaks the area is not offered; a concept inserts as native shapes with every item's text", res.v16.concepts.n === 3 && res.v16.concepts.editable && res.v16.concepts.complete && res.v16.concepts.own && res.v16.concepts.badRejected && res.v16.concepts.paid === 1 && !!res.v16.concepts.inserted && res.v16.concepts.inserted.items && res.v16.concepts.inserted.pictures === 0,
+      JSON.stringify(res.v16.concepts)],
+    ['A20 Large gallery: "Open large gallery" after Generate; the dialog shows every design with its thumbnail; a click selects it in the panel; Insert in the dialog inserts it; an unknown gallery key is refused', res.v16.gallery.button && res.v16.gallery.cards === res.v16.gallery.n && res.v16.gallery.thumbs === res.v16.gallery.n && res.v16.gallery.selected && res.v16.gallery.inserted > 0 && /^Inserted/.test(res.v16.gallery.note) && res.v16.gallery.unknownKey === 404,
+      JSON.stringify(res.v16.gallery)],
+    ['A21 Slide with title, subtitle and one sentence ("Artificial Intelligence" / "AI" / "The best content ... covers A, B, and C"): read as topic AI and its 3 items; one Generate gives 20+ designs, all different families, no look-alikes, none text-only, every item on every design, the new scenes among the first 3; no request with policy never',
+      res.v17.read && res.v17.read.short === 'AI' && res.v17.read.items.length === 3 && res.v17.n >= 12 /* 10.26: no look-alikes over quantity; More visuals adds the library's next designs */ && res.v17.lookAlike === 0 && res.v17.textOnly === 0 && !res.v17.missingItems.length && res.v17.families && res.v17.scenesInTop3 >= 1 && res.v17.scenesShown >= 4 && res.v17.paid === 0,
+      JSON.stringify(Object.assign({}, res.v17, { counts: undefined, device: undefined, tints: undefined }))],
+    ['A22 Device links (laptop with the AI chip, connectors to icon-tile cards) inserts as native shapes and text: no pictures, every item and the topic as text, grouped; undo removes it',
+      res.v17.device.found && res.v17.device.pictures === 0 && res.v17.device.items && res.v17.device.groups > 0 && res.v17.device.undone, JSON.stringify(res.v17.device)],
+    ['A23 20+ designs for the other examples (statements and AI & ML), 16+ for dense labelled sections with descriptions (Digital Marketing); never look-alikes or text-only',
+      ['claude', 'k8s', 'aiml', 'dm'].every(k => res.v17.counts[k].n >= 10) /* 10.26 */ && Object.values(res.v17.counts).every(c => c.lookAlike === 0 && c.textOnly === 0), JSON.stringify(res.v17.counts)],
+    ['A24 Colours: only approved colours by default; soft tints (when the administrator allows them) only as card fills, never in icons or text; Claude may return up to 6 compositions',
+      res.v17.tints.offColours === 0 && res.v17.tints.used > 0 && res.v17.tints.bad === 0 && res.v17.concepts6 === 6, JSON.stringify({ tints: res.v17.tints, concepts6: res.v17.concepts6 })],
+    ['A25 A list between dashes ("content—such as text, images, video, audio, and code—in response to natural language prompts"): exactly the 5 items, the closing phrase kept in the heading',
+      res.v18.read && res.v18.read.items.join('|') === 'Text|Images|Video|Audio|Code' && /natural language prompts/.test(res.v18.read.heading), JSON.stringify(res.v18.read)],
+    ['A26 AI services: one per new text by default (the other only as fallback); with the administrator setting paid_engines 2, Napkin and Claude both design for it and both appear in the gallery',
+      res.v18.engines1.paid === 1 && res.v18.engines2.paid === 2 && res.v18.engines2.napkinAsked === 1 && res.v18.engines2.claudeAsked === 1 && res.v18.engines2.fromAI.length === 2,
+      JSON.stringify({ engines1: res.v18.engines1, engines2: res.v18.engines2 })],
+    ['A27 A paragraph of several sentences (cloud computing) is read as its topic and one section per list - service models, key benefits, cloud deployments - with every item',
+      res.v19.read && res.v19.read.title === 'Cloud computing' && res.v19.read.sections.length === 3 && /IaaS, PaaS, SaaS/.test(res.v19.read.sections[0]) && /Public, Private, Hybrid/.test(res.v19.read.sections[2]), JSON.stringify(res.v19.read)],
+    ['A28 Large text: one Generate gives 20+ designs with every point (one-slide designs first, then the same design on 2-3 slides, condensed names-only versions said in their name); a multi-slide design inserts here and on new slides, Undo removes all',
+      res.v19.cloud.n >= 10 /* 10.26: the scenes that fitted it are retired */ && !res.v19.cloud.incomplete.length && res.v19.cloud.multi > 0 && res.v19.lifecycle.n >= 16 /* 10.27: one design per layout; 10.21.1: relevance and quality over quantity (text-only designs left out) */ && !res.v19.lifecycle.incomplete.length &&
+      res.v19.multiInsert.offered && res.v19.multiInsert.slidesAdded === 2 && res.v19.multiInsert.undone, JSON.stringify({ cloud: res.v19.cloud, lifecycle: res.v19.lifecycle, multi: res.v19.multiInsert })],
+    ['A29 Same slide by default: a slide with text gets the visual below its text (never over it, said); a slide without room: nothing inserted, explained, a new slide only when the user clicks for it (10.21.1)',
+      res.v19.same.newSlides === 0 && res.v19.same.onThisSlide > 0 && res.v19.same.top >= res.v19.same.textBottom && res.v19.same.bottom <= 720 && /on this slide/.test(res.v19.same.note) && res.v19.same.minPt >= 20 &&
+      res.v19.full.newSlides === 0 && res.v19.full.onThisSlide === 0 && res.v19.full.offer && /nothing was inserted/.test(res.v19.full.note) &&
+      res.v19.full.asked && res.v19.full.asked.newSlides === 1 && /new slide after this one, as you chose/.test(res.v19.full.asked.note), JSON.stringify({ same: res.v19.same, full: res.v19.full })],
+    ['A30 The large gallery closes after Insert (the visual goes in, back to PowerPoint)', res.v19.gallery.inserted && res.v19.gallery.closed, JSON.stringify(res.v19.gallery)],
+    ['A31 Icons stay in front: a card drawn before its icon stays behind it after grouping (restacked in the designed order); a container drawn after its contents is moved behind them',
+      res.v19.layers.iconAboveCard && res.v19.layers.restacked && res.v19.paint === 'roundRect,ellipse,text', JSON.stringify({ layers: res.v19.layers, paint: res.v19.paint })],
+    ['A33 Same slide first, readable (10.21.1): little room left by the text - the design laid out again there, or (when it cannot fit at the template text size) designs that fit offered and inserted on this slide on a click; never below 20 pt, never a new slide unasked',
+      res.v21tight.newSlides === 0 && (res.v21tight.onThisSlide > 0
+        ? res.v21tight.top >= res.v21tight.textBottom && res.v21tight.bottom <= 720 && /on this slide/.test(res.v21tight.note) && res.v21tight.minPt >= 20
+        : res.v21tight.offer && /nothing was inserted/.test(res.v21tight.note) && res.v21tight.alt && res.v21tight.alt.clicked && res.v21tight.alt.newSlides === 0 && res.v21tight.alt.onThisSlide > 0
+          && res.v21tight.alt.top >= res.v21tight.textBottom && res.v21tight.alt.bottom <= 720 && res.v21tight.alt.minPt >= 20),
+      JSON.stringify(res.v21tight)],
+    ['A34 Numbered designs (10.21): every card shows its number (1..N, in order), the selected one is named by number; arrow keys / Home move the choice, in the panel and in the large gallery',
+      res.v21nav && res.v21nav.nums.startsWith('1,2,3') && res.v21nav.seq && /^Design 1 of \d+: /.test(res.v21nav.label) && res.v21nav.right === 4 && res.v21nav.home === 0 && res.v21nav.focus
+        && res.v21dlg && res.v21dlg.nums === '1,2,3,4' && res.v21dlg.sel === '1' && res.v21dlg.panelSel === 1 && /^Insert design 2: /.test(res.v21dlg.insert),
+      JSON.stringify({ panel: res.v21nav, dialog: res.v21dlg })],
+    ['A32 LVC type: every text 22 pt (24 pt headings), Open Sans; labels in sentence case, acronyms and the names the text capitalises kept',
+      res.v19.type.sizes.every(s => s === 22 || s === 24) && res.v19.type.sentence.join('|') === 'What you learn|Hands-On projects with Python|Working with ChatGPT|Neural networks|AI tools for Kubernetes', JSON.stringify(res.v19.type)],
+    ['No script errors in the panel', !errors.length, errors.join(' | ') || 'none'],
+  ].map(([name, ok, evidence]) => ({ name, ok: !!ok, evidence }));
+  out.textContent = JSON.stringify(res);
+}
+run().catch(e => { out.textContent = JSON.stringify({ fatal: String(e && e.stack || e), errors }); });
+</script></body></html>

@@ -1,0 +1,18 @@
+<!doctype html>
+<!-- Probe page: the real panel (v10.html) with the stand-in PowerPoint, ready for tests/run_probe.py to evaluate code in
+     it. No network, no credits. -->
+<html><head><meta charset="utf-8"><title>probe</title><script src="/tests/samples.js"></script><script src="/tests/mock.js"></script></head>
+<body><iframe id="f" src="/v10.html?dev=1" style="width:420px;height:900px"></iframe><pre id="out">loading</pre>
+<script>
+(async () => {
+  const F = document.getElementById('f');
+  for (let i = 0; i < 300; i++) { try { if (F.contentWindow.location.pathname === '/v10.html' && F.contentDocument.readyState === 'complete') break; } catch (e) {} await new Promise(r => setTimeout(r, 100)); }
+  const W = F.contentWindow;
+  for (let i = 0; i < 100 && !W.eval("typeof suggest === 'function' && typeof analyseContent === 'function'"); i++) await new Promise(r => setTimeout(r, 100));
+  installMock(W);
+  W.eval('state.inOffice = true; state.canGroup = true; state.canRotate = true; 1');
+  window.W = W; window.SAMPLES = Object.fromEntries(EXAMPLES);
+  window.fixture = async f => (await fetch('/tests/fixtures/' + f)).text();
+  document.getElementById('out').textContent = 'ready';
+})().catch(e => { document.getElementById('out').textContent = 'fatal ' + (e && e.stack || e); });
+</script></body></html>

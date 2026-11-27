@@ -1,0 +1,11 @@
+<!-- AI Visual Builder (V10.15): paste these lines into SL Smart Design's customUI/customUI.xml, inside
+     <group id="Template_id" label="Design">, directly after the "Alternative Design" button (Template_Button1).
+     The callbacks are in AIVisualBuilder.bas (import it into the same VBA project). -->
+		   <splitButton id="AIVB_Split" size="large">
+		      <button id="AIVB_Button1" label="AI Visuals" imageMso="SmartArtInsert" onAction="AIVB_Generate" screentip="AI Visual Builder" supertip="Turn the slide's content into editable infographics: several designs, hover to preview, insert one." />
+		      <menu id="AIVB_Menu" itemSize="normal">
+		         <button id="AIVB_Button2" label="Generate visuals" imageMso="SmartArtInsert" onAction="AIVB_Generate" />
+		         <button id="AIVB_Button3" label="Several slides" imageMso="SlideNew" onAction="AIVB_Slides" />
+		         <button id="AIVB_Button4" label="Edit a visual" imageMso="ObjectEditPoints" onAction="AIVB_Edit" />
+		      </menu>
+		   </splitButton>

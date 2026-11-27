@@ -1,0 +1,588 @@
+# AI Visual Builder — project status
+
+## Current version: V10.22 (18 Nov 2026, local, not pushed) — add-only team installation with activation keys; V10.21.1 app
+
+## V10.22 (afternoon) — ONE SL Smart Design tab on team PCs; compact visuals (18 Nov 2026)
+**One tab.** Team package now installs the unified SL Smart Design web tab (manifest-slsd, product Id 2f01d600…) as a
+shared-folder add-in: `deploy/team/Share.ps1` (one UAC prompt, visible window) shares the install's `catalog\` folder
+read-only for the user (`\\<PC>\SLSmartDesign$`), trusted catalog {EEBC6074…}; the user adds it once (Home > Add-ins >
+Advanced > SHARED FOLDER). Without admin rights: Developer registration, original tab kept. Retired on install: our
+own V10.20 `SLSD_AIVisualBuilder` VBA add-in and the pilot's Home group (the extra tabs seen on 18 Nov).
+`local-ai/slsd_tab.py` (server thread, AIVB_SLSD_UNIFY=1): hides the licensed add-in's own tab ONLY when PowerPoint's
+ribbon cache shows the web tab (`Wef\AppCommands\*\TrustedCatalog\<id>*`), only with PowerPoint closed, from the user's
+own file (ribbon XML only; VBA identical, checked; original kept byte for byte) and restores it automatically when the
+web tab is missing; Uninstall / Restore SL Smart Design restore at once. Activation gate moved into the panel
+(`gate.js` overlay) because v10.html is also the tab's function file: SL Smart Design commands (`/api/slsd/*`,
+`/api/bridge/*`) work without activation, every AI API needs it.
+**Endpoint security:** Cisco Secure Endpoint silently deleted a script with a hidden elevated PowerShell
+(`-Verb RunAs -WindowStyle Hidden`) twice; elevated calls now use a visible window.
+**Compact visuals** (reference `sample for claude.pptx`: 960×540, 16.5 pt body = 22 pt here, compact cards/rows,
+SME box at 814–1199 × 148–636 pt equivalent): `plan.js planRender` tries 60 / 72 / 86 % of the area height first and
+keeps the first that passes every check (top-aligned). SME video placeholders (name/text "SME"/"video", or Media) are
+never covered or removed; `config.json "sme_space": true` reserves the SME area on every slide. A permanently narrow
+area (688 pt) was tried and rejected: 13 acceptance failures, design counts 24→3-7, saved Napkin/Claude results
+rejected. Tests (worktree = HEAD + only these changes): V10.20 35/35, V10.12.x all, activation 41/41, slsd_tab 13/13,
+SL Smart Design 159, upgrade 51/51, server/claude/hosted/ribbon ALL PASSED; design counts 18/24/24/24 (were 16/24/24/24).
+Working tree also holds someone else's uncommitted UI change (number badges hidden, `paid_order` list) that fails A34
+(and A12 by order) - not part of this work.
+**Not yet tested:** the share + catalog + one-tab switch on a team PC in real PowerPoint (needs a UAC answer).
+
+## V10.22 — team installation: add-only, one click, activation keys (18 Nov 2026)
+**Why:** the unified / "Easy Pilot" installer (deploy/slsd-unified, Install.ps1 step 5) REPLACES the licensed
+`SL_Smart_Design_v2_Key_Dec_25.ppam` with a tab-hidden copy; with Developer registration the replacement tab appears
+only after Home > Add-ins in each session, so SL Smart Design "disappeared" on team desktops. The Team Pilot package
+made earlier on 18 Nov (deploy/team-pilot, untracked) overwrote any .ppam not 57,600 bytes, shipped the licensed .ppam,
+cleared Office's whole WEF cache, force-closed PowerPoint and carried the Claude/Napkin keys in plain text
+(`AIVB-keys.json` in the zip). Do not share Team_Pilot_Package; if it was shared, rotate both keys.
+
+| Part | File | What |
+|---|---|---|
+| Installer | `deploy/team/Install.ps1` (+ `.bat`) | adds only the AI Visual Builder group (own WEF\Developer value, Id 78643140…; an update replaces the earlier pilots in place); never touches SL Smart Design or other add-ins, never closes PowerPoint, no cache clearing; per-user access policy with a daily cap (30 Claude + 30 Napkin); app/runtime kept as .prev until the new version answers |
+| Repair | `common.ps1 RepairSLSD`, `Restore SL Smart Design.bat` | if the unified install is present, runs ITS uninstaller (-KeepData), which restores this PC's own baseline (original licensed add-in + registration); asked first, PowerPoint must be closed; nothing copied from the package |
+| Activation | `local-ai/activation.py`, `local-ai/activate.html`, `server.py` (AIVB_ACTIVATION=1, set by `deploy/team/run_server.pyw`) | keys AIVB-XXXXX-XXXXX-XXXXX-XXXXX (100 bits); bundle = Claude/Napkin keys encrypted (PBKDF2 200k + HMAC-SHA256 CTR, encrypt-then-MAC; stdlib only); record bound to Windows user + PC (DPAPI); until activated every page is the activation page and every API (except status/activation) 403; expired / withdrawn / changed / foreign activation removes the AI keys; 10 attempts a minute; key never logged |
+| Build | `deploy/Make-TeamPackage.ps1` (+ `Make team package (administrator).bat`), `deploy/build-team-package.ps1` | first run makes `deploy/team-keys/` (bundle + `activation-keys.csv`, gitignored), later runs reuse it (users stay activated); zip 17.9 MB in ~9 s; refuses key / licence / certificate files and this PC's real key values |
+
+Tests (18 Nov): `tests/test_activation.py` 39/39 (crypto, record binding, server gate over HTTP, rate limit, no key in
+log), `test_server.py` and `test_hosted.py` ALL PASSED. Isolated real installation from the extracted zip (instance
+AIVBTeamTest, port 44351, dummy-key bundle, -NoRegister -NoAutostart): installed + activated in 15 s, panel served,
+WEF\Developer and %APPDATA%\Microsoft\AddIns unchanged (hashes), not-activated → activation page and AI keys removed,
+Activate.ps1 wrong/right key, Uninstall removed everything and left the pilot registration. Repair path checked with a
+stand-in uninstaller. Real package built: 25 keys valid until 2027-03-31 (one checked to unlock both AI keys).
+**Not yet tested:** a team PC in real PowerPoint (ribbon, activation page in the task pane), a real unified-install
+repair on a team PC. **Limits:** offline activation - one key works on any number of PCs (withdraw = new package or
+rotate the AI keys); Developer registration may need Home > Add-ins once per session; Windows only.
+
+Authorized employee + Content Slide of the approved template → paste content → analyze → accurate infographic and
+pictorial suggestions → preview → insert editable PowerPoint shapes. JavaScript panel + small Python host; no AI
+models, no GPU. Three ways to generate: native infographics (built in, free), and optionally Napkin AI (single approved
+Simplilearn brand style) or Claude AI (Anthropic API), both paid, confirmed per request, checked and rebuilt the same way.
+
+| Part | File | Notes |
+|---|---|---|
+| Panel | `local-ai/v10.html` | reading, layout engine, insertion, access gate (user + Content Slide layout) |
+| Suggestions | `local-ai/gallery.js` | infographic / pictorial / data generators, icon catalog, `contentPoints`, `proseScene` |
+| Understanding | `local-ai/understand.js` | meaningful-text check, statements and relations, `conceptModel` (ideas of explanatory prose) |
+| Brand standard | `local-ai/brand.js` | LVC/Simplilearn rules applied to every visual |
+| SVG → native, quality checks | `local-ai/svg2ppt.js` | Napkin SVG conversion; `visualQuality` shared by all visuals |
+| Napkin PPTX | `local-ai/pptx.js` | reading and checks |
+| Napkin rebuild | `local-ai/rebuild.js` | `napkinFaithful`: Napkin's own arrangement (ring / fan / row / column / grid) and item look rebuilt natively; `napkinRebuild` (cards) for sequences and as a reported fallback |
+| Designs, slides, edits | `local-ai/studio.js` | step 5, free (no AI request): more designs of a saved content plan, content density, several slides (logical split, overview, batch insertion with recovery), editing of inserted visuals (PowerPoint tags `AIVB_V`/`AIVB_F` + a record on the slide, one undo) |
+| App (end users) | `local-ai/app.js` | 10.13: content → Generate visuals → gallery (10-20, filters, selection, large preview) → insert; More visuals, Several slides, Edit a visual; loading/empty/error/stale states; plain status words; developer mode (`?dev=1`, Ctrl+Alt+Shift+D) restores every technical section |
+| Engine choice | `local-ai/orchestrator.js` | 10.13: engines builtin, designs (free), napkin, claude (paid, `registerEngine`); paid policy `never` / `when-needed` / `always` (config.json `paid_policy`, `paid_order`); kept results reused, 24-hour resend guard, one request + one fallback; ranking (accuracy, editability, richness, readability), dedupe, variety |
+| Design pack "learning" | `local-ai/packs/learning-10.15.js` | 10.15: learner-style compositions in the spirit of the VisualX reference - learning map (hero panel, bracket, section panels of object columns), topic banner, skills to outcomes, icon rows, badge cards, section panels, learning poster, topic ribbon, colour tiles; 9 new native objects |
+| Labelled sections | `local-ai/sections.js` | 10.15: "What you learn: ... / Best for: ..." read as a title, a short topic name and named sections; glued labels separated; list entries split into short items |
+| SL Smart Design button | `local-ai/sl-smart-design/`, `local-ai/open-panel.ps1` | 10.15: "AI Visuals" beside Alternative Design (VBA callbacks + ribbon lines); the helper presses the add-in's Home-tab button through UI Automation |
+| Design pack "showcase" | `local-ai/packs/showcase-10.14.js` | 10.14: hero-style educational compositions - spotlight (hero panel: topic object, headline, takeaway), storyboard (visual summary cards), callout (topic object with called-out points), journey (winding learning path) |
+| Design pack "modern" | `local-ai/packs/modern-10.13.js` | 10.13: roadmap, pillars, quadrant framework; families say which content they `suits` (plan.js `planCandidates`) |
+| Original editable | `local-ai/faithful.js` + `svg2ppt.js` (`svgToPrims(..., { faithful })`) | 10.12.2: the original design as native objects: curved outlines sampled and matched to box / rounded box / pill / circle / ellipse, open curved strokes as straight-segment connectors, text boxes at the design's place and size (`tight`: no margins, no wrap), brand colours and contrast, icons and illustrations as separate pictures; `faithfulSplit` (continuation slides at clean gaps, one scale), `faithfulJoin` (words broken by Napkin), checks and editability report |
+| Original design | `local-ai/original.js` | 10.12.1: a drawn result's original (Napkin SVG, or the first slide of its PPTX drawn as SVG) as one SVG picture: cleaned (`cleanSvg` with embedded fonts kept), fitted by one factor and centred, readability (smallest text in pt; below 22 flagged, below `ORIGINAL_MIN_PT` 9 blocked) and content (its own text through `accuracy`) |
+| Napkin AI + Claude AI | `local-ai/napkin.js` | one provider panel per AI (`makePanel`): 1 or 4 variations, checks, previews (as inserted and as returned), not-offered variations kept for inspection, re-check without a new request, insertion, Napkin/Claude comparison |
+| Layout engine | `local-ai/plan.js`, `local-ai/packs/*.js` (`packs/README.txt`) | content plans (roles, groups, flow, sources), layout families registered in versioned design packs (core@10.10: 11, pro@10.11.0: 12), measured at 22 pt, checked |
+| Claude AI backend | `local-ai/claude_visual.py`, `configure-claude.ps1`, `Configure Claude.bat` | one design-specification request for 1 or 4 visuals (drawings kept for cached results and tests), `max_retries=0`, no fallback model; model / effort / max_tokens / prices in `%LOCALAPPDATA%\AIVisualBuilder\claude.json` |
+| Install / restart | `local-ai/start-ai-visual-builder.ps1` (+ `Restart AI Visual Builder.bat`), `install-v10-addin.ps1` (+ `Install V10 add-in.bat`, `Remove V10 add-in.bat`) | restart replaces every outdated copy; V10 registration by its own manifest Id, V9 never touched |
+| Access | `local-ai/access.py`, `access.example.json` | administrator policy in `%ProgramData%\AIVisualBuilder\access.json` |
+| Panel host | `local-ai/server.py` | 10.19.0 (large gallery: /api/gallery); `paid_order` "auto"; `orchestrate` in /api/status; ribbon icons; `--test` hosts refuse paid requests; exclusive port (a second copy cannot start); Claude endpoints with the same gates; forwards `context`, passes Napkin warnings; enforces access, template, caps, duplicates, approved style |
+| Manifest | `manifest-v10.xml` | 10.19.0.0: group "AI Visual Builder" at the end of PowerPoint's Home tab (the button the SL Smart Design "AI Visuals" button presses), buttons Generate visuals / Several slides / Edit a visual (one task pane, `?open=`), local icons; (SSO entry to add once the app is registered, see README) |
+| Diagnosis | `local-ai/tests/run_diag.py`, `diag.html`, `diag_cases.py` | every layout considered with its reason; every Napkin variation with arrangement, status and preview |
+
+## V10.21.1 — reviewer gaps: Alternative Design gallery, relevance, text accuracy, readable same-slide fit (17 Nov 2026)
+Validated in headless Edge with the test host (no paid requests, no COM), with isolated installer tests, and **in real
+PowerPoint for the panel (check A, owner-approved, 17 Nov)**. Still open: check B (the numbered Select Template gallery in
+real PowerPoint) and anything on a Mac. Checklist: `docs/V10.21.1-POWERPOINT-CHECKS.md`.
+
+Real PowerPoint, 17 Nov (disposable deck `D:\Karthik\SLSD_TestDecks\LVC_v10211_test.pptx`): the panel was driven through
+WebView2 DevTools, with PowerPoint started with a session-only debug setting (no registry change), and the shapes were
+read through COM. Paid AI was blocked three ways: the policy override, a fetch guard, and the usage files' checksums,
+which were unchanged. No paid attempt was made.
+- A1: Generate in 156 ms, 24 designs, three cycle compositions first. The cycle wheel was inserted on the slide below
+  its text (text ends ~295 pt, visual 305–637 pt), as native groups, every text 22 pt, every point and description word
+  for word, topic "The Agile sprint cycle".
+- A3: on a slide with 6 lines, the wide design was refused with the free room named (1079 × 219 pt) and 2 designs that
+  fit were offered. A click put one on the same slide below the text (421–640 pt, 24 pt minimum); no new slide.
+- A4: on a full slide nothing was inserted or covered; a new slide (Content_Slide) appeared only after the click.
+- A5/A6: Python loops not drawn as a cycle; SQL vs NoSQL: three comparison layouts first.
+- A7: "Pillars with 2.5D icons": a native cube in every icon group, behind the icon and in front of the card. Undo
+  removed exactly what was inserted.
+- A8: badges 1..N, "Design 1 of 21: …", ArrowRight moves the choice, the insert button names the number.
+- **Found and fixed only by this check:** V10.21's arrow-key line referred to `galleryKey` before gallery.js was
+  loaded. That stopped the panel's start-up in PowerPoint (stuck at "Loading…"). The browser tests did not see it, so a
+  start-up test was added, and it fails on the old code. Also found here: the 2.5D style was lost when a design was
+  drawn again for insertion (fixed, tested).
+
+| # | Gap | Done | Files |
+|---|---|---|---|
+| 1 | Alternative Design | `sl-smart-design/patch_altdesign.py` builds a copy of the add-in whose Select Template form numbers every design ("Design n", count in the title bar), outlines the chosen one, selects on a thumbnail click and inserts on a double-click (new class `ThumbClick`). Module1 (every macro, licence check) and LicenseForm have identical source; the designers and every other part are byte-identical; checked by the tool, by the package build, and independently with olefile/olevba. P-code is left out, so PowerPoint compiles from source on load. The package uses it only with `-NumberedGallery`, until it passes in real PowerPoint | `sl-smart-design/patch_altdesign.py`, `deploy/build-slsd-package.ps1` |
+| 2 | Visual quality / repetition | Relevance ranking: designs that draw the relation the text states rank first (+30, kept even without pictures). Equal designs rotate by text, and families inserted last step back (deck variety). New "Cycle wheel" (numbered icon discs on a ring). Optional 2.5D icons (native cube tiles, editable). Short topic names are no longer the first two words ("The Agile") | `orchestrator.js`, `packs/vivid-10.21.js` (10.21.1), `plan.js`, `sections.js`, `app.js` |
+| 3 | Text accuracy | `planRelation` replaces keyword matching: structure first (numbering, step words, dates in order, a last point that returns to the first, two sections describing the same attributes). Wording counts only when it is about the whole set (title, intro, closing), never in one point's description, with technical phrases excluded ("for loop", "continuous integration", "high levels of"). The reason is kept with the plan. An unordered list is no longer turned into a pipeline because one point is called "Monitoring". Two points with attribute lists become two compared sides. Prose about kinds of one thing becomes one point per kind, each with its sentence kept word for word | `plan.js`, `napkin.js`, `sections.js`, `understand.js`, `v10.html` |
+| 4 | Same-slide fit | Laid out again in the free part. Scaling is allowed only while every text stays at the template minimum (22 pt, or the design's own smallest at full size); the V10.21 50 % scaling is removed. When it cannot fit, nothing is inserted; the panel says how much room is free and offers the designs that fit there, and a new slide only on a click | `v10.html`, `orchestrator.js` (`fit`), `app.js` |
+| 5 | Performance and icons | Generate stays at 50–260 ms in the panel (measured); the paid services' time is theirs. 2.5D icon variants as above, no paid dependency | — |
+| 6 | Mac | Accurate Windows-only list in `mac/README-MAC.md`. Opt-in AppleScript bridge (`mac_vba_bridge`, off by default, allow-listed macros only), untested on a Mac | `server.py`, `slsd.js`, `mac/` |
+
+Benchmark against V10.20.1 (`tests/run_bench.py --before d966bb4`, 7 new LVC texts):
+- long paragraph: 4 → 19 designs (3 → 0 text-only);
+- SQL vs NoSQL: comparison layouts are the top 3 (before: none in the top 3);
+- dense 10 points: 2 → 9 designs (two-slide versions keep every description at 22 pt);
+- sprint cycle: three cycle compositions in the top 3 (before: none);
+- Python loops: no cycle (before: none either; the V10.21 keyword rule would have made it one);
+- smallest text 22 pt everywhere;
+- every source point present in every design ("missing" in the table is the title only, which the slide's heading shows).
+
+Tests (17 Nov, final code): run_tests.py all passed (V10.11 29/29, V10.12 14/14, V10.12.1 13/13, V10.12.2 11/11, V10.20 35/35 incl. A29
+and A33 rewritten for the new fit rules; A28's lifecycle threshold lowered 20 → 18 designs: relevance and quality over
+quantity), test_upgrade 51/51, SL Smart Design 159 + 1 skipped (PowerPoint was open), installer 55/55 (isolated). 2.5D: one
+leading design is offered with 2.5D icons instead of flat ones (never both: no repeated composition).
+
+## V10.21 — usability, visual quality, text analysis, same-slide fit, numbered designs, Mac (16 Nov 2026)
+Validated in headless Edge with the test host. That host refuses paid requests and COM. **No V10.21 change has been
+tried in real PowerPoint yet, and none has been tried on a Mac.**
+| # | Asked | Done | Files |
+|---|---|---|---|
+| 1 | Text analysis | `planTextRelation`: a cycle, funnel, hierarchy/levels or comparison is used only when the text states it (cue words, Pros/Cons, Before/After, Traditional/Modern, vs, AIDA). Nothing is inferred; a plain list stays a list | `plan.js`, `napkin.js` (`planFromPrep`), `sections.js` |
+| 2 | Infographic library | Design pack `vivid@10.21.0`: numbered cards (numbers only for a stated order), chevron process, zigzag path, two-column contrast. A 5-step process now gets 30 distinct families | `packs/vivid-10.21.js`, `v10.html`, `claude_visual.py` (PLAN_LAYOUTS) |
+| 3 | Visual quality | The new families follow the pack rules: 22 pt minimum, brand palette, native shapes, icons drawn after cards | as 2 |
+| 4 | Same slide first | Reflows into free areas as small as 360 × 180 pt (was 520 × 260), scales down to 50 % (was 70 %). A new slide is used only when nothing readable fits | `v10.html` (`FIT_MIN`, `REFLOW_MIN`) |
+| 5 | Alternative design UI | Each card has a number badge (1..N) and a check mark when selected. Screen readers hear "Design n of N"; the insert button says "Insert design n: …". Arrow keys, Home and End move the selection in the panel and in the large gallery. The company VBA form (Alternative Design) is not changed; owner patch proposal: `sl-smart-design/ALT-DESIGN-NUMBERING-PROPOSAL.txt` | `app.js`, `gallery.js`, `gallery-dialog.html`, `v10.html` |
+| 6 | More visuals, faster | Built-in design set about 9 ms. Paid AI speed is the provider's | — |
+| 7 | Icons | Paint order stays icon above card (A31, V10.19); new families draw icons last. No 3D icons: no licensed offline 3D set | — |
+| 8 | Mac | Office.js part unchanged. The SL Smart Design commands show "use the SL Smart Design add-in's own tab" on a Mac (no COM). The host refuses them on macOS. Data and policy paths are Mac-aware. `mac/setup-mac.sh` (certificate with visible approval, LaunchAgent, sideload) and `mac/README-MAC.md`: syntax-checked only | `slsd.js`, `server.py`, `access.py`, `mac/` |
+
+Tests (16 Nov): `run_tests.py`: V10.11 29/29, V10.12 14/14, V10.12.1 13/13, V10.12.2 11/11, V10.20 35/35 (new A33 same slide first,
+A34 numbered designs and keys), server / claude / hosted / v10.20: all passed, SL Smart Design 155 passed / 1 skipped
+(the COM test is skipped while PowerPoint is running), `test_upgrade.py` 31/31 (new). Fixed on the way: `onMac()` read a
+missing `Office.PlatformType` as a Mac.
+Still to check in real PowerPoint: same-slide insertion on a real LVC slide, the gallery number badges, and the new families as inserted shapes.
+
+## V10.20.1 — one SL Smart Design tab owned by the web add-in; Alternative Design blank gallery fixed (13 Nov, in progress)
+
+**Status: built and checked unattended (132 checks); NOT yet verified in real PowerPoint. The PC still runs V10.20
+until `switch-slsd.ps1 -Action Activate` is run.** Details: `local-ai/sl-smart-design/README.txt` (V10.20.1 section).
+
+**AI Visual Builder first click.** A VBA button cannot open a web add-in's task pane reliably by any supported means
+(setStartupBehavior is per document after a manual open; OnDocumentOpened needs admin deployment and allows no UI). So
+the SL Smart Design tab now belongs to the web add-in (`manifest-slsd.xml`, same add-in Id):
+- AI Visual Builder is a ShowTaskpane button;
+- the original SL Smart Design commands (Alternative Design, 6 SL Templates, 2 Miscellaneous, 2 Shape Rename) are
+  functions (`slsd.js`) that run the original macros through PowerPoint's `Application.Run`
+  (`server.py /api/slsd/run`, fixed list; `slsd_com.py`, ctypes COM, no new process);
+- the VBA add-in's own tab is hidden in a copy (`make_unified_slsd.py --hide-tab`, VBA byte-identical).
+- No Home-tab group; no UI Automation; Office never starts PowerShell.
+
+**Alternative Design blank gallery: root cause.** The original form takes the bottom-most shape as the content. On LVC
+slides that is a placeholder, group or background (0 or 1 point → `0_point`/`1_point` → empty frame). The template
+library is intact (1,198 templates in 2–10, every thumbnail loadable). `slsd.js` finds the content, checks 2–10 points
+as the original counts them, explains otherwise, and sends the content to the back for the original form; it restores
+the shape if the window is cancelled.
+
+**Switch / rollback:** `switch-slsd.ps1` (Activate / Rollback / Status): backs up both add-in files and the two
+registry values, changes only those, and restores them exactly. Tested on an isolated registry key.
+
+**Tests:** `tests/test_slsd.py` (COM, panel host, ribbon, hidden-tab add-in, template library, switch script,
+`tests/slsd.html` in headless Edge), added to `run_tests.py`.
+
+**Real PowerPoint, 13 Nov 2026 evening (disposable copies of LVC_Template.pptx; screen locked at 20:07, testing stopped there):**
+
+| Check | Result |
+|---|---|
+| VBA SL Smart Design tab hidden; SL Animation, SL Design unchanged | PASS |
+| One SL Smart Design tab, 14 buttons in Design / SL Templates / Miscellaneous / Shape Rename | PASS |
+| No AI Visual Builder on Home | PASS |
+| Tab after a real PowerPoint restart, **Developer key registration** | **FAIL**: the ribbon appears only after Home > Add-ins > the add-in, in every session. The same holds for the V10.20 manifest (its Home group was also absent at start), so V10.20's Home-tab fallback could not have worked at start either |
+| Tab after a real PowerPoint restart, **trusted shared-folder catalog**, added once | **PASS**: tab present at start, all 14 buttons |
+| AI Visual Builder, first click in a fresh session | **PASS**: real task pane in 2.1 s |
+| Alternative Design, bug case (shape behind the content, 4 points) | **PASS**: gallery of 4-point templates; template applied; Text_1..4 = the points |
+| Alternative Design, 2..10 points | **PASS** for 2, 3, 5, 6, 7, 8, 9, 10 (2 chosen by the user); 4 placed nothing: library template defect, below |
+| Cancel restores the content's name and place | **PASS** (slides 28, 31) |
+| Busy guard (second click while Select Template is open) | PASS (plain message) |
+| 12 points: explained, no gallery | PASS (notice opened; its text not seen: screen locked) |
+| Icons on the SL Smart Design buttons | Office's generic icon for every button (also the old AI Visual Builder icon): open |
+| SL Templates (6), Miscellaneous (2), Shape Rename (2) in real PowerPoint | **not yet tested** |
+| AI generation / insert / edit / Undo through the new tab | **not yet tested** |
+
+Fixes made from these tests (all unattended checks pass, 144):
+- **Library defect found:** 29 of 1,198 templates (2.4 %) name their boxes "Text 1" (often every box) or lack them,
+  so the original insertion drops the points and leaves "Lorem ipsum" (2_point 0071; 3_point 0062, 0085, 0103; 4_point
+  0003, 0004, 0018, 0033, 0046, 0145, 0155, 0183, 0248; 5_point 0001, 0002, 0021, 0092, 0098, 0100, 0104, 0109, 0147, 0165;
+  6_point 0002, 0011, 0064, 0121, 0125; 8_point 0006). The library is not changed; `slsd.js placeMissing` places the
+  points the template did not take (numbered box first, then placeholder boxes in the template's order) and says so,
+  or says which points have no place (Ctrl+Z, another template). Not yet re-verified in real PowerPoint.
+- The notice text is handed to the dialog with `messageChild` (it was in the URL, which PowerPoint shows as the title).
+- A `--test` panel host never runs a macro in a real PowerPoint (a test had run Remove Animations on the open
+  disposable copy).
+- `switch-slsd.ps1 -Registration Catalog` (default): registers a trusted catalog of its own; creates missing parent
+  keys one by one; rollback removes it.
+
+
+## FINAL STATUS — 16 Nov 2026
+
+**Application (V10.20.1).** One SL Smart Design tab: Design (Alternative Design, AI Visual Builder, Several slides,
+Edit a visual) | SL Templates (6) | Miscellaneous (2) | Shape Rename (2). Nothing on Home. Verified in real PowerPoint
+on 13 and 16 Nov.
+
+**Installer (staging), technically ready for an authorized pilot:**
+- **Package:** `SLSD_Unified_Package\SL-Smart-Design-10.20.1-staging.zip` (checksum in `SHA256.txt`; not committed).
+- **Built with:** `deploy/build-slsd-package.ps1`.
+- **Isolated tests:** 55/55 (`deploy/tests/test_slsd_installer.py`).
+- **Real PowerPoint (owner-approved, on this PC, port 44318):** one tab, Verify 17/17, installed-service commands, no
+  paid request, restart persistence.
+- **Uninstall and restore:** proven identical by snapshots (`docs/SLSD-INSTALLER-TEST-REPORT.md`).
+- **This PC after the test:** the development setup is restored and verified read-only (one SL Smart Design tab,
+  development service 10.20.1, snapshot identical to before). No staging installation is active.
+
+**Pending before any deployment (`docs/SLSD-IT-DEPLOYMENT.md`):**
+1. IT: registration method, Microsoft 365 Centralized Deployment (localhost acceptance untested) or an IT-approved
+   shared catalog with its share.
+2. SL Smart Design owner:
+   - approval to distribute the tab-hidden add-in copy (and the template library, if packaged);
+   - **licence renewal before 31 Dec 2026**.
+3. IT security: the local HTTPS service (pythonw.exe, localhost), COM `Application.Run` of the 11 original macros, the
+   per-user localhost certificate, a Cisco Secure Endpoint review. Pre-existing: Office macro setting "enable all"
+   (VBAWarnings=1) on this PC, and a user-level `ANTHROPIC_API_KEY` (blocked by the service while paid AI is off).
+4. Budget owner: paid AI (package ships `paid_policy: never`).
+5. Not yet tested: autostart after a real Windows sign-in, a second PC (the manager's, after approvals 1–3).
+
+**Known limits:**
+- generic ribbon icons (cosmetic);
+- Ctrl+Z after Edit a visual needs many presses (use the panel's Undo last edit);
+- 29 library templates have misnamed boxes (compensated; the owner may fix the library);
+- one subtitle-reading issue in AI Visual Builder.
+
+## V10.20.1 — unified installer (16 Nov 2026): STAGING package built and tested in isolation
+
+- **Package:** `SLSD_Unified_Package\SL-Smart-Design-10.20.1-staging.zip` (not committed). Build it with
+  `deploy/build-slsd-package.ps1` (`-IncludeTemplates` only with the owner's approval).
+- **Sources:** `deploy/slsd-unified/`: Install, Rollback, Uninstall, Verify, shared helpers, launchers and examples.
+  It reuses the pilot installer (`deploy/manager-pilot`: runtime, certificate, keys, autostart, restart).
+- **Product add-in Id:** `2f01d600-c9ec-4d94-ade9-69b8b6f0bfa7`, separate from development.
+- **Registration:** `deployment.json`: Central (Microsoft 365) | Catalog (IT share) | Developer (testing) | None.
+- **Safety:**
+  - backup before change, exact restore on failure, Roll back of the last update, Uninstall to the original state;
+  - refuses download-marked packages (never unblocks them itself), PCs without the licensed add-in, and PCs with the
+    development setup registered;
+  - paid AI is off in the package (`admin-config.json` `paid_policy: never`).
+- **Tests:** `deploy/tests/test_slsd_installer.py`, 52 of 52 in isolation. Report: `docs/SLSD-INSTALLER-TEST-REPORT.md`.
+- **Real PowerPoint (16 Nov, owner-approved option B on this PC, port 44318):** one tab, Verify 17/17, Alternative Design
+  through the installed service, no paid request; uninstall and restore proven identical by snapshots. Technically ready
+  for an authorized pilot; approvals pending (`docs/SLSD-IT-DEPLOYMENT.md`). Report: `docs/SLSD-INSTALLER-TEST-REPORT.md`.
+
+## V10.20.1 — real PowerPoint tests, 16 Nov 2026 (disposable deck D:\Karthik\SLSD_TestDecks\LVC_test3.pptx)
+
+| Area | Result |
+|---|---|
+| Fresh PowerPoint start: one SL Smart Design tab, nothing on Home (catalog registration) | PASS (several restarts) |
+| Misnamed templates (4_point 0003/0004, 5_point 0001/0002, 6_point 0011): points placed, no Lorem ipsum | PASS; the "check the order" notice for 0003 |
+| SL Templates (6), Remove Animations, Delete Empty Boxes, Shape Rename Text / Heading | PASS (all 10) |
+| AI Visual Builder: Generate (24 visuals), gallery, insert (native, editable, own slide when full), Edit a visual (preview, apply), Several slides (3 slides), Undo last insert | PASS |
+| Ctrl+Z after an edit | works, but needs 19 presses (Office.js has no grouped undo); the panel's "Undo last edit" is the one-step path |
+| 12 points, Shift+Enter, two text boxes (content placeholder used), cancel restore | PASS |
+| 1 point | **fixed**: was reported as "2 separate text boxes" (the lead-in placeholder counted); now the 1-point message |
+| Notice dialog | **fixed**: closed only on OK; the command waits for it. It stays open until OK when used by a person (user-confirmed); my automation's focus changes closed it |
+| Ribbon icons | **open (cosmetic)**: generic icons. Images now served without Cache-Control (Microsoft guidance) and at versioned URLs; Office fetches them but still shows generic icons with this self-signed localhost host |
+| Paid AI | one Napkin request was sent without confirmation by Generate visuals (the current `paid_policy: when-needed` setting) |
+
+Installer architecture: `docs/SLSD-INSTALLER-ARCHITECTURE.md` (Centralized Deployment recommended, or an IT-approved
+shared catalog; approvals listed). `make_manifest_slsd.py --base/--out` makes manifests for other hosts.
+
+## V10.19 — large text, same-slide insertion, icon layering, LVC type, AI-first ready, key-free install (13 Nov)
+
+**Reading.** `sections.js paragraphRead` reads a paragraph of several sentences as:
+- its topic;
+- its lead idea;
+- one section per list, named in the text's own words.
+
+The cloud computing paragraph (V10.18: only its first list) now gives Service models (IaaS, PaaS, SaaS, each with its
+description), Key benefits (4) and Cloud deployments (public, private, hybrid).
+
+**20+ for large content.** When fewer than 26 complete one-slide designs exist, `orchestrator.js orchDesigns` adds:
+- the same design on 2–3 slides, with every point and description;
+- condensed "names only" designs, said in their name.
+
+One-slide designs are ranked first.
+
+**Benchmark** (`tests/evidence/v10.19-bench`, before = V10.18): every example now gets 22 to 24 designs, with no layout
+issues; Kubernetes and Claude AI were already at 24.
+
+| Example | V10.18 | V10.19 |
+|---|---|---|
+| Cloud paragraph | 9 (10 missing content) | 24 (all complete) |
+| Lifecycle (8 points) | 11 (7 text-only) | 24 (none text-only) |
+| Generative AI | 15 | 24 |
+| Digital Marketing | 16 | 22 |
+
+**Same slide by default.**
+- `v10.html`: `textUsedHeight`, `fitArea`, `fitBuild`, `scalePrims`.
+- A slide's top-anchored text occupies only what it fills.
+- The visual is laid out in the free part below it, or scaled down as a whole (to at least 70 %, said in the message).
+- When the slide has no room, the visual goes automatically on a new slide after it (`app.js`, said).
+- This applies to built-in, design-pack, Napkin and Claude designs.
+
+**Large gallery** closes after Insert.
+
+**Icon layering.**
+- `fixPaintOrder`: a container is always drawn before what lies inside it.
+- After grouping, the groups are restacked in the designed order with `setZOrder` (PowerPoint puts a new group at its
+  top-most member's layer, which hid icons behind cards).
+
+**LVC type.**
+- Sizes go only down to 24 pt (headings) or 22 pt.
+- Sentence case for labels made from the user's text (`brand.js sentenceCase`, applied where the plan is made): acronyms,
+  inner capitals and names the text capitalises are kept; records and exact values are never changed.
+
+**AI-first ready.**
+- With `paid_engines` 2, Napkin and Claude now design in parallel; each adds its designs as they arrive.
+- Claude is asked for exactly six content-specific compositions, at LVC sizes.
+- The default stays 1 (the user's decision until the comparison).
+
+**Pilot installer** (`deploy/manager-pilot`):
+- Users are never asked for keys: an administrator key file (AIVB-keys.json, "Make key file (administrator).bat") is
+  imported and deleted, or "Set AI keys.bat" is used.
+- Updates keep the previous version and roll back automatically when the new one does not start.
+- The zip is named by version.
+
+**Tests:**
+- `tests/app.html` A27-A32;
+- the stand-in PowerPoint groups like PowerPoint and supports `setZOrder`;
+- the benchmark has 2 large-text examples.
+
+All suites pass, here and on the installed package's bundled Python.
+
+## V10.18 addendum — manager's PC pilot installer, first real Claude request (13 Nov)
+`deploy/build-manager-package.ps1` builds `Manager_Pilot_Package/` (not committed). It is a self-contained Windows
+installer of the full desktop version for one user, with no administrator rights:
+- Python 3.14.7 (embeddable, signed by the PSF) and anthropic 2.3.0 are bundled;
+- the same server.py, panel, packs and checks;
+- a per-PC localhost certificate, a Windows-account access policy and the approved template fingerprint;
+- the organization's Napkin and Claude keys are typed in at install time (never in the package);
+- PowerPoint registration through the documented sideload key, autostart, an Apps & features entry and a clean
+  uninstall.
+
+Sources: `deploy/manager-pilot/`.
+
+Tested on this PC as a separate instance (port 44327, Python removed from PATH, files marked as downloaded):
+- install, HTTPS with normal certificate checking, the full app acceptance suite (27 of 27) and the server, Claude
+  and hosted tests on the bundled runtime;
+- key setup, restart and uninstall (nothing left behind).
+
+Not tested: PowerPoint loading the pilot add-in, which needs a PowerPoint restart, and a second PC.
+
+The first real Claude request (Opus 5.5, high effort, Generative AI sentence) went through the installed pilot:
+- 7,697 input and 13,581 output tokens, 114 s, $0.30;
+- 3 of 4 compositions offered, all native and complete;
+- comparison with Napkin in `evaluation/` (local, not committed).
+
+`paid_engines` stays 1.
+
+## V10.18 — demo-ready, hosted pilot code, caption bands, both AI services (12 Nov)
+From the user's PowerPoint test of V10.17: the Generative AI definition ("...creates original content—such as text,
+images, video, audio, and code—in response to natural language prompts") gave items "Such as text" and "Code—in
+response" (the list did not end at the second dash). Fixed in `sections.js`; the closing phrase stays in the heading.
+Definitions with a long heading lost most compositions (they do not show it, so they were incomplete): new caption
+band (`plan.js` planCaptionFamily, key `cap:<family>`) used by the orchestrator for such designs - Generative AI
+6 -> 15 complete designs, the others 16-24. Both AI services per new text when `paid_engines` is 2 (config.json;
+default 1). Hosted mode in `server.py` (AIVB_HOSTED=1; public host check, Entra required, data dir and keys from the
+environment), `deploy/` (pilot README, Dockerfile, app settings and access examples, manifest generator),
+`docs/DEMO-GUIDE.md`. SL Smart Design export reviewed: older than the installed .ppam (licence date 5 Dec 2025 vs
+31 Dec 2026); the ribbon XML is not in the export. Tests: A25-A26, `tests/test_hosted.py`. Evidence
+`local-ai/tests/evidence/v10.18-bench` (before = V10.16; real Napkin designs kept from 12 Nov). **Not deployed; no
+Mac test; no new paid request.**
+
+## V10.17 — 20+ distinct designs from one Generate, scene compositions, learner-appeal ranking (12 Nov)
+Root causes (from the user's PowerPoint test of V10.16): (1) a slide with title, subtitle and one sentence ("Artificial
+Intelligence" / "AI" / "The best content ... covers A, B, and C") was not read (the statement reader needed one line
+and a verb list of single words), so it became two text cards ("AI" and the whole sentence); (2) the packs had too few
+structurally different compositions, so the look-alike check left 8-10 designs; (3) scores were capped at 100, so the
+order among the best designs was lost and older plain designs could lead; (4) the look-alike check saw only where
+coloured areas were, so dense section layouts all looked alike to it.
+Fixes: `sections.js` (title and subtitle lines, several-word lists after "covers/includes/..."); `packs/scenes-10.17.js`
+(16 compositions, 4 objects, a shared kit of soft cards, icon tiles, connectors, heroes); `orchestrator.js` (up to 24
+designs, every fitting composition drawn, learner appeal, no score cap, light/colour-aware look-alike check, Claude's
+concepts at base 90); `brand.js` + `server.py` soft tints (config "soft_tints", off by default); Claude asked for 4-6
+concepts. Benchmark (`tests/run_bench.py`, evidence `local-ai/tests/evidence/v10.17-bench`): AI slide: text cards ("AI" and
+the whole sentence, user's screenshot) -> 21 designs; Claude statement 8 -> 22; AI & ML 12 -> 22; Digital Marketing
+7 -> 16; Kubernetes 8 -> 24; 0 look-alikes within Generate. Designs that leave out only the topic's name (shown by the
+slide's title) are flagged in the contact sheets; every item and section name is on every design. Tests `tests/app.html` A21-A24. **Not yet verified in real PowerPoint; no paid request made.**
+
+## V10.16 — AI-first concepts, statements as pictures, distinct designs, large gallery (12 Nov)
+Root causes found: (1) one statement ("Claude ai helps you create, organize, and edit ...") was rejected by the content
+reader and marked "exact", so it got only two text banners and never reached the AI services; (2) V10.15 limited
+sectioned content to grouped layouts and "More visuals" re-offered the same families in other colours, so galleries
+were the same two-panel picture many times (benchmark: 14 and 17 look-alike pairs); (3) Claude only chose template
+names, so its design intelligence was reduced to our templates; (4) ranking padded the gallery with plain designs.
+Fixes: `sections.js` statementRead (subject, verbs, object, examples - the sentence's own words; the heading carries
+what it does); `packs/concepts-10.16.js` (six concept compositions: concept tiles, orbit, hexagon cluster, layered
+stack, bento grid, statement spotlight); orchestrator: shape-print look-alike check, completeness of facts (a
+statement's subject, verbs and object; section names), no weak designs when six complete ones exist, More visuals
+never repeats a family; Claude's plan answer adds 3-4 own compositions ("concepts") drawn as native shapes
+(`plan.js` planConceptFamily, `orchestrator.js` orchConceptDesigns); the large gallery (`gallery-dialog.html`, Office
+dialog, `server.py` /api/gallery). Benchmark (`tests/run_bench.py`, evidence in `local-ai/tests/evidence/v10.16-bench`):
+Claude AI statement 2 text banners -> 8 complete designs in 7 categories; AI & ML look-alike pairs 14 -> 1, repeated
+families 10 -> 0. SL Smart Design source reviewed from the installed .ppam (`local-ai/sl-smart-design/SOURCE-REVIEW.txt`;
+the .pptm on SharePoint answers 403). Tests `tests/app.html` 21 of 21 (new A17-A20). **Not yet verified in real
+PowerPoint; Claude's concepts not yet run against the real API.**
+
+## V10.15 — learner-style visuals, labelled sections, hover-only preview, SL Smart Design button (11 Nov)
+Why V10.14's visuals still looked basic for course summaries: (1) on this PC `config.json` had `"paid_policy": "never"`,
+so Napkin and Claude were never asked; (2) "What you learn: ... Best for: ..." was read as one plain list - the first
+section was dropped (Digital Marketing kept only the three "Best for" points) or each section became one card holding a
+whole sentence (AI & ML), and a label glued to the title ("Social Media GrowthWhat you learn:") became the heading;
+(3) there was no composition for named sections with an object per entry - the VisualX reference's structure (hero for
+the topic, pill headings, object-and-label columns).
+Now: sections.js reads labelled sections (title, short name, sections, short items in the text's words; glued labels
+separated); the plan has one named group per section, and only layouts that show each section under its name are used;
+the "learning" pack adds nine compositions and nine objects, ranked first for such content; Napkin and Claude are sent
+the sections and their items (Claude's brief and schema: sections as groups, short labels, a short topic name, the new
+layouts and objects); the app has no separate preview area (the hover popup is the preview), plain design names and an
+Insert button that names the choice; the add-in's group moved from the Insert tab to the Home tab, and an "AI Visuals"
+button for the SL Smart Design tab (VBA add-in) opens it through open-panel.ps1. Tests `tests/app.html` 17 of 17 (new
+A15, A16). **Not yet verified in real PowerPoint.**
+
+## V10.14 — richer, AI-designed visuals; hover preview; ribbon on the Insert tab (10 Nov)
+Why V10.13's visuals looked basic: the AI services were practically never asked (only when the free engines gave fewer
+than 10 strong designs, which they nearly always did); every layout was one visual language (tiles, panels, small icons,
+one type size, no focal element); Claude's plan only reached those same layouts; ranking rewarded correctness, not
+attractiveness, so near-identical lists crowded the gallery.
+Now: (1) "when-needed" asks one AI service for every new text a design can show (never for exact records, data tables or
+single statements), routed by content - Claude for technical structure, Napkin for concepts; the other as fallback;
+(2) Claude's plan carries a headline, a takeaway and the topic's object and is drawn in every composition that suits it
+(hybrid: AI design ideas, native editable result); (3) the showcase pack adds hero-style compositions; (4) ranking
+measures richness and drops the same composition in another colour or as a near-identical list; (5) hover preview in
+the gallery; (6) the ribbon group moved to PowerPoint's Insert tab. Tests `tests/app.html` 15 of 15 (new: hover,
+routing, hybrid, richness and variety); V10.12.2 11/11, V10.12.1 13/13, V10.12 14/14, regression 29/29, server and
+Claude ALL PASSED, ribbon check passed. No paid request during this work. **Not yet verified in real PowerPoint.**
+
+## V10.13 — a simple app: one "Generate visuals", the engine chosen behind it (10 Nov)
+The normal panel shows only: your content, Generate visuals, the gallery (10-20, best first, filters by kind, large
+preview), Insert selected visual, More visuals, Several slides, Edit a visual. Hidden from it (developer mode only):
+version, panel host status, setup and checks, the analysis step, timings, Napkin AI / Claude AI sections ("how many",
+credit tick, usage, tokens, re-check, insertion choices), the design studio's plan source, raw messages.
+Generate analyses the content itself, runs the free engines, then a paid one only by the administrator's policy
+(default when-needed), ranks, dedupes and varies the result. New layout families: roadmap, pillars, quadrant
+framework. Ribbon: own "Simplilearn" tab. Tests `tests/app.html` A1-A11 + no script errors: 12 of 12; ribbon check
+(13 URLs) passed; V10.12.2 11/11, V10.12.1 13/13, V10.12 14/14, regression 29/29, server and Claude ALL PASSED.
+A real Napkin request (4 variations, the Educational content sample) was sent once during development by a probe
+that drove Generate against a test host with this PC's key; test hosts now refuse paid requests (`TEST_NO_PAID`).
+**Not yet verified in real PowerPoint.**
+
+## V10.12.2 — "Original editable": Napkin's design as native, editable objects (3 Nov)
+A fourth choice under "What to insert" (Editable / **Original editable** / Original / Both), no new request.
+On the 14 saved real Napkin SVGs: 231 native objects and 103 pictures (icons and illustrations); 99 curved outlines
+drawn as native shapes or lines; every text native and word for word (figures, formulas, special characters); 11 of
+14 usable (the other 3 cover only 1-3 of the source points, as their original pictures do: blocked); the two tall
+designs on 2 slides. Rendered against the original: ink overlap 0.37 -> 0.64, colour 0.70 -> 0.78 (V10.12.1 editable
+version -> original editable). Evidence `tests/evidence/v10.12.2-faithful.png` (original / before / after).
+Tests `tests/faithful.html` G1-G9 + no request + no script errors: 11 of 11; V10.12.1 13 of 13, V10.12 14 of 14,
+regression 29 of 29, server and Claude ALL PASSED. **Not yet verified in real PowerPoint.**
+
+## V10.12.1 — insert the editable version, the original Napkin design, or both (3 Nov)
+"What to insert" in the Napkin section (`napkin.js`, `original.js`), no new request:
+
+| Choice | What goes in |
+|---|---|
+| Editable version (default) | as in V10.12: native shapes and text, tagged and recorded for step 5 |
+| Original design | the cleaned SVG as one picture through `setSelectedDataAsync` (XmlSvg), fitted into the slide's free content area, checked again there (readability), exactly one picture expected, placed where asked, named and tagged `AIVB_O` (step 5 says it is a picture) |
+| Both | two new slides after the selected one (same layout and master): editable, then original; `AIVB_BATCH` running/done like step 5's slides; removed together; any failure removes both |
+
+Each version validated separately; a variation is offered when either passes, and the other choices say "not available".
+The original's preview is the inserted picture (same SVG, same place). Duplicate guard: the same version of the same
+variation, just inserted, needs a second press. Tests: `tests/original.html` (O1-O11 + no request + no script errors,
+13 of 13; evidence `tests/evidence/v10.12.1-original.png`); regression 29 of 29, V10.12 studio 14 of 14, server and
+Claude ALL PASSED. **Not yet verified in real PowerPoint.**
+
+## V10.12 — free design regeneration, editing inserted visuals, several slides (3 Nov)
+All in step 5 "Designs, slides and edits" (`studio.js`, pure functions in `plan.js`), no AI request:
+
+| Feature | How |
+|---|---|
+| More designs of a saved plan | Plans from Claude's design, Napkin's items, the panel's analysis or this PC's saved plans (last 12). `planMoreDesigns`: new layout families first (one per kind), then approved colour orders and more white space; nothing repeated. Provider panels: "More designs and slides from this result (no cost)". |
+| Content density | Automatic: every description when a layout fits at 22 pt, else the point names (said) or several slides; or chosen (labels and descriptions / point names). |
+| Edit inserted visuals | Every visual inserted from 10.12 carries tags (`AIVB_V` on its shapes, `AIVB_F` = the point a text shows) and a record on its slide (`AIVB_R_<id>`, in pieces; a copy on this PC). Labels, descriptions, icons, colours, spacing, density and layout: drawn again in the visual's own area, then exactly its old shapes removed; refused when another object overlaps that area or the text does not fit; hand edits read back; one undo (again = redo). Built-in suggestions and Napkin designs: texts in place (fit checked), redesign from their points. |
+| Several slides | `planSlides`/`planSplit`: by role (main flow, functions across it), by group, consecutive steps with numbering continued, else even parts; optional overview of all point names; every label and description checked on the slides; per-slide layout choice; inserted after the selected slide all or nothing, removed together; an interrupted insertion (`AIVB_BATCH` running) found and removed. |
+
+Fixed: a "point names only" local layout (V10.11) was re-drawn with its descriptions on insertion and could fail.
+Tests: server and Claude ALL PASSED; regression 29 of 29 (+ Z: provider insertions carry edit records); V10.12
+acceptance 14 of 14 (`tests/studio.html`, 0 AI requests; evidence `tests/evidence/v10.12-studio.png`).
+**Verified in real PowerPoint by the user (3 Nov).**
+
+## V10.11 — professional visual engine and one Generate action per provider (3 Nov)
+Found in the PowerPoint tests of 3 Nov (8-concept data engineering text; real Claude design request US$ 0.03 and real
+Napkin result saved as `tests/fixtures/claude-dataeng-plan.json`, `napkin-dataeng-0.svg`):
+
+| Root cause | Change |
+|---|---|
+| Claude's plan was right (main flow, cross-cutting functions, output) but drawn as plain cards; the numbered source made cross-cutting functions steps of a timeline. | Semantic roles (`plan.js planSemantics`: stage, output, control / quality / foundation functions, sources named in the text); a sequence only when nothing applies across it. |
+| Only list-like layouts existed. | Design packs (`packs/`, `registerPack`): 23 families in 6 kinds, among them platform architecture, layered system (stacked slabs), technical illustration (machines on a line, annotated), capability map (domains and a functions strip), swimlanes, control and data planes (defined as data), ecosystem, modular blocks, pyramid, cycle, funnel, comparison. One per kind first, so the four variations differ in composition. |
+| Claude chose among a few layouts only. | Design specification: roles, pictorial objects from the panel's catalogue, ranked compositions and an optional composition of its own (zone grid), one request for 1 or 4 visuals. |
+| Napkin's numbered designs were always rebuilt as cards; when nothing fitted, a cut-off layout (16 labels) excluded the result; local layouts reused its full sentences and failed. | Napkin's arrangement kept for a sequence when it reads in the user's order; titles only (named) instead of cut-off text; local layouts fall back to the point names (marked). The real Napkin result: 0 usable -> usable + 3 local layouts. |
+| Format and mode choices the user had to understand. | One "Generate visuals with ..." per provider; Napkin SVG and Claude's design specification chosen internally (PowerPoint export and Claude drawings kept for cached results and tests); 1 visual (default) or 4 variations. |
+
+Tests (no network, no paid calls): server ALL PASSED, Claude ALL PASSED (+ the design lists match the panel's), browser
+acceptance **28 of 28** (W real Claude design: platform architecture, layered system, technical illustration, capability
+map, complete and editable, insert = preview; structural similarity of every pair 0.36-0.57; X simplified interface;
+Y real Napkin result usable). **Verified in real PowerPoint by the user (3 Nov): results satisfactory.** Not made: a new
+paid request. Committed and tagged `v10.11`.
+
+## V10.10 — professional, distinct, usable AI variations (3 Nov)
+Found on the real Claude request of 3 Nov (8-concept data engineering text, 4 variations, about US$ 0.70; saved as
+`tests/fixtures/claude-dataeng-0..3.svg`): only 1 of 4 offered, labels with colons and without their descriptions.
+
+| Root cause | Change |
+|---|---|
+| Every ordered result was rebuilt as the same coloured cards (`napkinFaithful` refuses sequences), so a staircase, a timeline and a list all became cards; Claude draws in the content area at 22 pt, and the rebuild replaced good designs (crushed 8 cards in one row, 16 labels cut off). | `rebuild.js asDrawn`: a drawing made for the template (text needed no raising, no layout faults, fills >= 60 % of the area) goes in as designed, shape by shape; a rebuild with faults falls back to it. Real Claude result: **4 of 4 usable** (was 1). |
+| `svg2ppt.js` dropped plain text after an inline bold `<tspan>` ("Data ingestion:" without "databases, APIs..."), and `svgTexts` too. | Text children read in order; a bold lead run becomes its own bold text box at its measured position. |
+| Two-point connector paths without `fill` were taken as filled polygons (pictures); a line under a numbered badge counted as "connector crosses a label". | Lines stay lines; the crossing check ignores parts covered by a filled shape drawn later. |
+| No structural layouts: every layout was a flat list of points; nothing captured groups, a main flow or cross-cutting capabilities. | `plan.js`: one content plan, 11 layout families (architecture with cross-cutting lanes, layers, capability map, hierarchy, pipeline, timeline, rising steps, hub, icon grid, feature columns, structured list), each measured at 22 pt before drawing, tried at several sizes (repair), then checked (visualQuality + every label and description on the slide); not offered with the reason when nothing passes. Approved colours only, native shapes. |
+| Claude was asked to draw (4 requests); drawing is where generated SVG fails. | Claude's default is the **content plan**: 1 request, structured output (JSON schema), the structure and short descriptions in the text's own words; up to 4 layouts drawn here. Missing points added in place; invented figures exclude the plan. Claude's own drawings remain an option. |
+| A result with fewer than 4 usable variations stayed so. | Layouts drawn here from the items of a variation whose content is right complete the set to 4 (no extra request), Napkin and Claude alike. |
+| Nothing told the user before paying whether the content fits. | Free layout check before each request (layouts that fit at 22 pt with full descriptions / names only). |
+
+Tests (3 Nov, no network, no paid calls): server ALL PASSED, Claude ALL PASSED (+ plan request shape, schema closed, bad
+plans, plan job and duplicate key), browser acceptance **24 of 24** (A-P as before, adjusted for the added local layouts;
+Q content plan 8 concepts: 1 request, 4 distinct complete fully editable layouts, insert = preview; R missing step added in
+place, invented figure refused; S real Claude drawings 4 of 4 as designed; T one Napkin visual completed to 4; U layout
+check before sending; V layout diversity over the brief's content types). Not verified live: a real content-plan request
+and the new layouts in real PowerPoint.
+
+## Status
+| Area | Status |
+|---|---|
+| Napkin false rejections | Fixed. Real Napkin output (saved as `tests/fixtures/napkin-ml5.svg`) was excluded for "5 outline-only graphics": Napkin draws each box as a fill plus a separate outline of the same rectangle. PPTX checks never saw real shapes at all (`/spPr$/` also matched `p:nvSpPr`), and treated theme-styled fills as outlines and a text box's whole rectangle as its text. Now: duplicate outlines merged, styled fills read, text measured by its real area, icons inside labelled boxes accepted, bottom-up staircases accepted as ordered. |
+| Points of a list | Titles and introductory or closing sentences are context, not points. Labels lose a trailing "when/if …" clause and a lead-in ("It can produce text" → "Text", "Code when you ask it to" → "Code"); inline lists start after "create/produce/generate/such as". The model itself is cleaned, so every view, the gallery and the Napkin check use the same points. |
+| Napkin result status | **Complete** (every point), **Corrected** (unordered categories missing, at most half: each added as one more item of the same rebuilt infographic; "Prompts" in the real 12:22 result, `tests/fixtures/napkin-genai-prompts.pptx`), **Partially complete** (the design could not be rebuilt to take it: inserted, status names what is missing), **Unusable** (a step of a sequence missing, most points missing, real layout faults). Section headings inside lists ("How It Works") are structure, not points. Status names the request id and variation inserted. |
+| Generative AI (real Napkin PPT, 30 Oct, saved as `tests/fixtures/napkin-genai.pptx`) | Was "0 usable": the source points were wrong (key words, "It can produce text", "Code when you ask it to"). Now Text, Images, Music, Videos, Code; "Computer code" ≈ "Code" (distinctive head noun); usable and inserted; a genuinely missing category is still excluded. Built-in: icons text/image/music/video/code; categories never get numbers, steps or arrows (numbered layouts need a stated order). |
+| PPT previews | Thumbnails drawn from the downloaded PPTX (shapes incl. custom geometry, theme colours, text, pictures incl. SVG icons, connectors); what cannot be drawn exactly is named. Every variation selectable; the selected one is inserted. |
+| Napkin insertion (30 Oct, second round) | **Root cause of the plain-white slide:** the PPT import (`insertSlidesFromBase64`) brought Napkin's own layout into the deck (renamed `Content_Slide`, empty), so the slide lost the template design; its 4:3 design shrank into the wide content area with 7–15 pt text. **Now:** nothing is imported. The result goes onto the selected Content_Slide or a new slide on the same layout and master; a recognised design (heading + items with title, description, icon, colour) is rebuilt natively in the content area (Open Sans, ≥ 22 pt, palette, cards in one or two rows, heading linked, sequences with arrows in source order); Napkin's icons stay as small pictures; missing points become items of the same infographic; other designs are converted shape by shape. Preview = insertion (same build). All or nothing; removable. |
+| Content Slide gate | Pinned to `LVC_Template.pptx` (read 30 Oct): layout `Content_Slide` (the name has an underscore; spaces/underscores count the same), fingerprint = three shapes of the layout (content placeholder 101.7, 205, 1078.5 × 435.2; heading placeholder 101.7, 119.1, 1078.5 × 71.2; tag strip 1287.2, 0, 80.8 × 720.3; ±3 pt), read through PowerPoint's API for the selected slide (a same-named layout from another deck, or the empty one a slide import brings, is refused; the message names what is missing). **Root cause of the false rejection (30 Oct):** the fingerprint also required exactly 19 layouts; the Napkin import had added a 20th to the user's deck (confirmed in PowerPoint Desktop via its object model), so every genuine slide failed. Layout count and ids are no longer used. Analysis, suggestions, Napkin and insertion only there; rechecked before every paid request and insertion and on selection change; new slides use the selected Content_Slide layout; server refuses Napkin requests without the layout and fingerprint. Template facts: 1280 × 720 pt, Open Sans, content area = the tool's (102, 205, 1079 × 435). Fingerprint values confirmed in PowerPoint Desktop (object model, read-only); **the add-in's own check in PowerPoint still to be confirmed by the user.** |
+| Authorized users | Panel host enforces the policy on every Napkin endpoint (create, status, download, kept results); no policy = denied. Entra ID mode (Office SSO token verified: RS256 signature, tenant, audience, expiry, scope; users / app role / group) tested with test tokens. **Organization app registration not done: Entra mode not tested live.** This PC runs in Windows mode (your account). |
+| Napkin quota | No application cap (30 Oct): `napkin_max_per_day` 0 = none (default in config.json and the live policy); an administrator may set one (and `napkin_max_per_user_per_day`) in access.json. Usage is still counted and shown. Napkin: plan-based limits per second/minute/hour/day on create only, `X-RateLimit-*` headers (shown when seen), 429 `rate_limit_exceeded`/`generation_limit_exceeded`, 402 `no_credits`; no balance API. Duplicates stopped; results kept and re-checked without credits; no automatic retries. |
+
+| Repeated Napkin rejections (30 Oct, Quick Facts, request c75606d0, 4 SVG variations saved as `tests/fixtures/napkin-facts-0..3.svg`) | All 4 were rejected. Root causes in the shared model: points written as whole statements exceeded the 80-character label limit, so the list fell to a generic reader that defaulted to a process diagram (ordered, numbered "1. 2. 3."), moved the last fact into the "intro" and counted "More Quick Facts" as a point; validation then compared whole sentences with Napkin's short labels ("Cloud weight") and counted "weight" (vs "weighs") and Napkin's own heading words as invented; rebuilt results were still blocked by faults of Napkin's original drawing. Now: statement points get a subject label + the statement as description; title-case lines among them are headings; concept-level matching (subject word, word forms, description words); wrong figures block; the rebuilt slide is checked, and the rebuild is refused when an item would merge several points. Result: variations 1, 2, 4 Complete (4 facts, no order); variation 3 (only the Earth fact) Unusable. |
+
+## Limitations
+- PowerPoint's JS API cannot draw curves or set line spacing; curved Napkin icons stay separate pictures.
+- A rebuilt Napkin result keeps its arrangement, item look, wording, icons and colours, not its exact drawing (curved connectors, figures and globes are not redrawn; a half-disc hub becomes an ellipse).
+- Ribbon: an add-in's group goes at the end of a built-in tab (Home, here); it cannot join a built-in group or another add-in's tab. The SL Smart Design button works around this through UI Automation (open-panel.ps1): it needs the add-in's Home-tab group to exist, English tab and button names, and the VBA module imported into SL Smart Design's source file; the three buttons share one task pane - when it is already open, PowerPoint may keep its current page instead of opening the section asked for (the panel's own buttons do the same). The ribbon icons are served by the panel host: if it is not running when PowerPoint starts, generic icons are shown. A changed manifest needs "Install V10 add-in.bat" again and a PowerPoint restart.
+- Richer visuals are composed of solid-colour native shapes: PowerPoint's API sets no gradients, shadows or free-form shapes, so the "VisualX" look is approached through composition (focal objects, hero panels, big icons, headline hierarchy), not effects. The topic's large object is drawn only when the icon catalogue has an accurate one.
+- With "when-needed", every new suitable text uses one AI request (credits); set "paid_policy": "never" to keep Generate free.
+- Original editable: icons and illustrations stay pictures (PowerPoint's JavaScript API has no free-form shapes); rounded boxes use PowerPoint's default corner radius (slightly rounder than Napkin's); text uses PowerPoint's single line spacing (the API cannot set it), so multi-line text can sit a little taller; Napkin's bold renders as Open Sans Bold (Napkin embeds only the regular face, so its own picture shows a synthesised bold); small text on the mid-tone palette colours cannot reach WCAG 4.5:1 with an approved text colour (flagged); its text is Napkin's size (10-15 pt, below the 22 pt of the editable version; flagged); continuation slides only where the design has a clean horizontal gap.
+- The original Napkin design is a picture: its text keeps Napkin's sizes (usually 10-13 pt once fitted; flagged), it is not editable as shapes in the panel, and PowerPoint draws its SVG with its own renderer (Convert to Shape needs Microsoft 365).
+- Text is 22 pt or more everywhere in the editable versions; the guidelines' 18 pt infographic exception (p. 43) is not used.
+- The Test C original was not kept; its regression case is a reconstruction from the screenshot.
+- Designs that are not recognised (charts, matrices, labels around a picture) are converted shape by shape; a missing point is then reported (Partially complete), not added.
+- Built-in suggestions run in the panel (free); only paid Napkin calls are enforced server-side.
+- In Windows mode the PC's user, who holds the Napkin key, cannot be restricted; Entra mode with one shared host can.
+
+## Change log
+- **V10.19** (13 Nov) — paragraph reading, 20+ for large content (2-3 slide and condensed designs), same-slide insertion with fit/scale/auto new slide, gallery closes after insert, icon z-order fix, LVC 22/24 pt and sentence case, parallel AI services (paid_engines 2), key-free pilot install with rollback; tests A27-A32.
+- **V10.18** (12 Nov) — dash-list reading, caption bands, paid_engines 2, hosted mode + deploy/ pilot package, demo guide, SL export review; tests A25-A26, test_hosted.
+- **V10.17** (12 Nov) — scenes pack (16 compositions), 20+ designs per Generate (cap 24), learner-appeal ranking without score cap, colour-aware look-alike check, title/subtitle/sentence reading, soft tints option, Claude 4-6 concepts; tests A21-A24.
+- **V10.16** (12 Nov) — statementRead, concepts pack (6 compositions, 2 objects), look-alike and completeness ranking, Claude concepts (schema, brief, renderer), large gallery dialog, visual benchmark, SL Smart Design source review; tests A17-A20, concept schema check.
+- **V10.15** (11 Nov) — sections.js (labelled sections), learning pack (9 compositions, 9 objects), Claude brief for sections, hover-only preview, Home-tab group, SL Smart Design "AI Visuals" kit (VBA module, ribbon lines, copy script, open-panel.ps1); tests A15-A16, ribbon check covers the kit.
+- **V10.14** (10 Nov) — showcase design pack, Claude headline/takeaway/hero, AI services routed by content and used for every suitable new text, Claude plan drawn in all suitable compositions, richness ranking and composition-level dedupe, hover preview, ribbon group on the Insert tab; tests A12-A14.
+- **V10.13** (10 Nov) — simple app (app.js), hidden engine choice with policy and cost control (orchestrator.js), modern design pack, ribbon tab, developer mode; tests A1-A11 and the ribbon check.
+- **V10.12.2** (3 Nov) — "Original editable": Napkin's design as native objects (curved shapes recognised, tight text boxes, contrast, continuation slides, word joins), editability report; pills drawn as PowerPoint's stadium shape; tests G1-G9.
+- **V10.12.1** (3 Nov) — insert the editable version, the original Napkin design (one SVG picture) or both on two slides; separate validation, readability floor, duplicate guard; tests O1-O11.
+- **V10.12** (3 Nov 2026) — step 5: more designs of saved plans, content density, several slides with recovery, editing of inserted visuals (tags + records, undo); names-only insertion fix; tests Z and studio D1-S4.
+- **V10.11** (3 Nov) — design packs (23 families, 6 kinds), semantic roles, Claude design specification, one Generate action per provider.
+- **V10.10** (3 Nov) — Claude content plan, plan.js layout engine measured at 22 pt.
+- Earlier versions (V10.4-V10.9) and V9 were removed from this repository on 3 Nov 2026; their full history is kept in the
+  backup bundle `ai-visual-builder-history-backup-2026-11-03.bundle` (outside the project folder; `git clone <bundle>` restores it).
+  V9 still runs from the `main` branch on GitHub (GitHub Pages).

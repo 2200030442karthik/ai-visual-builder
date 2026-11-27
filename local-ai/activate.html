@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Activate AI Visual Builder</title>
+<!-- V10.22 team installations: shown instead of every panel page until this Windows user on this PC is activated
+     (server.py activation_state). The key goes only to this PC's own panel host (activation.py). -->
+<script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+<style>
+  :root { --accent:#3645A9; --ink:#2b2f36; --muted:#5c6670; --line:#d8dde6; --bad:#b3261e; --ok:#1e7b3a; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:20px 16px; font:14px/1.45 "Segoe UI", Arial, sans-serif; color:var(--ink); background:#fff; }
+  h1 { font-size:18px; margin:0 0 6px; }
+  p { margin:0 0 14px; color:var(--muted); }
+  label { display:block; font-weight:600; margin-bottom:6px; }
+  input { width:100%; padding:9px 10px; font:15px/1.2 Consolas, "Segoe UI", monospace; letter-spacing:.5px; text-transform:uppercase;
+          border:1px solid var(--line); border-radius:6px; }
+  input:focus { outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent); }
+  button { margin-top:12px; width:100%; padding:10px; font:600 14px "Segoe UI", Arial; color:#fff; background:var(--accent);
+           border:0; border-radius:6px; cursor:pointer; }
+  button:disabled { opacity:.6; cursor:default; }
+  #msg { margin-top:12px; min-height:20px; }
+  #msg.bad { color:var(--bad); } #msg.ok { color:var(--ok); }
+  .small { font-size:12px; margin-top:18px; }
+</style>
+</head>
+<body>
+  <h1>Activate AI Visual Builder</h1>
+  <p>Enter the activation key your manager gave you. You only do this once on this PC.</p>
+  <form id="f" autocomplete="off">
+    <label for="key">Activation key</label>
+    <input id="key" name="key" placeholder="AIVB-XXXXX-XXXXX-XXXXX-XXXXX" spellcheck="false" maxlength="40" required>
+    <button id="go" type="submit">Activate</button>
+  </form>
+  <div id="msg" role="status" aria-live="polite"></div>
+  <p class="small">No key? Ask your manager. Your activation works for your Windows account on this PC only.</p>
+<script>
+  if (window.Office && Office.onReady) Office.onReady(function () {});
+  var $ = function (id) { return document.getElementById(id); };
+  function target() { return location.pathname === '/activate.html' ? '/v10.html' + location.search : location.href; }
+  function say(t, cls) { $('msg').textContent = t; $('msg').className = cls || ''; }
+  function api(path, body) {
+    return fetch(path, { method: body ? 'POST' : 'GET', headers: Object.assign({ 'X-AIVB-Client': '1' }, body ? { 'Content-Type': 'application/json' } : {}),
+                         body: body ? JSON.stringify(body) : undefined, cache: 'no-store' })
+      .then(function (r) { return r.json().catch(function () { return { ok: false, message: 'Unexpected answer (' + r.status + ').' }; })
+        .then(function (j) { if (!r.ok && !j.message) j.message = j.error || ('Error ' + r.status); return j; }); });
+  }
+  api('/api/activation').then(function (s) {
+    if (s.ok) return location.replace(target());
+    if (s.reason && s.reason !== 'not-activated') say(s.message, 'bad');
+  }).catch(function () { say('AI Visual Builder is not running on this PC. Run "Restart AI Visual Builder" and try again.', 'bad'); });
+  $('f').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var key = $('key').value.trim();
+    if (!key) return;
+    $('go').disabled = true; say('Checking the key…');
+    api('/api/activate', { key: key }).then(function (r) {
+      if (r.ok) {
+        say('Activated' + (r.label ? ' for ' + r.label : '') + (r.expires ? ', valid until ' + r.expires : '') + '. Opening AI Visual Builder…', 'ok');
+        setTimeout(function () { location.replace(target()); }, 900);
+      } else { say(r.message || 'The key was not accepted.', 'bad'); $('go').disabled = false; $('key').select(); }
+    }).catch(function () { say('AI Visual Builder is not running on this PC. Run "Restart AI Visual Builder" and try again.', 'bad'); $('go').disabled = false; });
+  });
+  $('key').focus();
+</script>
+</body>
+</html>

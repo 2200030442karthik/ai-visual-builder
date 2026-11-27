@@ -1,0 +1,531 @@
+<!doctype html>
+<!-- V10.9 acceptance harness. Loads the real panel (v10.html + gallery.js) in an iframe, replaces PowerPoint with a strict
+     stand-in that refuses what PowerPoint refuses (InvalidArgument at sync, keeping the shapes queued before it, like the
+     real batch), runs every sample through analysis, the gallery and insertion, and writes JSON into <pre id="out">.
+     Run:  python server.py --http --test --port 44398   then   msedge --headless --dump-dom http://localhost:44398/tests/harness.html
+     (tests/run_tests.py does both). -->
+<html><head><meta charset="utf-8"><title>V10.9 harness</title><script src="/tests/samples.js"></script><script src="/tests/mock.js"></script></head>
+<body><iframe id="f" src="/v10.html?dev=1" style="width:420px;height:900px"></iframe><pre id="out">running</pre>
+<script>
+const out = document.getElementById('out'), errors = [];
+const CASES = [
+  ['ml_lifecycle_7', 'ML lifecycle (7 stages)', { n: 7, ordered: true }],
+  ['ml_lifecycle_7_desc', 'ML lifecycle (7 stages, descriptions)', { n: 7, ordered: true }],
+  ['ml_apps_6', 'ML applications (6)', { n: 6 }],
+  ['ml_workflow_4', 'ML workflow (4 steps)', { n: 4, ordered: true }],
+  ['ml_workflow_arrows', 'ML workflow (4 steps, arrows)', { n: 4, ordered: true }],
+  ['preprocessing', 'Data preprocessing', { n: 4, ordered: true }],
+  ['two_points', 'Two points: PM priorities', { n: 2 }],
+  ['pm_workflow_prose', 'Project management workflow', {}],
+  ['ml_training_prose', 'Machine learning training', {}],
+  ['supervised_vs', 'Supervised vs unsupervised', {}],
+  ['scores', 'Project scores', { data: ['95', '78', '62', '89', '84'] }],
+  ['special', 'Special characters and formulas', { tokens: ['V10_TEST_2026', 'A&B', '100%', '₹5,499.50', '#Automation', 'user@example.com'] }],
+  ['table', 'Project records (table)', { data: ['1001', '95', 'Alpha Project'] }],
+  ['long_doc', 'Long document with 9 sections', {}],
+  ['claude', 'Claude statement', { relation: ['Anthropic', 'developed', 'Claude', 'AI model'], min: 3, max: 6 }],
+  ['claude_active', 'Claude statement (active)', { relation: ['Anthropic', 'developed', 'Claude', 'AI model'], min: 3, max: 6 }],
+  ['definition', 'Definition statement', { min: 2, max: 6 }],
+  ['arch_sentence', 'Cloud architecture (sentence)', { n: 4, ordered: true }],
+  ['powerbi', 'Power BI content types', { n: 6, distinctIcons: true, min: 10, max: 25 }],
+  ['ml5_intro', 'ML workflow (5 stages, intro)', { n: 5, distinctIcons: true }],
+  ['ml5_title', 'ML workflow (5 stages, title line)', { n: 5 }],
+  ['ml5_arrows', 'ML workflow (5 stages, intro and arrows)', { n: 5 }],
+  ['mixed', 'Mixed content', { n: 5 }],
+  ['powerbi_intro', 'Power BI types (intro)', { n: 6 }],
+  ['paragraph', 'Explanatory paragraph', {}],
+  ['genai_sentence', 'Generative AI (sentence)', { n: 5, unordered: true, labels: ['Text', 'Images', 'Music', 'Videos', 'Computer code'] }],
+  ['genai_paragraph', 'Generative AI (paragraph)', { n: 5, unordered: true, labels: ['Text', 'Images', 'Music', 'Videos', 'Code'] }],
+  ['genai_list', 'Generative AI (list)', { n: 5, thumbs: true, unordered: true, labels: ['Text', 'Images', 'Music', 'Videos', 'Code'] }],
+  ['edu', 'Educational content', { n: 5, minA: 6, notConcept: 'Education-focused' }],
+  ['edu_plain', 'Educational content (plain)', { n: 5, minA: 6, notConcept: 'Education-focused' }],
+  ['facts', 'Quick facts', { n: 4, unorderedOnly: true, iconKeys: ['cloud', 'fingerprint', 'globe', 'bowl'] }],
+  ['record', 'Automation validation report', { tokens: ['V10_TEST_2026', 'R&D', '100%', '₹5,499.50', 'automation@example.com', '#Automation', 'Total Cost = Quantity × Unit Price', 'IF(Status = "Completed", "Pass", "Review")'] }],
+  ['gibberish', 'Meaningless text', { reject: true }],
+];
+const APPROVED = ['#8ECDB7', '#62B7E4', '#7EA2C8', '#9B99C7', '#DDB945', '#E6A157', '#E58F6D', '#B88968', '#D98CA1', '#C1A5C6', '#FFFFFF', '#F2F2F2', '#D9D9D9', '#7F7F7F', '#404040'];
+
+/* A Napkin-like SVG with every case the converter handles: background, rounded rect with gradient and shadow, multi-line
+   text in a small font, a curved icon group, circle, arrow line, triangle, rectangle path, open path, external picture,
+   and a script plus an onload handler that must never run. */
+const TEST_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400" onload="window.__pwned=1"><script>window.__pwned=2<\/script>
+<defs><linearGradient id="gr"><stop offset="0" stop-color="#3366ff"/><stop offset="1" stop-color="#ff0000"/></linearGradient><filter id="sh"><feDropShadow dx="2" dy="2"/></filter>
+<marker id="m" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#777"/></marker>
+<style>.lbl{font-family:Inter;font-size:14px;fill:#222}</style></defs>
+<rect width="800" height="400" fill="#ffffff"/>
+<g id="step1"><rect x="20" y="40" width="220" height="120" rx="16" fill="url(#gr)" filter="url(#sh)"/>
+<text class="lbl" x="130" y="100" text-anchor="middle"><tspan x="130" y="95">Data</tspan><tspan x="130" dy="18">collection</tspan></text>
+<g class="icon"><path d="M40 60 C 50 50, 60 50, 70 60 S 90 70, 100 60" stroke="#123456" fill="none"/><path d="M45 70 Q 60 90 75 70 Z" fill="#ff8800"/></g></g>
+<g id="step2"><circle cx="400" cy="100" r="60" fill="#8ecdb7"/><text x="400" y="105" text-anchor="middle" font-size="16" font-weight="700" fill="#333">Model training</text></g>
+<g id="links"><line x1="240" y1="100" x2="330" y2="100" stroke="#777" stroke-width="3" marker-end="url(#m)"/><polygon points="500,40 560,160 440,160" fill="#E6A157"/>
+<path d="M600 40 L700 40 L700 160 L600 160 Z" fill="#62B7E4"/><path d="M600 200 L650 260 L700 200" stroke="#555" fill="none"/></g>
+<image href="https://example.com/x.png" x="0" y="300" width="50" height="50"/>
+<text x="20" y="380" font-size="12">Evaluation</text></svg>`;
+async function run() {
+  const F = document.getElementById('f'), W = F.contentWindow, ev = x => W.eval(x);
+  W.addEventListener('error', e => errors.push(String(e.message)));
+  for (let i = 0; i < 100 && !(ev("typeof suggest === 'function' && typeof analyseContent === 'function'")); i++) await new Promise(r => setTimeout(r, 100));
+  if (!ev("typeof analyseContent === 'function'")) {
+    const html = await (await fetch('/v10.html')).text(), js = [...html.matchAll(/<script(?: id="\w+")?>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+    js.push(await (await fetch('/gallery.js')).text());
+    const syntax = js.map((c, i) => { try { new Function(c); return null; } catch (e) { return `script ${i}: ${e.message}`; } }).filter(Boolean);
+    throw new Error('panel did not start; syntax: ' + JSON.stringify(syntax) + ' runtime: ' + JSON.stringify(W.__errs) + ' frame: ' + F.contentWindow.location.href + ' / ' + F.contentDocument.title + ' / ' + F.contentDocument.body.innerHTML.length);
+  }
+  installMock(W);
+  ev("state.inOffice = true; state.canGroup = true; state.canRotate = true; 1");
+  const res = { panel: { lines: ev("document.documentElement.outerHTML.split('\\n').length"), examplesUI: !!W.document.getElementById('examples'),
+    aiUI: ['dotOllama', 'genImage', 'textModel', 'simplify', 'briefBox'].filter(id => W.document.getElementById(id)),
+    napkin: { panel: !!W.document.getElementById('napkinPanel'), controlsHidden: W.document.getElementById('napkinControls').hidden, info: W.document.getElementById('napkinInfo').textContent } }, cases: [], faults: [], errors };
+  const samples = Object.fromEntries(EXAMPLES);
+  // Access gate (the panel host's policy from AIVB_ACCESS, set by run_tests.py) and the slide layout read from PowerPoint
+  const d0 = W.document, gate = res.gate = {};
+  const gateNow = async layout => { W.__mock.layoutName = layout; await ev('checkSlide()'); ev('showGate(); updateButtons(); 1'); };
+  await ev('refreshStatus()');
+  d0.getElementById('content').value = samples['ML workflow (5 stages, intro)'];
+  await gateNow('Content_Slide');
+  gate.contentSlide = { user: ev('access().user'), authorized: ev('userOK()'), analyseEnabled: !d0.getElementById('analyse').disabled, msg: d0.getElementById('gateMsg').hidden ? '' : d0.getElementById('gateMsg').textContent };
+  await gateNow('Title Slide');
+  gate.otherLayout = { analyseEnabled: !d0.getElementById('analyse').disabled, msg: d0.getElementById('gateMsg').textContent };
+  ev('state.sections = []; 1'); await ev('analyseContent()');
+  Object.assign(gate.otherLayout, { sectionsAfterAnalyse: ev('state.sections.length'), status: d0.getElementById('status').textContent.slice(0, 120) });
+  W.__mock.lookAlike = true; await gateNow('Content_Slide');
+  gate.lookAlike = { analyseEnabled: !d0.getElementById('analyse').disabled, msg: d0.getElementById('gateMsg').textContent };
+  W.__mock.lookAlike = false; W.__mock.imported0 = true; await gateNow('Content_Slide');
+  gate.importedEmptyLayout = { analyseEnabled: !d0.getElementById('analyse').disabled, msg: d0.getElementById('gateMsg').textContent };
+  W.__mock.imported0 = false; await gateNow('Content_Slide');
+  for (const [id, name, exp] of CASES) {
+    const r = { id, name };
+    document.title = 'case: ' + id;
+    try {
+      W.document.getElementById('content').value = samples[name];
+      const t0 = performance.now();
+      await ev('analyseContent()');
+      if (exp.reject) {
+        Object.assign(r, { rejected: ev('state.sections.length') === 0, message: W.document.getElementById('status').textContent, step3Hidden: W.document.getElementById('step3').hidden,
+          galleryHidden: W.document.getElementById('gallery').hidden, insertDisabled: W.document.getElementById('insert').disabled, A: 0, B: 0, C: 0, inserts: { ok: 0, failed: [], skippedShapes: 0 }, ms: 0 });
+        r.rejectOK = r.rejected && r.message === 'The content could not be understood. Please enter meaningful text.' && r.step3Hidden && r.insertDisabled;
+        res.cases.push(r);
+        continue;
+      }
+      const secs = ev("state.sections.map(s => ({ heading: s.heading, status: s.status, source: s.model && s.model.source, type: s.model && s.model.type }))");
+      r.sections = secs.length; r.sources = [...new Set(secs.map(s => s.source))];
+      ev("selectSection(state.sections.findIndex(s => s.status === 'ready' && s.model.type !== 'none'))");
+      const g = ev(`(() => { const s = state.sec; s.gallery = null; const G = suggest(s), sc = G.scene || {}, items = sc.items || [];
+        const rep = G.list.map(c => { const all = c.prims.filter(p => p.text).map(p => String(p.text)).join('\\n');
+          return { key: c.key, name: c.name, engine: c.engine, edit: c.edit, missing: items.filter(it => !all.includes(it.label)).map(it => it.label), objects: c.objects }; });
+        const AP = new Set(${JSON.stringify(APPROVED)});
+        const flat = ps => ps.flatMap(p => p.t === 'table' ? [p].concat(p.cells) : [p]);
+        const brand = G.list.map(c => { const ps = flat(c.prims).filter(p => p.t !== 'image');
+          return { name: c.name, colors: [...new Set(ps.flatMap(p => [p.fill, p.line, p.color]).filter(v => v && !AP.has(v)))], small: ps.filter(p => (p.text || p.t === 'table') && !(p.size >= 22)).length,
+            outlineIcons: ps.filter(p => p.grp && p.t === 'shape' && !p.fill).length }; }).filter(b => b.colors.length || b.small || b.outlineIcons);
+        const m = s.model;
+        return { brand, type: m.type, relation: m.relation ? [m.relation.a.label, m.relation.verb, m.relation.b && m.relation.b.label, m.relation.b && m.relation.b.role] : null, ms: G.ms, n: sc.n, mode: sc.mode, ordered: !!sc.ordered, items: items.map(i => i.label), icons: (sc.icons || []).map(i => i && i.matched ? i.key : '-'), list: rep, dropped: (G.dropped || []).length, droppedB: (G.dropped || []).filter(d => /^(Object scene|Platform|Illustrated|Topic object|Dashboard|System scene|Neural)/.test(d)),
+                 allText: G.list.map(c => c.prims.filter(p => p.text).map(p => p.text).join(' ')).join(' ') }; })()`);
+      r.brand = g.brand; r.type = g.type; r.relation = g.relation;
+      if (exp.relation) r.relationOK = JSON.stringify(g.relation) === JSON.stringify(exp.relation);
+      if (exp.min != null) r.countOK = g.list.length >= exp.min && g.list.length <= exp.max;
+      r.ms = Math.round((performance.now() - t0) * 10) / 10; r.n = g.n; r.mode = g.mode; r.ordered = g.ordered; r.items = g.items; r.icons = g.icons;
+      r.A = g.list.filter(c => c.engine === 'A').length; r.B = g.list.filter(c => c.engine === 'B').length; r.C = g.list.filter(c => c.engine === 'C').length;
+      r.missing = g.list.filter(c => c.missing.length).map(c => c.name + ': ' + c.missing.join(', '));
+      r.names = g.list.map(c => `${c.engine}:${c.name}`);
+      r.droppedB = g.droppedB; r.objects = [...new Set(g.list.flatMap(c => c.objects || []))];
+      if (exp.tokens) r.tokensMissing = exp.tokens.filter(t => !g.allText.includes(t));
+      if (exp.data) r.dataMissing = exp.data.filter(t => !g.allText.includes(t));
+      if (exp.n != null) r.nOK = g.n === exp.n;
+      if (exp.distinctIcons) r.iconsOK = g.icons.every(k => k !== '-') && new Set(g.icons).size === g.icons.length;
+      // independent categories: the exact labels, no stated order, no step/flow layouts
+      if (exp.thumbs) r.thumbs = ev("(() => suggest(state.sec).list.slice(0, 8).map(c => ({ name: c.name, svg: thumb(c.prims) })))()");
+      if (exp.unordered) r.clauseIn = ev("suggest(state.sec).list.filter(c => c.prims.some(p => /when you ask/i.test(String(p.text || '')))).map(c => c.name)");
+      if (exp.unordered) { r.labels = g.items; r.unorderedOK = !r.clauseIn.length && !g.ordered && JSON.stringify(g.items) === JSON.stringify(exp.labels) && !g.list.some(c => /step|process|flow|chevron|timeline|stair|arrow|path|snake/i.test(c.name)); }
+      if (exp.minA) r.variety = { A: r.A, B: r.B, families: new Set(g.list.map(c => c.name)).size, ok: r.A >= exp.minA };
+      if (exp.notConcept) r.noFalseConcept = !g.items.some(t => t.includes(exp.notConcept));
+      if (exp.unorderedOnly) r.unorderedOK = !g.ordered && !g.list.some(c => /step|process|flow|chevron|timeline|stair|arrow|path|snake|numbered/i.test(c.name));
+      if (exp.iconKeys) r.iconsOK = JSON.stringify(g.icons) === JSON.stringify(exp.iconKeys);
+      if (exp.ordered) r.orderOK = g.ordered && JSON.stringify(g.items) === JSON.stringify(g.items.slice());
+      // insert every suggestion through the strict stand-in; each must go in completely, with nothing refused
+      r.inserts = { ok: 0, failed: [], skippedShapes: 0 };
+      for (const c of g.list) {
+        W.__mock.reset();
+        ev(`(() => { const s = state.sec; s.choice = null; s.want = ''; const c = ${JSON.stringify({ key: c.key })}; const card = suggest(s).list.find(x => x.key === c.key);
+             if (card.base) { s.want = card.key; } else { s.choice = card.key; } s.reviewed = true; buildPreview(); return 1; })()`);
+        await ev('insertVisual()');
+        const st = W.document.getElementById('status').textContent;
+        if (/^Done!/.test(st) && W.__mock.added() > 0) { r.inserts.ok++; r.inserts.skippedShapes += (ev('state.lastSkipped') || []).length; r.inserts.fontBad = (r.inserts.fontBad || 0) + W.__mock.fontBad(); }
+        else r.inserts.failed.push(c.name + ': ' + st.slice(0, 160));
+      }
+    } catch (e) { r.error = String(e && e.stack || e); }
+    res.cases.push(r);
+  }
+  // Fault injection: PowerPoint refuses one preset (decorative) -> visual still goes in, without it; refuses every font
+  // name (text) -> nothing is left on the slide.
+  try {
+    W.document.getElementById('content').value = samples['ML applications (6)'];
+    await ev('analyseContent()');
+    const key = ev("(() => { const L = suggest(state.sec).list.filter(c => c.engine === 'B'); const s = state.sec; s.choice = L[0].key; s.want = ''; s.reviewed = true; buildPreview(); return L[0].name; })()");
+    W.__mock.reset(); W.__mock.reject = 'Ellipse';
+    await ev('insertVisual()');
+    res.faults.push({ test: 'refuse Ellipse in ' + key, status: W.document.getElementById('status').textContent.slice(0, 200), shapesLeft: W.__mock.added(), skipped: (ev('state.lastSkipped') || []).length });
+    W.__mock.reset(); W.__mock.reject = 'font';
+    await ev('insertVisual()');
+    res.faults.push({ test: 'refuse all text in ' + key, status: W.document.getElementById('status').textContent.slice(0, 200), shapesLeft: W.__mock.added() });
+    W.__mock.reset(); W.__mock.reject = 'font';
+    ev("document.getElementById('newSlide').checked = true");
+    await ev('insertVisual()');
+    res.faults.push({ test: 'refuse all text, new slide', slidesLeft: W.__mock.slides.length, shapesLeft: W.__mock.added() });
+    ev("document.getElementById('newSlide').checked = false");
+  } catch (e) { res.faults.push({ error: String(e && e.stack || e) }); }
+  // Long descriptions: the overview keeps the names, every description goes in full on continuation (detail) slides
+  try {
+    W.document.getElementById('content').value = samples['ML lifecycle (7 stages, descriptions)'];
+    await ev('analyseContent()');
+    const pick = ev("(() => { const s = state.sec, c = suggest(s).list.find(x => !x.base && x.hidden > 0); s.choice = c.key; s.want = ''; s.reviewed = true; buildPreview(); return c.name; })()");
+    W.__mock.reset(); W.document.getElementById('detailSlides').checked = true;
+    await ev('insertVisual()');
+    const all = W.__mock.slides.flatMap(sl => sl.items).map(x => String(x.textFrame && x.textFrame.textRange.text || '')).join('\n');
+    const details = ev("state.sec.scene.items.map(i => i.detail)");
+    res.continuation = { layout: pick, slides: W.__mock.slides.length, detailsInFull: details.filter(t => all.includes(t)).length, of: details.length,
+      status: W.document.getElementById('status').textContent.slice(0, 160) };
+  } catch (e) { res.continuation = { error: String(e && e.stack || e) }; }
+  // Content quality: valid inputs of every kind pass, nonsense is rejected (server.py is checked on the same lists by test_server.py)
+  res.quality = { validRejected: QUALITY_VALID.filter(t => !W.contentQuality(t).ok), invalidAccepted: QUALITY_INVALID.filter(t => W.contentQuality(t).ok) };
+
+  // SVG -> native shapes: every supported element becomes a native object; scripts and handlers never run
+  try {
+    const conv = ev(`(() => { const c = svgToPrims(${JSON.stringify(TEST_SVG)}, Object.assign({}, TEMPLATE.contentArea)), P = c.prims;
+      return { report: c.report, kinds: P.map(p => p.t === 'shape' ? p.g + (p.rot ? '@' + Math.round(p.rot) : '') : p.t), texts: P.filter(p => p.t === 'text').map(p => [p.text, p.size, p.align]),
+        colors: [...new Set(P.flatMap(p => [p.fill, p.line, p.color]).filter(Boolean))], groups: [...new Set(P.map(p => p.grp).filter(Boolean))].length,
+        pwned: window.__pwned || 0, outside: checkLayout(P, TEMPLATE.contentArea).filter(i => /outside/.test(i)) }; })()`);
+    conv.badColors = conv.colors.filter(c => !APPROVED.includes(c));
+    conv.small = conv.texts.filter(t => t[1] < 22).length;
+    res.svg = conv;
+  } catch (e) { res.svg = { error: String(e && e.stack || e) }; }
+
+  // Napkin with a stand-in Napkin (no network, no credits): one approved style, 1 or 4 variations, checks, insertion
+  res.napkin = [];
+  const STYLE = 'EHH64S9R64R64C9DCMSKCSHD6GTPADHDC4SKJC1D68WP6CK66DJ32RV4CGVG';
+  const WORKFLOW = 'Machine learning workflow\n\n1. Data collection\n2. Model training\n3. Evaluation\n4. Deployment';
+  const STEPS = ['Data collection', 'Model training', 'Evaluation', 'Deployment'];
+  // a clean design: four boxes in a row, each label inside its box; v shifts the layout so each variation differs
+  const cleanSvg = v => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 ${400 + v * 40}">` + STEPS.map((t, i) =>
+    `<rect x="${20 + i * 245}" y="${140 + v * 20}" width="215" height="${120 + v * 10}" rx="12" fill="#62B7E4"/><text x="${127 + i * 245}" y="${205 + v * 25}" text-anchor="middle" font-size="20">${t}</text>`).join('') + '</svg>';
+  // like the rejected screenshots: overlapping circles, labels over each other and over a connector, a big decorative tree
+  const brokenSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500"><circle cx="380" cy="250" r="140" fill="none" stroke="#9b99c7" stroke-width="2"/><circle cx="520" cy="250" r="140" fill="none" stroke="#e6a157" stroke-width="2"/>
+    <g><path d="M450 60 C 300 80, 300 200, 450 220 C 600 200, 600 80, 450 60 Z" fill="#333"/><path d="M440 220 L460 220 L470 420 L430 420 Z" fill="#333"/></g>
+    <line x1="100" y1="300" x2="800" y2="300" stroke="#777" stroke-width="2"/>` + STEPS.map((t, i) => `<text x="${150 + i * 40}" y="${300 + i * 6}" font-size="16">${t}</text>`).join('') + '</svg>';
+  const NS = 'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"';
+  // Laid out like Napkin's PowerPoint export (4:3): an optional heading (larger), a row of coloured badges, each with a
+  // white icon inside and its label (Inter, 15 pt) below. v varies the spacing (different layouts).
+  const EM = v => Math.round(v * 12700), COLS = ['7EA2C8', '62B7E4', '8ECDB7', 'B8C67A', 'DDB945', 'E6A157'];
+  const tbox = (x, y, w, h, t, sz, extra) => `<p:sp><p:nvSpPr><p:cNvPr id="${Math.floor(Math.random() * 1e6)}" name="TextBox"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${EM(x)}" y="${EM(y)}"/><a:ext cx="${EM(w)}" cy="${EM(h)}"/></a:xfrm><a:prstGeom prst="rect"/><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square"/><a:p><a:pPr algn="ctr"/><a:r><a:rPr sz="${sz * 100}"${extra || ''}><a:latin typeface="Inter"/></a:rPr><a:t>${t}</a:t></a:r></a:p></p:txBody></p:sp>`;
+  const shape = (x, y, w, h, fill, prst) => `<p:sp><p:nvSpPr><p:cNvPr id="${Math.floor(Math.random() * 1e6)}" name="s"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${EM(x)}" y="${EM(y)}"/><a:ext cx="${EM(w)}" cy="${EM(h)}"/></a:xfrm><a:prstGeom prst="${prst || 'roundRect'}"/><a:solidFill><a:srgbClr val="${fill}"/></a:solidFill></p:spPr></p:sp>`;
+  const napkinLike = (title, labels, v, slides) => { v = v || 0;
+    const step = 112 + v * 4, x0 = (720 - step * labels.length) / 2 + 30, sh = (title ? tbox(160, 120, 400, 40, title, 22, ' b="1"') : '') +
+      labels.map((t, i) => shape(x0 + i * step, 220, 45, 45, COLS[(i + v) % 6]) + shape(x0 + i * step + 12, 232, 21, 21, 'FFFFFF', 'ellipse') + tbox(x0 + i * step - 28, 284, 101, 56, t, 15)).join('');
+    const sld = body => `<p:sld ${NS}><p:cSld><p:spTree>${body}</p:spTree></p:cSld></p:sld>`, parts = { 'ppt/presentation.xml': `<p:presentation ${NS}><p:sldSz cx="9144000" cy="6858000"/></p:presentation>`, 'ppt/slides/slide1.xml': sld(sh) };
+    (slides || []).forEach((more, k) => { parts[`ppt/slides/slide${k + 2}.xml`] = sld(more.map((t, i) => tbox(100 + i * 150, 300, 140, 40, t, 15)).join('')); });
+    return zipFile(parts); };
+  const pptxOf = v => napkinLike('', ['Data collection', 'Model training', 'Evaluation', 'Deployment'], v, v === 2 ? [['Notes']] : null);
+  // a .pptx whose two labels sit on top of each other (checked through the slide's shape tree)
+  const sp = (x, t) => `<p:sp><p:spPr><a:xfrm><a:off x="${x}" y="1270000"/><a:ext cx="3810000" cy="635000"/></a:xfrm><a:prstGeom prst="rect"/></p:spPr><p:txBody><a:p><a:r><a:t>${t}</a:t></a:r></a:p></p:txBody></p:sp>`;
+  const brokenPptx = await zipFile({ 'ppt/presentation.xml': `<p:presentation ${NS}><p:sldSz cx="16256000" cy="9144000"/></p:presentation>`,
+    'ppt/slides/slide1.xml': `<p:sld ${NS}><p:cSld><p:spTree><p:grpSp><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="16256000" cy="9144000"/><a:chOff x="0" y="0"/><a:chExt cx="16256000" cy="9144000"/></a:xfrm></p:grpSpPr>` +
+      sp(1270000, 'Data collection Model training') + sp(1400000, 'Evaluation Deployment') + '</p:grpSp></p:spTree></p:cSld></p:sld>' });
+  const pptxs = [await pptxOf(1), await pptxOf(2), await pptxOf(3), await pptxOf(4)];
+  // the five-stage workflow from real testing (title + introductory sentence + five stages); Napkin may shorten labels
+  const FIVE = samples['ML workflow (5 stages, intro)'];
+  // the real request of 30 Oct (Generative AI outputs), in the ways it can be written
+  const GENAI = [['sentence', 'Generative AI\nGenerative AI can create new content such as text, images, music, videos, and computer code when you ask it to.'],
+    ['paragraph', 'Generative AI is a type of artificial intelligence that can create new content. It can produce text, images, music, videos and code when you ask it to.'],
+    ['list', 'Generative AI\nGenerative AI can create:\n- Text\n- Images\n- Music\n- Videos\n- Code when you ask it to']];
+  const FIVE_LABELS = [['Data collection', 'Data preprocessing', 'Model training', 'Model evaluation', 'Prediction'],
+    ['Data collection', 'Preprocessing', 'Training', 'Evaluation', 'Prediction'],
+    ['Collection', 'Preprocessing', 'Model training', 'Model evaluation', 'Prediction'],
+    ['Data collection', 'Data preprocessing', 'Model training', 'Model evaluation', 'Prediction', 'Each stage feeds the next']];   // + a caption
+  const stackSvg = (labels, v) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 ${labels.length * 84 + 40 + v * 20}">` + labels.map((t, i) =>
+    `<rect x="${100 + v * 10}" y="${20 + i * 84}" width="800" height="64" rx="10" fill="#62B7E4"/><text x="${500 + v * 10}" y="${60 + i * 84}" text-anchor="middle" font-size="22">${t}</text>`).join('') + '</svg>';
+  const pptxFive = labels => napkinLike('Machine learning workflow', labels);
+  // Like Napkin's PowerPoint export: a group, boxes filled through their theme style (fillRef, no solidFill, ln noFill),
+  // labels centred in the boxes, black SVG icons inside the boxes, a title; a duplicate outline over one box
+  const THEME = `<a:theme ${NS}><a:themeElements><a:clrScheme name="t"><a:dk1><a:srgbClr val="000000"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="404040"/></a:dk2><a:lt2><a:srgbClr val="F2F2F2"/></a:lt2>` +
+    ['8ECDB7', '62B7E4', '7EA2C8', '9B99C7', 'DDB945', 'E6A157'].map((c, i) => `<a:accent${i + 1}><a:srgbClr val="${c}"/></a:accent${i + 1}>`).join('') + '</a:clrScheme></a:themeElements></a:theme>';
+  const E = v => Math.round(v * 12700), ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M2 2h20v20H2z" fill="#000000"/></svg>';
+  const stair = labels => { let sh = '', id = 2;
+    labels.forEach((t, i) => { const x = 60 + i * 130, y = 430 - i * 80;
+      sh += `<p:sp><p:nvSpPr><p:cNvPr id="${id++}" name="b${i}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${E(x)}" y="${E(y)}"/><a:ext cx="${E(320)}" cy="${E(70)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom>${i === 2 ? '<a:solidFill><a:srgbClr val="DD6E42"/></a:solidFill>' : ''}<a:ln><a:noFill/></a:ln></p:spPr>` +
+        `<p:style><a:lnRef idx="0"><a:schemeClr val="accent${i + 1}"/></a:lnRef><a:fillRef idx="1"><a:schemeClr val="accent${i + 1}"/></a:fillRef><a:effectRef idx="0"><a:schemeClr val="accent1"/></a:effectRef><a:fontRef idx="minor"><a:schemeClr val="lt1"/></a:fontRef></p:style>` +
+        `<p:txBody><a:bodyPr lIns="${E(60)}" anchor="ctr"/><a:lstStyle/><a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="en-US" sz="2000" b="1"><a:latin typeface="Open Sans"/></a:rPr><a:t>${t}</a:t></a:r></a:p></p:txBody></p:sp>` +
+        `<p:pic><p:nvPicPr><p:cNvPr id="${id++}" name="i${i}"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rId2"><a:extLst><a:ext uri="{96DAC541-7B7A-43D3-8B79-37D633B846F1}"><asvg:svgBlip xmlns:asvg="http://schemas.microsoft.com/office/drawing/2016/SVG/main" r:embed="rId3"/></a:ext></a:extLst></a:blip></p:blipFill>` +
+        `<p:spPr><a:xfrm><a:off x="${E(x + 12)}" y="${E(y + 17)}"/><a:ext cx="${E(36)}" cy="${E(36)}"/></a:xfrm><a:prstGeom prst="rect"/></p:spPr></p:pic>`; });
+    sh += `<p:sp><p:nvSpPr><p:cNvPr id="${id++}" name="o"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${E(60)}" y="${E(430)}"/><a:ext cx="${E(320)}" cy="${E(70)}"/></a:xfrm><a:prstGeom prst="rect"/><a:noFill/><a:ln w="25400"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:ln></p:spPr></p:sp>`;
+    sh += `<p:sp><p:nvSpPr><p:cNvPr id="${id++}" name="t"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${E(60)}" y="${E(40)}"/><a:ext cx="${E(840)}" cy="${E(60)}"/></a:xfrm><a:prstGeom prst="rect"/><a:noFill/></p:spPr><p:txBody><a:bodyPr anchor="ctr"/><a:p><a:pPr algn="ctr"/><a:r><a:rPr sz="2800" b="1"><a:solidFill><a:srgbClr val="404040"/></a:solidFill></a:rPr><a:t>Machine Learning Workflow</a:t></a:r></a:p></p:txBody></p:sp>`;
+    return zipFile({ 'ppt/presentation.xml': `<p:presentation ${NS}><p:sldSz cx="${E(960)}" cy="${E(540)}"/></p:presentation>`, 'ppt/theme/theme1.xml': THEME,
+      'ppt/slides/slide1.xml': `<p:sld ${NS} xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>` +
+        `<p:grpSp><p:nvGrpSpPr><p:cNvPr id="90" name="g"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${E(960)}" cy="${E(540)}"/><a:chOff x="0" y="0"/><a:chExt cx="${E(960)}" cy="${E(540)}"/></a:xfrm></p:grpSpPr>${sh}</p:grpSp></p:spTree></p:cSld></p:sld>`,
+      'ppt/slides/_rels/slide1.xml.rels': '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="slideLayout" Target="../slideLayouts/slideLayout7.xml"/><Relationship Id="rId2" Type="image" Target="../media/image1.png"/><Relationship Id="rId3" Type="image" Target="../media/image2.svg"/></Relationships>',
+      'ppt/slideLayouts/slideLayout7.xml': `<p:sldLayout ${NS}><p:cSld name="Blank"><p:spTree/></p:cSld></p:sldLayout>`,
+      'ppt/media/image2.svg': ICON }); };
+  const stairPptx = await stair(FIVE_LABELS[0]);
+  const genaiPptx = new Uint8Array(await (await fetch('/tests/fixtures/napkin-genai.pptx')).arrayBuffer());   // real Napkin PPT, 30 Oct (Text, Images, Music, Videos, Computer code)
+  const realSvg = await (await fetch('/tests/fixtures/napkin-ml5.svg')).text();   // real Napkin output (staircase), 29-30 Oct
+  const fivePptx = [];
+  for (const l of FIVE_LABELS) fivePptx.push(await pptxFive(l));
+  W.setTimeout = (f) => { f(); return 0; };
+  async function napkinCase(name, o) {
+    const pv = o.provider || 'napkin', r = { name, provider: pv };
+    document.title = pv + ': ' + name;
+    try {
+      W.__cfg = Object.assign({ files: 1 }, o);
+      W.__calls = [];
+      const ACC = `access: { configured: true, mode: 'windows', authorized: ${o.unauthorized ? 'false' : 'true'}, user: 'test', reason: '${o.unauthorized ? 'test is not on the list of authorized users.' : ''}', template: { layout_name: 'Content_Slide', fingerprint: { shapes: { 'content placeholder': [101.7, 205, 1078.5, 435.2], 'heading placeholder': [101.7, 119.1, 1078.5, 71.2], 'section tag strip': [1287.2, 0, 80.8, 720.3] }, tolerance: 3 } } }`;
+      W.__mock.layoutName = o.layout || 'Content_Slide';
+      ev(`state.svc = { server: 'test', ${ACC}, napkin: { configured: true, enabled: true, used_today: 0, max_per_day: 20, style_id: '${STYLE}', variations: [1, 4], last: true }, claude: Object.assign({ configured: true, enabled: true, sdk: true, model: 'claude-opus-5-5', effort: 'high', max_tokens: 32000, prices: [4, 20], used_today: 0, max_per_day: 0, variations: [1, 4], last: true }, window.__cfg.claudeState || {}) }; renderNapkin(); checkSlide().then(() => { showGate(); renderNapkin(); }); 1`);
+      await new Promise(res2 => setTimeout(res2, 0));
+      ev(`api = async (path, body) => { const C = window.__cfg;
+        if (path.startsWith('/api/claude/visual')) { window.__calls.push(Object.assign({ provider: 'claude' }, body)); return { id: 'cjob1', status: 'pending', format: body.format, model: 'claude-opus-5-5' }; }
+        if (path.startsWith('/api/claude/last')) { window.__calls.last = (window.__calls.last || 0) + 1; return { id: 'cjob-last', format: C.fmt || 'svg', asked: 4 }; }
+        if (path.startsWith('/api/claude/status')) return C.claudeFail ? { status: 'failed', files: 0, error: C.claudeFail } : { status: 'completed', files: C.files, usage: { input_tokens: 1200, output_tokens: 5400 }, seconds: 42.5, model: 'claude-opus-5-5', effort: 'high', cost_usd: 0.1128 };
+        if (path.startsWith('/api/napkin/visual')) { window.__calls.push(body); return { id: 'job-1', status: 'pending', style_id: C.wrongStyle ? 'NOT-APPROVED' : '${STYLE}', style_rejected: false }; }
+        if (path.startsWith('/api/napkin/last')) { window.__calls.last = (window.__calls.last || 0) + 1; return { id: 'job-last', format: C.fmt, asked: 4 }; }
+        if (path.startsWith('/api/napkin/status')) return C.styleRejected ? { status: 'failed', files: 0, style_rejected: true, error: 'invalid_style_id' } : { status: 'completed', files: C.files, style_id: '${STYLE}' };
+        return { server: 'test', ${ACC}, napkin: { configured: true, enabled: true, used_today: 1, max_per_day: 20, style_id: '${STYLE}', variations: [1, 4], last: true }, claude: Object.assign({ configured: true, enabled: true, sdk: true, model: 'claude-opus-5-5', effort: 'high', max_tokens: 32000, prices: [4, 20], used_today: 0, max_per_day: 0, variations: [1, 4], last: true }, window.__cfg.claudeState || {}) }; }; 1`);
+      W.fetch = async url => { const i = +(/[?&]i=(\d+)/.exec(url) || [0, 0])[1];
+        if (o.fmt === 'plan') return new Response(JSON.stringify(o.plan), { status: 200 });
+        if (o.fmt === 'svg') return new Response(o.svgs ? o.svgs[i % o.svgs.length] : cleanSvg(o.same ? 0 : i), { status: 200 });
+        return new Response(o.pptxs ? o.pptxs[i % o.pptxs.length] : o.pptx || pptxs[o.same ? 0 : i % 4], { status: 200 }); };
+      const d = W.document;
+      d.getElementById('content').value = o.text || WORKFLOW;
+      // the panel has no format choice (V10.11): the formats kept for compatibility are tested through the panel's hook
+      W['__' + pv].N.fmt = o.fmt || (pv === 'claude' ? 'plan' : 'ppt');
+      d.getElementById(pv + 'Var').value = String(o.asked || 1);
+      d.getElementById(pv + 'Ok').checked = true;
+      d.getElementById(pv + 'Ok').dispatchEvent(new W.Event('change'));
+      const goId = pv + (o.recheck ? 'Last' : 'Go'), PN = W['__' + pv];
+      if (o.pre) { await PN.preflight(); r.pre = d.getElementById(pv + 'Pre').hidden ? '' : d.getElementById(pv + 'Pre').textContent; }
+      r.goEnabled = !d.getElementById(goId).disabled && !d.getElementById(goId).hidden;
+      if (o.force) { const b = d.getElementById(pv + 'Go'); b.disabled = false; }
+      if (r.goEnabled || o.force) {
+        d.getElementById('status').textContent = '';      // the wait below reads this case's own status, not the last one
+        d.getElementById(goId).click();
+        for (let i = 0; i < 100 && (PN.N.busy || !d.getElementById('status').textContent.match(/Napkin AI|Claude AI|could not be understood/)); i++) await new Promise(res2 => setTimeout(res2, 30));
+        for (let i = 0; i < 100 && PN.N.busy; i++) await new Promise(res2 => setTimeout(res2, 30));
+      }
+      const R = PN.N.result;
+      Object.assign(r, { gate: d.getElementById('gateMsg').hidden ? '' : d.getElementById('gateMsg').textContent, lastReads: W.__calls.last || 0, requests: W.__calls.map(b => ({ provider: b.provider || 'napkin', variations: b.variations, format: b.format, brand: b.brand || null, style: b.style_id || null, context: !!b.context })), status: d.getElementById('status').textContent.slice(0, 220),
+        items: R ? R.items.map(it => ({ n: it.n, status: it.check.status, add: (it.check.add || []).map(p => p.label), style: it.styleId === STYLE, excluded: it.check.excluded, layoutExcluded: !!(it.quality && it.quality.excluded),
+          why: it.check.notes.concat(it.quality ? it.quality.block : []).join('; ').slice(0, 400), warn: it.quality ? it.quality.warn : [], edit: it.conv && it.conv.report ? it.conv.report.edit : null, rebuilt: !!(it.conv && it.conv.rebuilt), arrangement: it.conv && it.conv.arrangement, kind: it.conv && it.conv.kind, namesOnly: !!(it.conv && it.conv.namesOnly), geoms: it.conv ? [...new Set(it.conv.prims.filter(p => p.t === 'shape' && !p.cmp).map(p => p.g))].sort() : [], links: it.conv ? it.conv.prims.filter(p => p.t === 'line' || (p.t === 'shape' && (p.g === 'triangle' || Math.min(p.w, p.h) <= 4))).length : 0, sameAs: it.sameAs || 0, local: !!it.local, plan: it.fmt === 'plan', asDrawn: !!(it.conv && it.conv.asDrawn),
+          added: (it.conv && it.conv.added) || [], texts: it.conv ? it.conv.prims.filter(p => p.text).map(p => String(p.text)) : [], sizes: it.conv ? [...new Set(it.conv.prims.filter(p => p.text).map(p => p.size))] : [] })) : [],
+        choices: R ? R.items.filter(it => !it.check.excluded && !(it.quality && it.quality.excluded)).length : 0,
+        cards: d.querySelectorAll(`#${pv}Preview button.gcard`).length, previews: d.querySelectorAll(`#${pv}Preview .gthumb svg`).length,
+        rejectedShown: d.getElementById(pv + 'RejectedBox').hidden ? 0 : d.querySelectorAll(`#${pv}Rejected .gcard`).length, pick: d.getElementById(pv + 'Pick').textContent.slice(0, 400),
+        insertEnabled: !d.getElementById(pv + 'Insert').disabled });
+      if (o.concepts) { const pr = await PN.prepared(o.text); r.concepts = pr.concepts; r.list = pr.list; r.ordered = pr.ordered; r.sent = pr.content; }
+      if (o.shot && R && R.items[0]) {   // the slide as it will look: a sketch of the template's Content_Slide with the build in its content area
+        const it0 = R.items[0], bg = '<rect x="0" y="0" width="1280" height="720" fill="#FFFFFF"/><rect x="0" y="80" width="40" height="600" rx="20" fill="#1F7BF2"/><text x="640" y="60" font-size="34" font-family="Open Sans" font-weight="700" text-anchor="middle" fill="#404040">Generative AI</text><rect x="102" y="205" width="1079" height="435" fill="none" stroke="#D9D9D9" stroke-dasharray="6 4"/>';
+        r.composite = W.toSVG(it0.conv.prims, 1280, 720).replace(/(<svg[^>]*>)<rect[^>]*\/>/, '$1' + bg);
+        r.composites = R.items.map(x => W.toSVG(x.conv.prims, 1280, 720).replace(/(<svg[^>]*>)<rect[^>]*\/>/, '$1' + bg));
+        r.rebuilt = it0.conv.rebuilt; r.added = it0.conv.added; r.missing = it0.conv.missing; r.warn = it0.quality ? it0.quality.warn : [];
+        r.sizes = [...new Set(it0.conv.prims.filter(p => p.text).map(p => p.size))].sort((a, b) => a - b); r.fonts = [...new Set(it0.conv.prims.filter(p => p.text).map(p => p.font || 'Open Sans (default)'))];
+        r.fills = [...new Set(it0.conv.prims.filter(p => p.fill).map(p => p.fill))]; }
+      if (o.insert && R) {
+        W.__mock.reset();
+        if (o.rejectText) { W.__mock.reject = 'font'; if (o.newSlide) d.getElementById('newSlide').checked = true; }   // PowerPoint refuses every text
+        await W.__napkin_insert(pv);
+        if (o.rejectText) { r.rollback = { status: d.getElementById('status').textContent.slice(0, 200), shapesLeft: W.__mock.added(), slides: W.__mock.slides.length, lastInsert: !!ev('state.lastInsert') }; d.getElementById('newSlide').checked = false; W.__mock.reject = null; }
+        r.insertedTexts = W.__mock.slides.flatMap(sl => sl.items.map(x => x.textFrame && x.textFrame.textRange.text).filter(Boolean));
+        // V10.12: the inserted visual carries its id on its shapes and an edit record on its slide
+        r.recorded = W.__mock.slides.some(sl => sl.items.some(x => x.tags && !x.tags.getItemOrNullObject('AIVB_V').isNullObject) && sl.tags.items.some(t => /^AIVB_R_.*_N$/.test(t.key)));
+        r.inserted = { status: d.getElementById('status').textContent.slice(0, 220), shapes: W.__mock.added(), pictures: W.__mock.pictures, imported: W.__mock.imported, fontBad: W.__mock.fontBad(), lastInsert: !!ev('state.lastInsert') };
+        await ev('removeLast()');
+        r.inserted.afterRemove = W.__mock.added() + W.__mock.slides.length - 1;
+        r.insertedMatchesPreview = (R.items[0].conv.prims.filter(p => p.text).map(p => p.text).sort().join('|') === r.insertedTexts.slice().sort().join('|'));
+      }
+    } catch (e) { r.error = String(e && e.stack || e); }
+    res.napkin.push(r);
+  }
+  W.__napkin_insert = (pv = 'napkin') => new Promise(done => { W.document.getElementById(pv + 'Insert').click(); const t0 = Date.now(); (function wait() { if (!W['__' + pv].N.busy || Date.now() - t0 > 5000) done(); else setTimeout(wait, 30); })(); });
+  res.napkinOptions = [...W.document.querySelectorAll('#napkinVar option')].map(x => x.value + ':' + x.textContent + (x.selected ? ' (default)' : ''));
+  res.napkinBrandUI = W.document.querySelectorAll('input[name="napkinBrand"]').length;
+  await napkinCase('meaningless text: nothing sent', { text: samples['Meaningless text'] });
+  await napkinCase('PPT, 1 visual, insert and remove', { fmt: 'ppt', insert: true });
+  await napkinCase('PPT, 4 asked, 3 sent: all 3 selectable', { fmt: 'ppt', asked: 4, files: 3 });
+  await napkinCase('SVG, 4 variations: all selectable, insert and remove', { fmt: 'svg', asked: 4, files: 4, insert: true });
+  await napkinCase('SVG, 4 identical files: merged, not padded', { fmt: 'svg', asked: 4, files: 4, same: true });
+  await napkinCase('answer without the approved style', { fmt: 'svg', wrongStyle: true });
+  await napkinCase('Napkin reports invalid_style_id', { fmt: 'svg', styleRejected: true });
+  await napkinCase('broken layout (like the screenshots): repaired by the rebuild (4 stages, in order)', { fmt: 'svg', svgs: [brokenSvg], shot: true });
+  await napkinCase('PPT with overlapping labels: excluded (labels merge points)', { fmt: 'ppt', pptx: brokenPptx, shot: true });
+  await napkinCase('missing category excluded', { fmt: 'svg', svgs: ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400">' + STEPS.slice(0, 3).map((t, i) => `<rect x="${20 + i * 330}" y="140" width="300" height="120" fill="#62B7E4"/><text x="${170 + i * 330}" y="205" text-anchor="middle" font-size="20">${t}</text>`).join('') + '</svg>'] });
+  await napkinCase('five stages + intro, PPT 4: all usable, insert', { text: FIVE, fmt: 'ppt', asked: 4, files: 4, pptxs: fivePptx, insert: true });
+  await napkinCase('five stages + intro, SVG 4 (shortened labels): all usable', { text: FIVE, fmt: 'svg', asked: 4, files: 4, svgs: FIVE_LABELS.map(stackSvg), shot: true });
+  await napkinCase('five stages, one stage missing: that one excluded', { text: FIVE, fmt: 'svg', asked: 4, files: 2, svgs: [stackSvg(FIVE_LABELS[0], 0), stackSvg(FIVE_LABELS[0].filter(t => t !== 'Model evaluation'), 1)] });
+  await napkinCase('real Napkin SVG (five stages): usable', { text: FIVE, fmt: 'svg', svgs: [realSvg], insert: true, shot: true });
+  await napkinCase('Napkin-like PPT staircase (styled fills, icons in boxes): usable', { text: FIVE, fmt: 'ppt', pptx: stairPptx, insert: true, shot: true });
+  await napkinCase('other slide layout: nothing sent', { text: FIVE, fmt: 'svg', layout: 'Title Slide', force: true });
+  await napkinCase('unauthorized user: nothing sent', { text: FIVE, fmt: 'svg', unauthorized: true, force: true });
+  const cats = labels => napkinLike('Generative AI', labels);
+  await napkinCase('Generative AI, Napkin shortens "Computer code" to "Code": usable', { text: GENAI[0][1], fmt: 'ppt', pptx: await cats(['Text', 'Images', 'Music', 'Videos', 'Code']) });
+  await napkinCase('Generative AI, "Music" genuinely missing: corrected on insertion', { text: GENAI[2][1], fmt: 'ppt', pptx: await cats(['Text', 'Images', 'Videos', 'Computer code']), insert: true });
+  // the real request of 30 Oct 12:22: a heading ("How It Works") between described points; Napkin left out "Prompts"
+  const PROMPTS = 'Generative ai\n- Pattern Recognition: The model analyzes underlying structures in data and predicts the most likely next element (such as the next word in a sentence or the next sequence of pixels in an image)\n- How It Works\n- Prompts: Users interact with the system using natural language instructions or data inputs. Generative AI (GenAI) is a subfield of artificial intelligence that creates original content\u2014such as text, images, video, audio, and code\u2014by learning patterns from massive training datasets';
+  const promptsPptx = new Uint8Array(await (await fetch('/tests/fixtures/napkin-genai-prompts.pptx')).arrayBuffer());
+  await napkinCase('real Napkin PPT, Prompts missing: corrected on insertion', { text: PROMPTS, fmt: 'ppt', pptx: promptsPptx, insert: true, concepts: true, shot: true });
+  await napkinCase('heading "How It Works" not in the result: complete', { text: PROMPTS, fmt: 'ppt', pptx: await cats(['Pattern recognition', 'Prompts']), concepts: true, insert: true });
+  // the real request of 30 Oct 16:48 (c75606d0): four independent facts around a heading, 4 SVG variations
+  const FACTS = ['Fact', '- A single cloud typically weighs around one million tonnes', '- More Quick Facts',
+    '- Identical twins do not share the exact same fingerprints because conditions in the womb shape them differently.',
+    "- Earth's rotation is slowly changing, meaning the length of a day increases by about 1.8 seconds every century.",
+    '- Leftover pasta contains more resistant starch after it cools down, which helps improve gut health and blood sugar control.'].join('\n');
+  const factSvgs = [];
+  for (let i = 0; i < 4; i++) factSvgs.push(await (await fetch('/tests/fixtures/napkin-facts-' + i + '.svg')).text());
+  await napkinCase('real Napkin SVG, Quick Facts (4 variations)', { text: FACTS, fmt: 'svg', asked: 4, files: 4, svgs: factSvgs, concepts: true, shot: true, insert: true });
+  const eduSvgs = [];
+  for (let i = 0; i < 4; i++) eduSvgs.push(await (await fetch('/tests/fixtures/napkin-edu-' + i + '.svg')).text());
+  await napkinCase('real Napkin SVG, Educational content (4 variations)', { text: samples['Educational content'], fmt: 'svg', asked: 4, files: 4, svgs: eduSvgs, concepts: true, shot: true, insert: true });
+  await napkinCase('Educational content SVG, 7 columns (synthetic, from the screenshot)', { text: samples['Educational content'], fmt: 'svg', svgs: [await (await fetch('/tests/fixtures/napkin-edu-svg7-synthetic.svg')).text()], concepts: true, shot: true, insert: true });
+  const autoSvgs = [];   // the real request of 2 Nov (cdaf940d): a record of labelled values, 4 SVG variations
+  for (let i = 0; i < 4; i++) autoSvgs.push(await (await fetch('/tests/fixtures/napkin-autoval-' + i + '.svg')).text());
+  await napkinCase('real Napkin SVG, Automation validation report (4 variations)', { text: samples['Automation validation report'], fmt: 'svg', asked: 4, files: 4, svgs: autoSvgs, concepts: true, shot: true, insert: true });
+  for (const [nm, t] of GENAI) await napkinCase('real Napkin PPT, Generative AI (' + nm + '): usable', { text: t, fmt: 'ppt', pptx: genaiPptx, insert: true, shot: true, concepts: true });
+  // ---- Claude AI (V10.9): the same driver; answers from the stand-in, so no request leaves this page
+  const panelState = (pv, svc) => { ev(`state.svc = ${svc}; renderNapkin(); 1`); const d = W.document;
+    return { visible: !d.getElementById(pv + 'Panel').hidden, controls: !d.getElementById(pv + 'Controls').hidden, info: d.getElementById(pv + 'Info').textContent }; };
+  const ACC0 = "access: { configured: true, mode: 'windows', authorized: true, user: 'test', template: { layout_name: 'Content_Slide' } }";
+  res.claudePanel = {
+    configured: panelState('claude', `{ server: '${'10.9.0'}', ${ACC0}, napkin: { configured: true, enabled: true, style_id: '${STYLE}', variations: [1, 4] }, claude: { configured: true, enabled: true, sdk: true, model: 'claude-opus-5-5', effort: 'high', prices: [4, 20], variations: [1, 4] } }`),
+    unconfigured: panelState('claude', `{ server: '10.9.0', ${ACC0}, napkin: { configured: false, enabled: false }, claude: { configured: false, enabled: false, sdk: true, model: 'claude-opus-5-5', effort: 'high', variations: [1, 4] } }`),
+    disabled: panelState('claude', `{ server: '10.9.0', ${ACC0}, napkin: { configured: false, enabled: false }, claude: { configured: true, enabled: false, sdk: true, model: 'claude-opus-5-5', effort: 'high', variations: [1, 4] } }`),
+    olderHost: panelState('claude', `{ server: '10.8.0', ${ACC0}, napkin: { configured: true, enabled: true, style_id: '${STYLE}', variations: [1, 4] } }`),
+    noHost: panelState('claude', 'null'),
+    napkinNoHost: panelState('napkin', 'null') };
+  const CL_TEXT = 'Generative AI\nGenerative AI can create:\n- Text\n- Images\n- Music\n- Videos\n- Code';
+  await napkinCase('Claude: 1 visual, insert and remove', { provider: 'claude', fmt: 'svg', svgs: [cleanSvg(0)], insert: true, concepts: true });
+  await napkinCase('Claude: 4 variations (Educational content), arrangements kept', { provider: 'claude', text: samples['Educational content'], fmt: 'svg', asked: 4, files: 4, svgs: eduSvgs, insert: true });
+  await napkinCase('Claude: a category missing in every variation: not offered, kept for inspection', { provider: 'claude', text: CL_TEXT, fmt: 'svg', asked: 4, files: 2, svgs: ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 300"><rect x="20" y="100" width="300" height="100" fill="#62B7E4"/><text x="170" y="155" text-anchor="middle" font-size="22">Text</text></svg>'] });
+  await napkinCase('Claude: the request fails: reported, nothing inserted', { provider: 'claude', fmt: 'svg', claudeFail: 'variation 1: Claude declined this request.' });
+  await napkinCase('Claude: PowerPoint refuses the text: rolled back', { provider: 'claude', fmt: 'svg', svgs: [cleanSvg(0)], insert: true, rejectText: true });
+  await napkinCase('Claude: refused on a new slide: the new slide is removed too', { provider: 'claude', fmt: 'svg', svgs: [cleanSvg(0)], insert: true, rejectText: true, newSlide: true });
+  await napkinCase('Claude: re-check last result: no new request', { provider: 'claude', fmt: 'svg', files: 4, svgs: eduSvgs, text: samples['Educational content'], recheck: true });
+  await napkinCase('Claude: other slide layout: nothing sent', { provider: 'claude', text: FIVE, fmt: 'svg', layout: 'Title Slide', force: true });
+  await napkinCase('Claude: unauthorized user: nothing sent', { provider: 'claude', text: FIVE, fmt: 'svg', unauthorized: true, force: true });
+  await napkinCase('Claude: meaningless text: nothing sent', { provider: 'claude', text: samples['Meaningless text'], fmt: 'svg' });
+  // comparison: the same text through both (Napkin's saved Educational results and the same files as Claude's)
+  await napkinCase('compare: Napkin, Educational content', { text: samples['Educational content'], fmt: 'svg', asked: 4, files: 4, svgs: eduSvgs });
+  await napkinCase('compare: Claude, Educational content', { provider: 'claude', text: samples['Educational content'], fmt: 'svg', asked: 1, files: 1, svgs: [eduSvgs[1]] });
+  { const box = W.document.getElementById('compareBox');
+    res.compare = { visible: !!box && !box.hidden, rows: box ? [...box.querySelectorAll('tr')].map(tr => [...tr.children].map(td => td.textContent.trim())) : [] }; }
+  await napkinCase('re-check last result: no new request, insert', { text: FIVE, fmt: 'ppt', files: 4, pptxs: fivePptx, recheck: true, insert: true });
+  // ---- V10.10: Claude's content plan (one request, layouts drawn here), the real Claude drawings of 3 Nov, local layouts
+  const DE = samples['Data engineering platform (8 concepts)'], DE_PLAN = { title: 'Data engineering platform', relation: 'pipeline_with_support',
+    groups: [{ id: 'flow', name: 'Data pipeline', role: 'flow' }, { id: 'span', name: 'Across the platform', role: 'support' }],
+    items: [{ id: 'ing', label: 'Data ingestion', detail: 'Databases, APIs, logs, files', icon_hint: 'data sources', group: 'flow' },
+      { id: 'val', label: 'Data validation', detail: 'Required fields, types, missing values', icon_hint: 'checklist', group: 'flow' },
+      { id: 'tra', label: 'Data transformation', detail: 'Cleaned, standardized formats', icon_hint: 'data cleaning', group: 'flow' },
+      { id: 'sto', label: 'Data storage', detail: 'Databases, analytical storage', icon_hint: 'database', group: 'flow' },
+      { id: 'ana', label: 'Analytics and reporting', detail: 'Dashboards, trends, outcomes', icon_hint: 'analytics chart', group: 'flow' },
+      { id: 'orc', label: 'Data orchestration', detail: 'Workflows, dependencies, failures', icon_hint: 'workflow automation', group: 'span' },
+      { id: 'qua', label: 'Data quality monitoring', detail: 'Duplicate records, invalid values', icon_hint: 'monitoring dashboard', group: 'span' },
+      { id: 'sec', label: 'Security and governance', detail: 'Access controls, audit records', icon_hint: 'security shield', group: 'span' }],
+    flow: ['ing', 'val', 'tra', 'sto', 'ana'], layouts: ['architecture', 'layers', 'capability', 'hub'] };
+  await napkinCase('plan: data engineering, 1 request, 4 layouts', { provider: 'claude', text: DE, fmt: 'plan', plan: DE_PLAN, asked: 4, insert: true, pre: true });
+  const REAL_PLAN = JSON.parse(await (await fetch('/tests/fixtures/claude-dataeng-plan.json')).text());
+  await napkinCase('plan: real Claude design (3 Nov), 4 variations', { provider: 'claude', text: DE, fmt: 'plan', plan: REAL_PLAN, asked: 4, insert: true, shot: true });
+  await napkinCase('plan: real Claude design (3 Nov), 1 visual', { provider: 'claude', text: DE, fmt: 'plan', plan: REAL_PLAN, asked: 1 });
+  await napkinCase('real Napkin SVG, data engineering (3 Nov, 1 visual, was 0 usable)', { text: DE, fmt: 'svg', svgs: [await (await fetch('/tests/fixtures/napkin-dataeng-0.svg')).text()], asked: 4, files: 1, insert: true });
+  res.ui = { fmtChoices: W.document.querySelectorAll('input[name$="Fmt"]').length, go: ['napkin', 'claude'].map(p => W.document.getElementById(p + 'Go').textContent),
+    counts: ['napkin', 'claude'].map(p => [...W.document.querySelectorAll(`#${p}Var option`)].map(x => x.value + (x.defaultSelected ? '*' : '')).join(',')) };
+  const ML_PLAN = { title: 'Machine learning workflow', relation: 'sequence', groups: [], layouts: ['pipeline', 'timeline', 'stair', 'rows'],
+    items: [['a', 'Data collection'], ['b', 'Data preprocessing'], ['d', 'Model evaluation'], ['e', 'Prediction']].map(([id, label]) => ({ id, label, detail: '', icon_hint: '', group: '' })), flow: ['a', 'b', 'd', 'e'] };
+  await napkinCase('plan: a step left out: added in its place', { provider: 'claude', text: FIVE, fmt: 'plan', plan: ML_PLAN, asked: 4 });
+  await napkinCase('plan: an invented figure: nothing offered', { provider: 'claude', text: FIVE, fmt: 'plan', asked: 4, plan: Object.assign({}, ML_PLAN, { items: ML_PLAN.items.concat([{ id: 'c', label: 'Model training', detail: '95% accuracy in 3 hours', icon_hint: '', group: '' }]) }) });
+  const claudeDE = [];
+  for (let i = 0; i < 4; i++) claudeDE.push(await (await fetch('/tests/fixtures/claude-dataeng-' + i + '.svg')).text());
+  await napkinCase('real Claude SVG, data engineering (4 variations, 3 Nov)', { provider: 'claude', text: DE, fmt: 'svg', asked: 4, files: 4, svgs: claudeDE, insert: true });
+  await napkinCase('Napkin 1 visual: completed to 4 with layouts from its items', { text: samples['Educational content'], fmt: 'svg', svgs: [eduSvgs[1]], asked: 4, files: 1, insert: true });
+  // layout diversity over the content types of the brief (the panel's own analysis as a plan; no request)
+  res.diversity = [];
+  for (const nm of ['Data engineering platform (8 concepts)', 'Educational content', 'ML workflow (5 stages, intro)', 'Quick facts', 'Special characters and formulas', 'Automation validation report', 'Power BI content types']) {
+    W.document.getElementById('content').value = samples[nm];
+    // drawn as the panel draws it: with the full descriptions when they fit, else the point names (the built-in suggestions
+    // do the same); a record always with its exact values
+    const pr = await W.__claude.prepared(samples[nm]), P0 = pr.error ? null : W.planFromPrep(pr), RR = ev('Object.assign({}, TEMPLATE.contentArea)');
+    let V = P0 ? W.planVariations(P0, RR, 4) : { list: [], skipped: [] }, names = false;
+    if (P0 && !pr.record && V.list.length < 3) { V = W.planVariations(Object.assign({}, P0, { items: P0.items.map(i => Object.assign({}, i, { detail: '' })) }), RR, 4); names = true; }
+    const exact = (pr.points || []).filter(p => p.exact).map(p => p.exact), texts = V.list.map(v => v.prims.filter(p => p.text).map(p => String(p.text)));
+    res.diversity.push({ name: nm, points: (pr.points || []).length, record: !!pr.record, names, layouts: V.list.map(v => v.name), families: new Set(V.list.map(v => v.family)).size, blocked: V.list.filter(v => v.quality.excluded).length,
+      exactKept: texts.every(t => exact.every(x => t.includes(x))), minSize: Math.min(...V.list.flatMap(v => v.prims.filter(p => p.text).map(p => p.size))), skipped: V.skipped.slice(0, 4).map(x => `${x.key}: ${x.why}`) });
+  }
+  gate.newSlideLayouts = [...new Set(W.__mock.addedLayouts || [])];
+  // V10.8 acceptance (cases A-I of the brief): each with the evidence it is judged on
+  const C = id => res.cases.find(c => c.id === id) || {}, Nk = nm => res.napkin.find(v => v.name.startsWith(nm)) || { items: [] };
+  const usableN = v => v.items.filter(i => !i.excluded && !i.layoutExcluded && !i.sameAs).length, own = v => Object.assign({}, v, { items: v.items.filter(i => !i.local) });
+  const noRequests = v => !v.requests.length;
+  const facts = Nk('real Napkin SVG, Quick Facts'), edu = Nk('real Napkin SVG, Educational content'), edu7 = Nk('Educational content SVG, 7 columns');
+  res.acceptance = [
+    ['A Quick facts: 4 facts, no sequence, topic icons', C('facts').nOK && C('facts').unorderedOK && C('facts').iconsOK, `items ${JSON.stringify(C('facts').items)} icons ${JSON.stringify(C('facts').icons)}`],
+    ['A Quick facts Napkin: repairable usable, incomplete identified (and completed to 4 with a layout from its items)', usableN(own(facts)) === 3 && facts.items.filter(i => i.excluded).length === 1 && usableN(facts) === 4 && facts.cards === 4 && !(facts.composites || []).some(c => /Which fact/.test(c)), facts.items.map(i => `${i.n}:${i.status}/${i.arrangement || '-'}${i.local ? ' (local)' : ''}`).join(' ')],
+    ['B Educational: concepts, >= 6 distinct layouts, no false concept', C('edu').nOK && C('edu').variety && C('edu').variety.ok && C('edu').noFalseConcept && C('edu_plain').nOK, `A ${C('edu').A} B ${C('edu').B}; ${JSON.stringify(C('edu').items)}`],
+    ['C Educational SVG (synthetic 7 columns): complete, no clipping', usableN(own(edu7)) === 1 && edu7.items.every(i => i.status === 'complete' && !/cut off/.test(i.why)), edu7.items.map(i => `${i.status}/${i.arrangement}: ${i.why}`).join(' ')],
+    ['D Educational Napkin 4: each judged, arrangements kept, insert = preview', usableN(edu) === 4 && new Set(edu.items.map(i => i.arrangement)).size >= 3 && edu.insertedMatchesPreview, edu.items.map(i => `${i.n}:${i.status}/${i.arrangement}`).join(' ')],
+    ['E Generative AI: 5 categories, no sequence, media icons', ['genai_sentence', 'genai_paragraph', 'genai_list'].every(k => C(k).unorderedOK) && JSON.stringify(C('genai_sentence').icons) === '["text","image","music","video","code"]', JSON.stringify(C('genai_sentence').icons)],
+    ['F ML workflow: 5 stages in order, distinct icons', C('ml5_intro').nOK && C('ml5_intro').ordered && C('ml5_intro').iconsOK, JSON.stringify(C('ml5_intro').items) + ' ' + JSON.stringify(C('ml5_intro').icons)],
+    ['G Power BI: 6 types, 6 distinct icons', C('powerbi').nOK && C('powerbi').iconsOK, JSON.stringify(C('powerbi').icons)],
+    ['H Numbers: exact values, editable charts', !(C('scores').dataMissing || []).length && C('scores').C >= 1 && !C('scores').inserts.failed.length, `charts ${C('scores').C}, missing ${JSON.stringify(C('scores').dataMissing)}`],
+    ['I Invalid input: no suggestions, no Napkin request', C('gibberish').rejectOK && noRequests(Nk('meaningless text')), C('gibberish').message],
+    ['J Record (2 Nov request): table and pairs usable with exact values, fragments unusable', (() => { const v = Nk('real Napkin SVG, Automation'); return usableN(v) === 2 && v.cards === 2 && v.items[0].status === 'correctable' && v.items[2].status === 'complete' && v.items[1].excluded && v.items[3].excluded && v.insertedMatchesPreview && ['V10_TEST_2026', '₹5,499.50', 'automation@example.com', 'IF(Status = "Completed", "Pass", "Review")'].every(t => (v.insertedTexts || []).includes(t)) && !(C('record').tokensMissing || []).length && C('record').A >= 4; })(), (() => { const v = Nk('real Napkin SVG, Automation'); return v.items.map(i => `${i.n}:${i.status}/${i.arrangement || '-'}`).join(' ') + `; gallery A ${C('record').A}`; })()],
+    ['K Claude panel always visible: configured, unconfigured (setup steps), disabled, outdated host, no host', (() => { const c = res.claudePanel || {};
+      return c.configured && c.configured.visible && c.configured.controls && c.unconfigured.visible && !c.unconfigured.controls && /Configure Claude\.bat/.test(c.unconfigured.info)
+        && c.disabled.visible && /-Enable/.test(c.disabled.info) && c.olderHost.visible && /Restart AI Visual Builder\.bat/.test(c.olderHost.info) && /10\.8\.0/.test(c.olderHost.info)
+        && c.noHost.visible && /Start AI Visual Builder\.bat/.test(c.noHost.info) && c.napkinNoHost.visible; })(), JSON.stringify(Object.fromEntries(Object.entries(res.claudePanel || {}).map(([k, v]) => [k, [v.visible, v.controls, v.info.slice(0, 60)]])))],
+    ['L Claude generation, preview and insertion (stand-in API): 1 visual, insert = preview, removable', (() => { const v = Nk('Claude: 1 visual');
+      return v.requests.length === 1 && v.requests[0].provider === 'claude' && v.requests[0].variations === 1 && v.requests[0].context && usableN(own(v)) === 1 && v.insertedMatchesPreview && v.inserted && v.inserted.afterRemove === 0 && /claude-opus-5-5/.test(v.pick) && /US\$/.test(v.pick); })(),
+      (() => { const v = Nk('Claude: 1 visual'); return `${v.status.slice(0, 90)} | ${v.pick.slice(0, 120)}`; })()],
+    ['M Claude 4 variations: each judged, arrangements kept, incomplete ones kept for inspection, failures reported', (() => { const v = Nk('Claude: 4 variations'), m = Nk('Claude: a category missing'), f = Nk('Claude: the request fails');
+      return usableN(v) === 4 && new Set(v.items.map(i => i.arrangement)).size >= 3 && v.insertedMatchesPreview && usableN(m) === 0 && m.rejectedShown === 2 && !m.insertEnabled
+        && !f.items.length && /declined/.test(f.status); })(), (() => { const v = Nk('Claude: 4 variations'), m = Nk('Claude: a category missing'); return v.items.map(i => `${i.n}:${i.status}/${i.arrangement}`).join(' ') + ` | rejected shown ${m.rejectedShown}`; })()],
+    ['N Claude caching and gates: re-check without a request; other layout, unauthorized, meaningless text: nothing sent', (() => { const r = Nk('Claude: re-check'), g = ['Claude: other slide', 'Claude: unauthorized', 'Claude: meaningless'].map(Nk);
+      return r.lastReads === 1 && !r.requests.length && usableN(r) === 4 && g.every(x => !x.requests.length); })(), (() => ['Claude: re-check', 'Claude: other slide', 'Claude: unauthorized', 'Claude: meaningless'].map(n => `${n.slice(8, 20)}: ${Nk(n).requests.length} requests`).join('; '))()],
+    ['P Insertion rollback after a refused insertion (Claude result; selected slide and new slide)', (() => { const a = Nk('Claude: PowerPoint refuses the text').rollback || {}, b = Nk('Claude: refused on a new slide').rollback || {};
+      return a.shapesLeft === 0 && !a.lastInsert && /nothing was added/.test(a.status) && b.shapesLeft === 0 && b.slides === 1 && !b.lastInsert; })(),
+      JSON.stringify([Nk('Claude: PowerPoint refuses the text').rollback, Nk('Claude: refused on a new slide').rollback]).slice(0, 260)],
+    ['O Napkin vs Claude comparison on the same text', !!(res.compare && res.compare.visible && res.compare.rows.length >= 8 && !/different text/.test(JSON.stringify(res.compare.rows))),
+      JSON.stringify((res.compare || {}).rows || []).slice(0, 260)],
+    ['Q Claude content plan (8 concepts): 1 request, 4 structurally different layouts, complete, fully editable, insert = preview', (() => { const v = Nk('plan: data engineering');
+      return v.requests.length === 1 && v.requests[0].format === 'plan' && v.requests[0].variations === 1 && usableN(v) === 4 && new Set(v.items.map(i => i.kind)).size === 4 && v.items.some(i => /architecture/i.test(i.arrangement))
+        && v.items.every(i => i.status === 'complete' && i.edit === 'full' && i.plan && Math.min(...i.sizes) >= 22) && v.insertedMatchesPreview && v.inserted.afterRemove === 0; })(),
+      (() => { const v = Nk('plan: data engineering'); return v.items.map(i => `${i.n}:${i.status}/${i.arrangement}/${i.edit}`).join(' ') + ` | ${v.pick.slice(0, 160)}`; })()],
+    ['R Content plan checked: a missing step added in its place; an invented figure: nothing offered', (() => { const a = Nk('plan: a step left out'), b = Nk('plan: an invented figure');
+      return usableN(a) >= 3 && a.items.every(i => i.added.includes('Model training') && i.status === 'complete' && i.texts.indexOf('Model training') > i.texts.indexOf('Data preprocessing') && i.texts.indexOf('Model training') < i.texts.indexOf('Model evaluation'))
+        && usableN(b) === 0 && b.items.every(i => /figure/.test(i.why)); })(),
+      (() => { const a = Nk('plan: a step left out'), b = Nk('plan: an invented figure'); return a.items.map(i => `${i.arrangement}: ${i.status} +${i.added}`).join('; ') + ' | ' + (b.items[0] ? b.items[0].why : b.status).slice(0, 120); })()],
+    ['S Real Claude drawings (3 Nov, 4 variations): 4 of 4 usable, kept as designed, descriptions kept, insert = preview', (() => { const v = Nk('real Claude SVG, data engineering');
+      return usableN(own(v)) === 4 && own(v).items.every(i => i.asDrawn && i.status === 'complete') && own(v).items[1].texts.some(t => /^databases, APIs, logs, files/.test(t)) && v.insertedMatchesPreview; })(),
+      (() => { const v = Nk('real Claude SVG, data engineering'); return v.items.map(i => `${i.n}:${i.status}/${i.arrangement}${i.why.includes('cut off') ? ' CUT' : ''}`).join(' ') + ' | ' + v.status.slice(0, 120); })()],
+    ['T One Napkin visual completed to 4 with layouts from its items: no extra request, distinct layouts', (() => { const v = Nk('Napkin 1 visual: completed');
+      return v.requests.length === 1 && usableN(v) === 4 && v.items.filter(i => i.local).length === 3 && new Set(v.items.map(i => i.arrangement)).size === 4 && v.items.every(i => i.status === 'complete') && v.insertedMatchesPreview; })(),
+      (() => { const v = Nk('Napkin 1 visual: completed'); return v.items.map(i => `${i.n}:${i.status}/${i.arrangement}${i.local ? ' (local)' : ''}`).join(' ') + ` | requests ${v.requests.length}`; })()],
+    ['U Layout check before a paid request (free): shown with the layouts that fit', /Layout check before sending \(free\)/.test(Nk('plan: data engineering').pre || '') && Nk('plan: data engineering').requests.length === 1, (Nk('plan: data engineering').pre || '').slice(0, 220)],
+    ['V Layout diversity over the brief\'s content types: lists >= 3 different layouts, records >= 1 with exact values, all at 22 pt and up', (res.diversity || []).every(x => !x.points || (x.families >= (x.record ? 1 : 3) && !x.blocked && x.minSize >= 22 && x.exactKept)),
+      (res.diversity || []).map(x => `${x.name.slice(0, 18)}: ${x.points ? x.families + (x.names ? ' (names)' : '') + ' ' + x.layouts.join('/') : 'no list (formula: native visuals)'}`).join(' | ').slice(0, 700)],
+    ['W Real Claude design of 3 Nov (8 concepts): platform architecture, layered system, technical illustration, capability map - complete, editable, insert = preview', (() => { const v = Nk('plan: real Claude design (3 Nov), 4'), one = Nk('plan: real Claude design (3 Nov), 1');
+      const names = v.items.map(i => i.arrangement).sort().join('|');
+      return usableN(v) === 4 && names === ['Capability map', 'Layered system', 'Platform architecture', 'Technical illustration'].join('|') && new Set(v.items.map(i => i.kind)).size === 4
+        && v.items.every(i => i.status === 'complete' && i.edit === 'full' && Math.min(...i.sizes) >= 22 && !i.namesOnly) && v.insertedMatchesPreview && v.requests.length === 1 && usableN(one) === 1 && one.items.length === 1 && one.requests.length === 1; })(),
+      (() => { const v = Nk('plan: real Claude design (3 Nov), 4'); return v.items.map(i => `${i.arrangement} [${i.kind}] ${i.status}/${i.edit}`).join('; '); })()],
+    ['Structural diversity (W): every pair of the four differs in kind and in its shapes and connectors (similarity < 0.7)', (res.diversityPairs = (() => { const v = Nk('plan: real Claude design (3 Nov), 4'), f = i => new Set(i.geoms.concat([i.kind, i.links ? 'links' : 'nolinks']));
+      const out = []; v.items.forEach((a, x) => v.items.slice(x + 1).forEach(b => { const A = f(a), B = f(b), inter = [...A].filter(t => B.has(t)).length; out.push({ a: a.arrangement, b: b.arrangement, sim: +(inter / new Set([...A, ...B]).size).toFixed(2) }); })); return out; })()).length === 6 && res.diversityPairs.every(p => p.sim < 0.7),
+      (res.diversityPairs || []).map(p => `${p.a.split(' ')[0]}/${p.b.split(' ')[0]} ${p.sim}`).join('; ')],
+    ['X Simplified interface: no format or mode choice, one Generate action per provider, 1 visual (default) or 4 variations', !!res.ui && res.ui.fmtChoices === 0 && res.ui.go.every(t => /^Generate visuals with/.test(t)) && res.ui.counts.every(c => c === '1*,4'), JSON.stringify(res.ui)],
+    ['Y Real Napkin SVG of 3 Nov (was 0 usable): usable, named as a local replacement, completed to 4 from its items', (() => { const v = Nk('real Napkin SVG, data engineering'); return usableN(v) === 4 && v.items[0].status === 'complete' && !v.items[0].layoutExcluded && v.items.slice(1).every(i => i.local) && v.requests.length === 1 && v.insertedMatchesPreview; })(),
+      (() => { const v = Nk('real Napkin SVG, data engineering'); return v.items.map(i => `${i.n}:${i.status}/${i.arrangement}${i.local ? ' (local)' : ''}${i.namesOnly ? ' names' : ''}`).join(' ') + ' | ' + (v.items[0] ? v.items[0].why.slice(0, 120) : v.status.slice(0, 120)); })()],
+    ['Z Inserted Napkin and Claude visuals carry their edit record (V10.12): the real Claude design, the real Napkin result, Claude drawings', ['plan: real Claude design (3 Nov), 4', 'real Napkin SVG, data engineering', 'real Claude SVG, dat'].every(k => Nk(k).recorded),
+      ['plan: real Claude design (3 Nov), 4', 'real Napkin SVG, data engineering', 'real Claude SVG, dat'].map(k => `${k}: ${Nk(k).recorded}`).join('; ')],
+    ['No paid calls in the run (stand-in Napkin and Claude only)', true, 'all Napkin calls answered by the stand-in in this page'],
+  ].map(([name, ok, evidence]) => ({ name, ok: !!ok, evidence }));
+  out.textContent = JSON.stringify(res);
+}
+(async () => {   // wait for the panel itself (the frame's first load event is about:blank)
+  const F = document.getElementById('f');
+  for (let i = 0; i < 300; i++) { try { if (F.contentWindow.location.pathname === '/v10.html' && F.contentDocument.readyState === 'complete') break; } catch (e) {} await new Promise(r => setTimeout(r, 100)); }
+  await run();
+})().catch(e => { out.textContent = JSON.stringify({ fatal: String(e && e.stack || e), errors }); });
+</script></body></html>

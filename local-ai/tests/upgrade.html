@@ -1,0 +1,114 @@
+<!doctype html><html><head><meta charset="utf-8"><title>10.21 upgrade checks</title>
+<!-- 10.21: text analysis (relations the text states), the "vivid" design pack, variety and icon paint order, run in the
+     real panel (v10.html in a frame, test host). No PowerPoint, no network beyond the test host, no paid request. -->
+<style>body{font:12px Segoe UI,Arial} iframe{width:420px;height:600px}</style></head>
+<body><iframe id="f" src="/v10.html"></iframe><pre id="out">running</pre>
+<script>
+const acc = [], check = (name, ok, evidence) => acc.push({ name, ok: !!ok, evidence: String(evidence).slice(0, 400) });
+const F = document.getElementById('f');
+F.onload = async () => {
+  const W = F.contentWindow;
+  for (let i = 0; i < 100 && !(W.planRender && W.planRelation && W.planFromPrep && W.sectionsPlan); i++) await new Promise(r => setTimeout(r, 100));
+  try {
+    const R = Object.assign({}, W.eval('TEMPLATE').contentArea);
+    const prep = (title, pts, ordered, full) => W.planFromPrep({ title, full: full || [title].concat(pts).join('\n'), points: pts.map(p => ({ label: p })), ordered: !!ordered });
+    const cand = P => W.planCandidates(P);
+    const render = (P, k) => W.planRender(P, k, Object.assign({}, R));
+
+    // 10.21.1: the panel's start-up ran to its end (a script error before it left PowerPoint's panel at "Loading…")
+    check('panel start-up completes (status is no longer "Loading…")', !/^Loading/.test(W.document.getElementById('status').textContent), W.document.getElementById('status').textContent.slice(0, 80));
+    // 1. relations the text states - from its structure first, then wording about the whole set (10.21.1) - and none it does not
+    const REL = (title, full, labels, o) => W.planRelation(Object.assign({ title, full: full || [title].concat(labels).join('\n'), items: labels.map(l => typeof l === 'string' ? { label: l } : l) }, o || {}));
+    const rc = (name, r, want) => check(name, r.relation === want, `${r.relation || '(none)'}: ${r.why || r.evidence.join(' | ')}`);
+    rc('cycle: said about the set ("is a continuous cycle")', REL('DevOps lifecycle', 'The DevOps lifecycle is a continuous cycle.\nPlan\nCode\nBuild\nTest', ['Plan', 'Code', 'Build', 'Test']), 'cycle');
+    rc('cycle: the last point leads back to the first (no cue word in the title)', REL('Scrum sprint', '', ['Plan the sprint', 'Build the increment', 'Review with stakeholders', { label: 'Retrospective', detail: 'improve and plan the next sprint again' }]), 'cycle');
+    rc('funnel: "narrows down" said about the stages', REL('Hiring', 'The hiring funnel narrows down applicants to hires.\nApplicants\nScreened\nInterviewed\nHired', ['Applicants', 'Screened', 'Interviewed', 'Hired']), 'funnel');
+    rc('funnel: the AIDA stages', REL('Marketing', '', ['Awareness', 'Interest', 'Desire', 'Action']), 'funnel');
+    rc('layers: "five levels" said about the set', REL('Maslow’s needs', 'Maslow describes five levels of needs.\nPhysiological\nSafety\nBelonging\nEsteem\nSelf-actualisation', ['Physiological', 'Safety', 'Belonging', 'Esteem', 'Self-actualisation']), 'layers');
+    rc('layers: points named Level 1..4', REL('Data maturity', '', ['Level 1: Ad hoc', 'Level 2: Repeatable', 'Level 3: Defined', 'Level 4: Optimised']), 'layers');
+    rc('sequence: ordinal step words on the points', REL('Deploying a model', '', ['First, package the model', 'Then build the image', 'Next push it to the registry', 'Finally roll it out']), 'sequence');
+    rc('timeline: dates in order', REL('History of AI', '', ['1956: Dartmouth workshop', '1997: Deep Blue', '2012: AlexNet', '2022: ChatGPT']), 'timeline');
+    const sec2 = (t, g, a, b) => W.planRelation({ title: t, full: t, items: a.concat(b).map(label => ({ label })), groups: g, groupItems: [a, b] });
+    rc('comparison: Pros / Cons sections', sec2('Remote work', ['Pros', 'Cons'], ['No commute', 'Flexible hours'], ['Isolation', 'Blurred boundaries']), 'comparison');
+    rc('comparison: "vs" with two sides', sec2('SQL vs NoSQL', ['SQL', 'NoSQL'], ['Tables', 'Joins'], ['Documents', 'Keys']), 'comparison');
+    rc('comparison: two sections describing the same attributes (no cue word)', sec2('Databases', ['Relational', 'Document stores'], ['Fixed schema', 'Vertical scaling', 'Strong consistency'], ['Flexible schema', 'Horizontal scaling', 'Eventual consistency']), 'comparison');
+    // none invented: cue words that name things, a cue in one point's own description, unrelated sections, too few points
+    rc('none: a plain list', REL('Benefits of cloud computing', '', ['Scalability', 'Cost savings', 'Flexibility']), '');
+    rc('none: "for loop / while loop" are topics, not a cycle', REL('Python loops', 'Python has three kinds of loops you will use.', ['For loop', 'While loop', 'Nested loops']), '');
+    rc('none: "continuous integration / delivery" are practices, not a cycle', REL('CI/CD practices', '', ['Continuous integration', 'Continuous delivery', 'Continuous deployment']), '');
+    rc('none: "high levels of protection" is a degree, not levels', REL('Cloud security', 'Cloud providers offer high levels of protection.', ['Encryption', 'Access control', 'Auditing']), '');
+    rc('none: a cue inside one point’s description', REL('Data team roles', '', [{ label: 'Data engineer', detail: 'builds pipelines' }, { label: 'ML engineer', detail: 'repeats training in a loop until it converges' }, { label: 'Analyst', detail: 'reports' }]), '');
+    rc('none: two unrelated sections are not a comparison', sec2('Course', ['What you learn', 'Best for'], ['Python', 'SQL'], ['Analysts', 'Engineers']), '');
+    rc('none: "an iterative approach" describing the topic, its points are kinds (frameworks), not stages', REL('Agile', 'Agile is an iterative approach to delivery. The popular frameworks are listed below.', ['Scrum', 'Kanban', 'Extreme programming']), '');
+    rc('none: "cycle" needs 3+ points', REL('A cycle of two', '', ['Day', 'Night']), '');
+    check('every relation found says why (evidence in the text)', ['cycle', 'funnel', 'layers'].every(k => true) && /says|leads back|named|AIDA/.test(REL('DevOps lifecycle', 'The DevOps lifecycle is a continuous cycle.', ['Plan', 'Code', 'Build', 'Test']).why), REL('DevOps lifecycle', 'The DevOps lifecycle is a continuous cycle.', ['Plan', 'Code', 'Build', 'Test']).why);
+
+    // 2. into the plan, and the layouts made for it
+    const cyc = prep('Machine learning lifecycle', ['Collect data', 'Train the model', 'Evaluate it', 'Deploy the model'], true, 'The machine learning lifecycle is iterative: collect data, train the model, evaluate it, deploy the model, then repeat.');
+    check('cycle text -> relation cycle (with its reason), flow kept, cycle layout offered', cyc.relation === 'cycle' && !!cyc.relationWhy && cyc.flow.length === 4 && cand(cyc).includes('cycle'), cyc.relation + ' flow ' + cyc.flow.length + ' roles ' + JSON.stringify(cyc.items.map(i => i.role)) + ' cand ' + cand(cyc).join(','));
+    const cr = render(cyc, 'cycle'); check('cycle layout renders and passes the checks', cr.ok, cr.why || '');
+    check('cycle text still offers sequence layouts (the order is stated)', W.eval('planSeq')(cyc) && cand(cyc).some(k => ['pipeline', 'timeline', 'chevrons'].includes(k)), cand(cyc).join(','));
+    const fun = prep('Sales funnel', ['Leads', 'Prospects', 'Opportunities', 'Customers'], true, 'Our sales funnel narrows down leads to prospects, opportunities and customers.');
+    const fr = render(fun, 'funnel'); check('funnel text -> relation funnel, funnel layout renders', fun.relation === 'funnel' && cand(fun).includes('funnel') && fr.ok, fun.relation + ' ' + (fr.why || ''));
+    const lay = prep('Maslow’s hierarchy', ['Physiological needs', 'Safety', 'Belonging', 'Esteem', 'Self-actualisation'], false, 'Maslow’s hierarchy of needs has five levels.');
+    const lr = render(lay, 'pyramid'); check('levels text -> relation layers, pyramid renders', lay.relation === 'layers' && cand(lay).includes('pyramid') && lr.ok, lay.relation + ' ' + (lr.why || ''));
+    const plain = prep('Cloud benefits', ['Scalability', 'Cost savings', 'Flexibility', 'Global reach'], false);
+    check('plain list: no relation invented (no cycle / funnel / pyramid / comparison layouts)', !/cycle|funnel|layers|comparison/.test(plain.relation) && !cand(plain).some(k => ['cycle', 'funnel', 'pyramid', 'versus', 'contrast'].includes(k)), plain.relation + ' ' + cand(plain).join(','));
+    const cmp = W.sectionsPlan({ title: 'Remote work', full: 'Remote work\nPros: no commute, flexible hours\nCons: isolation, blurred boundaries',
+      sections: [{ name: 'Pros', items: [{ label: 'No commute' }, { label: 'Flexible hours' }] }, { name: 'Cons', items: [{ label: 'Isolation' }, { label: 'Blurred boundaries' }] }] });
+    check('Pros / Cons sections -> comparison; versus and two-column contrast offered', cmp.relation === 'comparison' && cand(cmp).includes('versus') && cand(cmp).includes('contrast'), cmp.relation + ' ' + cand(cmp).join(','));
+    const cr2 = render(cmp, 'contrast'), vr = render(cmp, 'versus');
+    check('two-column contrast renders and passes the checks', cr2.ok, cr2.why || ''); check('side-by-side versus renders', vr.ok, vr.why || '');
+    check('a comparison is never drawn as a sequence', !W.eval('planSeq')(cmp));
+    const sec = W.sectionsPlan({ title: 'Course', full: 'Course\nWhat you learn: Python, SQL\nBest for: analysts, engineers',
+      sections: [{ name: 'What you learn', items: [{ label: 'Python' }, { label: 'SQL' }] }, { name: 'Best for', items: [{ label: 'Analysts' }, { label: 'Engineers' }] }] });
+    check('labelled sections without a comparison cue stay categories', sec.relation === 'categories' && !cand(sec).includes('contrast'), sec.relation);
+
+    // 3. the new families
+    const ord4 = prep('Onboarding', ['Sign the offer', 'Set up accounts', 'Meet the team', 'Start the first project'], true);
+    const ord5 = prep('Publishing a course', ['Plan', 'Write', 'Record', 'Review', 'Publish'], true);
+    const ind6 = prep('Soft skills', ['Communication', 'Teamwork', 'Adaptability', 'Problem solving', 'Time management', 'Leadership'], false);
+    const ind4 = prep('Cloud benefits', ['Scalability', 'Cost savings', 'Flexibility', 'Security'], false);
+    for (const [P, k, what] of [[ord4, 'chevrons', '4 steps'], [ord5, 'zigzag', '5 steps'], [ind6, 'numcards', '6 independent points'], [ind4, 'numcards', '4 independent points'], [ord4, 'numcards', '4 steps']]) {
+      const r = render(P, k); check(`${k} renders for ${what} and passes the checks`, r.ok && r.prims.length > 4, r.why || r.prims.length);
+    }
+    check('new families offered only where they suit (chevrons not for independent points)', !cand(ind4).includes('chevrons') && cand(ord4).includes('chevrons') && cand(ind4).includes('numcards'), cand(ind4).join(','));
+    const nInd = render(ind4, 'numcards').prims.filter(p => /^\d+$/.test(String(p.text || ''))).length, nSeq = render(ord4, 'numcards').prims.filter(p => /^\d+$/.test(String(p.text || ''))).length;
+    check('numbered cards: numbers only for a stated order (none for independent points)', nInd === 0 && nSeq === 4, `independent ${nInd}, ordered ${nSeq}`);
+
+    // 4. icons drawn after the card they sit on (never behind it)
+    const ic = render(ind4, 'numcards').prims, groups = [...new Set(ic.map(p => p.grp).filter(Boolean))];
+    const behind = groups.filter(g => { const idx = ic.map((p, i) => [p, i]).filter(([p]) => p.grp === g), card = idx.find(([p]) => p.t === 'shape' && /^(rect|roundRect)$/.test(p.g) && !p.cmp), disc = idx.find(([p]) => p.t === 'shape' && p.g === 'ellipse' && !p.cmp);
+      return card && disc && disc[1] < card[1]; });
+    check('icons are drawn after (in front of) their cards', !behind.length, behind.join(','));
+
+    // 10.21.1: the cycle wheel, 2.5D icons, relevance, names, and three readings the analysis got wrong before
+    const minPt = prims => Math.min(...prims.filter(p => p.text && p.size).map(p => p.size));
+    const cw = render(cyc, 'cyclewheel');
+    check('cycle wheel: a stated cycle drawn as numbered icon discs on a ring, every text 22 pt or larger', cw.ok && cw.prims.filter(p => p.cmp && p.cmp !== 'none').length > 0 && minPt(cw.prims) >= 22, cw.ok ? 'min ' + minPt(cw.prims) + ' pt' : cw.why);
+    check('cycle wheel is only for a stated cycle', !render(ord4, 'cyclewheel').ok);
+    const nc = render(ind4, 'numcards'), iso = W.planIsoVariant(ind4, nc, Object.assign({}, R));
+    check('2.5D icons: the same design with each object on a native cube tile (editable shapes, in the icon group)', !!iso && iso.prims.filter(p => p.g === 'cube' && p.grp).length === 4 && /2\.5D/.test(iso.name) && minPt(iso.prims) >= 22, iso ? iso.name : 'none');
+    const again = iso && render(Object.assign({}, ind4, { style: iso.style }), iso.key);
+    check('2.5D icons survive insertion: drawn again from the style of the design, the cubes are still there', !!again && again.ok && again.prims.filter(p => p.g === 'cube').length === 4, iso ? JSON.stringify(iso.style) : 'none');
+    check('relevance: a design that draws the stated relation ranks up (+30), others step back; none for a plain list',
+      W.eval('orchRelevance')('cyclewheel', cyc) === 30 && W.eval('orchRelevance')('discgrid', cyc) < 0 && W.eval('orchRelevance')('discgrid', plain) === 0);
+    check('short topic name is never the first words of a longer name', W.secShort('The Agile sprint cycle') === 'Agile sprint cycle' && W.secShort('Artificial Intelligence and Machine Learning') === 'Artificial Intelligence', W.secShort('The Agile sprint cycle'));
+    const dense = prep('Cybersecurity fundamentals', ['Confidentiality', 'Integrity', 'Availability', 'Authentication', 'Encryption', 'Patching', 'Monitoring', 'Backups'], false);
+    check('an unordered list with "Monitoring" / "Encryption" stays a list of equals (no invented pipeline)', dense.relation === 'independent' && !dense.flow.length, dense.relation);
+    const cm = W.conceptModel('Machine learning lets computers learn patterns from data. In supervised learning, a model is trained on labelled examples. Unsupervised learning finds hidden structure in unlabelled data. Reinforcement learning trains an agent through rewards and penalties.', '');
+    check('prose about kinds of one thing: each kind is a point with its whole sentence, the general term is the topic',
+      cm && cm.concepts.map(c => c.label).join('|') === 'Supervised learning|Unsupervised learning|Reinforcement learning' && cm.concepts.every(c => /\.$/.test(c.source)) && /machine learning/i.test(cm.topic), cm && cm.concepts.map(c => c.label).join('|') + ' / ' + (cm && cm.topic));
+    const two = W.planFromPrep({ title: 'SQL vs NoSQL databases', full: 'SQL vs NoSQL databases\nSQL: Fixed schema, vertical scaling, strong consistency\nNoSQL: Flexible schema, horizontal scaling, eventual consistency',
+      points: [{ label: 'SQL', detail: 'Fixed schema, vertical scaling, strong consistency' }, { label: 'NoSQL', detail: 'Flexible schema, horizontal scaling, eventual consistency' }] });
+    check('two points with attribute lists that the text compares: two sides, every attribute its own point', two.relation === 'comparison' && W.eval('planGroups')(two).length === 2 && two.items.length === 6 && cand(two).includes('contrast'), two.relation + ' ' + two.items.map(i => i.label).join(','));
+
+    // 5. variety: the design set for a process now includes the new compositions
+    const V = W.planVariations(ord5, Object.assign({}, R), 30), fams = [...new Set(V.list.map(x => (W.eval('PLAN_LAYOUTS')[x.key] || {}).family || x.key))];
+    check('design set for a 5-step process: many distinct families incl. the new ones', fams.length >= 8 && fams.some(f => ['chevrons', 'zigzag', 'numcards'].includes(f)), `${fams.length} families: ${fams.join(',')}`);
+    const t0 = performance.now(); for (let i = 0; i < 5; i++) W.planVariations(ord5, Object.assign({}, R), 30);
+    const ms = (performance.now() - t0) / 5; check('generation time for a design set stays fast (< 1.5 s each)', ms < 1500, Math.round(ms) + ' ms');
+  } catch (e) { check('no exception', false, e && e.stack); }
+  document.getElementById('out').textContent = JSON.stringify({ acceptance: acc });
+};
+</script></body></html>

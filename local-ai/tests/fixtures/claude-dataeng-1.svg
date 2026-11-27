@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1079 435" width="1079" height="435">
+<rect x="0" y="0" width="1079" height="435" fill="#FFFFFF"/>
+<g>
+<text x="10" y="36" font-family="Open Sans" font-size="28" font-weight="bold" fill="#404040">Data engineering platform</text>
+</g>
+<g>
+<rect x="10" y="381" width="849" height="43" rx="6" fill="#F2F2F2"/>
+<rect x="10" y="381" width="43" height="43" rx="6" fill="#62B7E4"/>
+<text x="31.5" y="410" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">1</text>
+<text x="65" y="410" font-family="Open Sans" font-size="22" fill="#404040"><tspan font-weight="bold">Data ingestion:</tspan> databases, APIs, logs, files; completeness check</text>
+</g>
+<g>
+<rect x="40" y="334" width="849" height="43" rx="6" fill="#F2F2F2"/>
+<rect x="40" y="334" width="43" height="43" rx="6" fill="#E6A157"/>
+<text x="61.5" y="363" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">2</text>
+<text x="95" y="363" font-family="Open Sans" font-size="22" fill="#404040"><tspan font-weight="bold">Data validation:</tspan> required fields, data types, missing values</text>
+</g>
+<g>
+<rect x="70" y="287" width="849" height="43" rx="6" fill="#F2F2F2"/>
+<rect x="70" y="287" width="43" height="43" rx="6" fill="#8ECDB7"/>
+<text x="91.5" y="316" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">3</text>
+<text x="125" y="316" font-family="Open Sans" font-size="22" fill="#404040"><tspan font-weight="bold">Data transformation:</tspan> clean, standardize, consistent formats</text>
+</g>
+<g>
+<rect x="100" y="240" width="849" height="43" rx="6" fill="#F2F2F2"/>
+<rect x="100" y="240" width="43" height="43" rx="6" fill="#9B99C7"/>
+<text x="121.5" y="269" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">4</text>
+<text x="155" y="269" font-family="Open Sans" font-size="22" fill="#404040"><tspan font-weight="bold">Data storage:</tspan> databases, analytical storage, efficient retrieval</text>
+</g>
+<g>
+<rect x="130" y="193" width="849" height="43" rx="6" fill="#F2F2F2"/>
+<rect x="130" y="193" width="43" height="43" rx="6" fill="#E58F6D"/>
+<text x="151.5" y="222" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">5</text>
+<text x="185" y="222" font-family="Open Sans" font-size="22" fill="#404040"><tspan font-weight="bold">Data orchestration:</tspan> scheduled workflows, dependencies, failures</text>
+</g>
+<g>
+<rect x="160" y="146" width="849" height="43" rx="6" fill="#F2F2F2"/>
+<rect x="160" y="146" width="43" height="43" rx="6" fill="#DDB945"/>
+<text x="181.5" y="175" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">6</text>
+<text x="215" y="175" font-family="Open Sans" font-size="22" fill="#404040"><tspan font-weight="bold">Data quality monitoring:</tspan> duplicates, invalid values, changes</text>
+</g>
+<g>
+<rect x="190" y="99" width="849" height="43" rx="6" fill="#F2F2F2"/>
+<rect x="190" y="99" width="43" height="43" rx="6" fill="#7EA2C8"/>
+<text x="211.5" y="128" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">7</text>
+<text x="245" y="128" font-family="Open Sans" font-size="22" fill="#404040"><tspan font-weight="bold">Analytics and reporting:</tspan> dashboards, reports, trends, outcomes</text>
+</g>
+<g>
+<rect x="220" y="52" width="849" height="43" rx="6" fill="#F2F2F2"/>
+<rect x="220" y="52" width="43" height="43" rx="6" fill="#D98CA1"/>
+<text x="241.5" y="81" font-family="Open Sans" font-size="22" font-weight="bold" fill="#404040" text-anchor="middle">8</text>
+<text x="275" y="81" font-family="Open Sans" font-size="22" fill="#404040"><tspan font-weight="bold">Security and governance:</tspan> access controls, classification, audits</text>
+</g>
+</svg>
