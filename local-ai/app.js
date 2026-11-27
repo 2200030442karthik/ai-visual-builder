@@ -169,6 +169,21 @@ const appSay = (msg, err) => { setStatus0(msg, err); if (typeof galPublish === '
     $('devLog').addEventListener('click', () => setStatus0(ORCH.log.slice(-25).map(x => `${x.at} ${x.what}`).join('\n') || 'Nothing generated yet.'));
     $('devLeave').addEventListener('click', () => { location.href = location.pathname + '?dev=0'; });
   }
+  // 10.28.1: PowerPoint saves SL Editor's open pane into the file; a PC without SL Editor then shows an "ADD-IN ERROR".
+  // This writes "<name> (clean).pptx" next to the saved file without that record (pres_clean.py); the file itself is not changed.
+  const cc = document.createElement('button');
+  cc.type = 'button'; cc.id = 'appCleanCopy'; cc.className = 'applarge'; cc.textContent = 'Copy for colleagues without SL Editor';
+  cc.title = 'Saves a copy named "(clean)" next to this presentation that opens without an add-in message on PCs that do not have SL Editor. This file stays as it is.';
+  cc.addEventListener('click', async () => {
+    let url = '';
+    try { url = (window.Office && Office.context && Office.context.document && Office.context.document.url) || ''; } catch (e) { url = ''; }
+    try {
+      const r = await api('/api/clean-copy', { url }, 60000);
+      appSay(r.copy ? `Clean copy saved: ${r.copy}. Share that file with colleagues who use the classic SL Smart Design or no add-in: it opens without an add-in message. Changes saved after this are not in it.`
+        : 'This file opens without an add-in message on other PCs already; no copy was needed.');
+    } catch (e) { appSay(errText(e), true); }
+  });
+  af.appendChild(cc);
   // 10.28: the administrator's PC (it holds the access hub's signing key) gets a link to the team access page
   (async () => {
     try {

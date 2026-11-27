@@ -265,7 +265,11 @@ class Hub:
         """{'state': 'ok'|'revoked'|'pending'|'offline', 'expires': date or None, 'message'}."""
         with self.lock:
             pl, fetched = self.cache.get('payload'), self.cache.get('fetched') or self.cache.get('first_try')
-        grace = (pl or {}).get('grace_days') or self.cfg['grace_days']
+        if not pl:
+            # never read here (the hub folder is not reachable from this PC): the keys' own dates and withdrawals count,
+            # as before the hub - a PC that cannot see the folder is never locked out by it
+            return {'state': 'ok', 'expires': None, 'message': ''}
+        grace = pl.get('grace_days') or self.cfg['grace_days']
         try:
             age = (_now() - dt.datetime.fromisoformat(fetched)).total_seconds() / 86400
         except (TypeError, ValueError):
@@ -273,9 +277,7 @@ class Hub:
         if age > grace:
             return {'state': 'offline', 'expires': None,
                     'message': f'SL Editor could not check your access for {int(age)} days. Connect to the office network or VPN once, then open SL Editor again.'}
-        if not pl:
-            return {'state': 'ok', 'expires': None, 'message': ''}       # no list yet: the key's own date, within the grace period
-        e = (pl.get('keys') or {}).get(kid)
+        e =(pl.get('keys') or {}).get(kid)
         what = 'SL Design and SL Animation' if kind == 'features' else 'SL Editor'
         if e and e.get('status') == 'revoked':
             return {'state': 'revoked', 'expires': None, 'message': f'Your access to {what} was withdrawn by the administrator.'}

@@ -128,6 +128,21 @@ $pilot = [ordered]@{
 }
 [IO.File]::WriteAllText($pilotJson, ($pilot | ConvertTo-Json -Depth 8), (New-Object Text.UTF8Encoding $false))
 
+# 5b. 10.28.1: right-click a presentation > Send to > "SL Editor - clean copy for sharing": "<name> (clean).pptx" next to
+#     it, without SL Editor's pane record, for PCs that do not have SL Editor (the original file is only read)
+$cleanBat = Join-Path $AppDir 'Clean copy for sharing.bat'
+$batText = "@echo off`r`n""%~dp0runtime\python.exe"" -I ""%~dp0app\pres_clean.py"" %*`r`necho.`r`necho Share the ""(clean)"" copy with colleagues who do not have SL Editor. Your own file was not changed.`r`npause`r`n"
+[IO.File]::WriteAllText($cleanBat, $batText, (New-Object Text.ASCIIEncoding))
+try {
+    $sendTo = [Environment]::GetFolderPath('SendTo')
+    $ws = New-Object -ComObject WScript.Shell
+    $lnk = $ws.CreateShortcut((Join-Path $sendTo 'SL Editor - clean copy for sharing.lnk'))
+    $lnk.TargetPath = $cleanBat
+    $lnk.WorkingDirectory = $AppDir
+    $lnk.Description = 'A copy of the presentation that opens without an add-in message on PCs without SL Editor'
+    $lnk.Save()
+} catch { }
+
 # 6. Start the server
 $pythonw = Join-Path $AppDir 'runtime\pythonw.exe'
 $launcher = Join-Path $AppDir 'app\run_server.pyw'

@@ -185,7 +185,9 @@ def _mac(d, rec):
 def addin_path():
     if sys.platform == 'darwin':
         return os.path.expanduser('~/Library/Group Containers/UBF8T346G9.Office/User Content.localized/Add-Ins.localized/' + ADDIN + '.ppam')
-    return os.path.join(os.environ.get('APPDATA', ''), 'Microsoft', 'AddIns', ADDIN + '.ppam')
+    # 10.28.1: SL Editor's own copy (addin_tabs.live_dir), never the original in PowerPoint's add-in folder
+    data = os.environ.get('AIVB_DATA_DIR') or os.path.join(os.environ.get('LOCALAPPDATA') or os.path.expanduser('~'), 'AIVisualBuilder')
+    return os.path.join(data, 'addins-live', ADDIN + '.ppam')
 
 
 def _put(path, data):

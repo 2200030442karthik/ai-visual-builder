@@ -75,6 +75,9 @@ with tempfile.TemporaryDirectory() as root:
     check('off the network longer than the grace period: asks to connect', hub.verdict(id2)['state'] == 'offline')
     hub.cache['fetched'] = (dt.datetime.now() - dt.timedelta(days=3)).isoformat()
     check('within the grace period: the last list counts', hub.verdict(id2)['state'] == 'ok')
+    far = H.Hub(dict(cfg, path=os.path.join(root, 'not-reachable'), grace_days=7), os.path.join(root, 'pc2'))
+    far.cache['first_try'] = (dt.datetime.now() - dt.timedelta(days=40)).isoformat()
+    check('a PC that never reached the hub folder is never locked out by it', not far.refresh() and far.verdict(id2)['state'] == 'ok')
     # activation.status with a hub verdict: withdrawn removes, waiting/expired keep the record
     bundle, rows = A.issue({'anthropic_api_key': 'sk-ant-test-only'}, 1, '2026-01-31')      # a key already expired by its own date
     bp, dd, key = os.path.join(root, 'bundle.json'), os.path.join(root, 'user'), rows[0]['activation_key']

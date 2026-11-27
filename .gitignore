@@ -46,3 +46,7 @@ local-ai/tests/.edge-profile-*/
 # 10.26: installer staging (deploy/build-stage.ps1) and the Windows Python runtime it reuses: never committed
 Build_Stage/
 deploy/runtime-win/
+
+# 10.28.1: the access hub (signed list and check-ins with user and PC names) - private
+access-hub/
+clean-copies/
