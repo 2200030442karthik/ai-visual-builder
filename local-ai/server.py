@@ -45,6 +45,7 @@ import activation as ACT
 import features as FEAT
 import claude_visual as C
 import learn as L
+import hub as H
 
 VERSION = '10.22'
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -129,6 +130,7 @@ ACT_LOCK = threading.Lock()
 ACT_TRIES = []
 NOT_ACTIVATED = 'AI Visual Builder is not activated on this PC. Open AI Visual Builder and enter the activation key from your manager.'
 STATIC['/activate.html'] = ('activate.html', 'text/html; charset=utf-8')
+STATIC['/admin.html'] = ('admin.html', 'text/html; charset=utf-8')      # 10.28: the access hub's page (its API checks the admin key)
 # Pages and scripts are always served: the panel page is also the SL Smart Design tab's function file (one runtime), and
 # gate.js shows the activation form over the panel. Without activation only these APIs answer: status, the activation
 # itself, and SL Smart Design's own commands and the panel opening (SL Smart Design has its own licence check).
@@ -147,6 +149,7 @@ def activation_state(force=False):
         if force or not v or not v['ok'] or now - ACT_STATE['t'] > 60:
             v = dict(ACT.status(DATA_DIR, ACT_BUNDLE), required=True)
             ACT_STATE.update(t=now, v=v)
+            hub_checkin(v, 'ai')
         return v
 
 
@@ -186,7 +189,9 @@ def features_state(clean=False):
     if not os.path.exists(FEAT_BUNDLE):
         return {'ok': False, 'reason': 'not-in-package', 'message': 'SL Design and SL Animation are not part of this installation.'}
     try:
-        return FEAT.status(DATA_DIR, FEAT_BUNDLE, clean=clean, locked_addin=feat_locked() if clean else None)
+        v = FEAT.status(DATA_DIR, FEAT_BUNDLE, clean=clean, locked_addin=feat_locked() if clean else None)
+        hub_checkin(v, 'features')
+        return v
     except Exception as e:      # never stops the service
         log(f'features: {type(e).__name__}')
         return {'ok': False, 'reason': 'error', 'message': 'The access could not be checked.'}
@@ -236,6 +241,35 @@ CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' https://appsforoff
 
 def log(*a):
     print(time.strftime('%H:%M:%S'), *a, flush=True)
+
+
+# ---------------------------------------------------------------- 10.28: the access hub (hub.py)
+# A package with hub.json: the administrator's signed list on the team share decides each key (withdrawn, waiting for
+# approval, a new expiry), read in the background; each PC reports its use there. Test hosts never touch the share.
+HUB = None
+if ACTIVATION and not TEST_NO_PAID:
+    _hub_cfg = H.load_config(HERE)
+    if _hub_cfg:
+        HUB = H.Hub(_hub_cfg, DATA_DIR, log)
+        ACT.HUB = HUB.verdict
+        HUB.start()
+
+
+def hub_checkin(v, kind):
+    if HUB and v.get('ok') and v.get('id'):
+        HUB.checkin(v['id'], {'kind': kind, 'label': v.get('label') or '', 'expires': v.get('expires') or '', 'version': VERSION})
+
+
+def hub_admin(b=None):
+    """The administrator's view and changes (only on the PC that holds the hub's private key)."""
+    if TEST_NO_PAID or not H.is_admin(DATA_DIR):
+        raise NapkinError('This PC does not manage the access hub.', 403)
+    try:
+        if b is None:
+            return H.admin_overview(DATA_DIR)
+        return H.admin_change(DATA_DIR, str(b.get('action') or ''), str(b.get('key') or '') or None, b.get('value'))
+    except (ValueError, OSError) as e:
+        raise NapkinError(f'The access list could not be changed: {e}', 400)
 
 
 # ---------------------------------------------------------------- Napkin AI (https://api.napkin.ai/)
@@ -1029,6 +1063,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, act)
         if path == '/api/features':
             return self.send(200, features_state())
+        if path == '/api/hub/admin':           # 10.28: the administrator's access page (own guard: the hub's private key)
+            try:
+                return self.send(200, hub_admin())
+            except NapkinError as e:
+                return self.fail(e.code, str(e))
+        if path == '/api/hub/me':
+            return self.send(200, {'admin': not TEST_NO_PAID and H.is_admin(DATA_DIR), 'hub': bool(HUB)})
         if not act['ok'] and path not in ACT_FREE_GET:
             return self.fail(403, NOT_ACTIVATED)
         try:
@@ -1103,6 +1144,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, activation_try(b))
             if path == '/api/features/activate':
                 return self.send(200, features_try(b))
+            if path == '/api/hub/admin':
+                return self.send(200, hub_admin(b))
             if path not in ACT_FREE_POST and not activation_state()['ok']:
                 return self.fail(403, NOT_ACTIVATED)
             # a test panel host never makes a paid request (the tests use saved results and stand-ins)

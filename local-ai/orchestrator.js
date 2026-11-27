@@ -361,7 +361,7 @@ async function orchReference(ctx, max) {
     const names = rf.names, plan = rf.P;
     out.push({ id: 'R:' + key + ':' + r.style.accent + (names ? ':n' : ''), engine: 'designs', ref: L.key, lib: 'ref:' + L.key, title: r.name + (names ? ' · point names only' : ''), family: key + ':' + r.style.accent,
       category: 'Reference: ' + L.name, prims: r.prims, edit: r.prims.some(p => p.t === 'image' && !p.icon) ? 'partial' : 'full', complete: !names && !orchMissing(r.prims, facts).length, slides: 1, rich: true,
-      relevant: true, base: 110 + (L.lesson2 ? 6 : 0) - (names ? 6 : 0), why: r.kind, points: plan.items.map(i => [i.label, i.icon]),
+      relevant: true, base: 110 + (L.boost || (L.lesson2 ? 6 : 0)) - (names ? 6 : 0), why: r.kind, points: plan.items.map(i => [i.label, i.icon]),
       fit: orchFits(orchPlanBuild(m.plan, r.key, r.style, names ? 'names' : 'full')),
       insert: async () => { ST.designs = [{ r, plan, full: m.plan, density: names ? 'names' : 'full', from: 'your text' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });
   }
@@ -660,7 +660,8 @@ async function orchIconPick(plan, hash) {
       } else orchNote('icons: library match (' + ((res && res.error) || 'Claude gave no choice') + ')');
     }
     if (!names) return;
-    const used = new Set();
-    names.forEach((n, i) => { const it = plan.items[i]; if (!it || !n || !ICONLIB.byName.has(n) || used.has(n)) return; used.add(n); it.icon = iconKeyOf(ICONLIB.byName.get(n)); });
+    // 10.28: Claude names the meaning (an outline icon); the point gets that icon's colour picture, each picture once
+    const used = new Set(), seen = new Set();
+    names.forEach((n, i) => { const it = plan.items[i]; if (!it || !n || !ICONLIB.byName.has(n) || seen.has(n)) return; seen.add(n); const k = iconPictureKey(n, used); if (k) it.icon = k; });
   } catch (e) { orchNote('icon choice failed: ' + errText(e)); }
 }

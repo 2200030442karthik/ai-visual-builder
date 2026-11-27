@@ -66,6 +66,9 @@ Copy-Item (Join-Path $La 'vendor') (Join-Path $app 'vendor') -Recurse          #
 Remove-Item (Join-Path $app 'packs\README.txt') -ErrorAction SilentlyContinue
 Copy-Item (Join-Path $Src 'run_server.pyw') $app
 Copy-Item $Bundle (Join-Path $app 'activation-bundle.json')
+# 10.28: the access hub (hub.py): the share and the administrator's PUBLIC key; no secret (python local-ai\hub.py init)
+$hubCfg = Join-Path $PSScriptRoot 'hub.json'
+if (Test-Path $hubCfg) { Copy-Item $hubCfg (Join-Path $app 'hub.json') }
 $cfg = Get-Content (Join-Path $La 'config.json') -Raw | ConvertFrom-Json
 $cfg.paid_policy = 'always'               # 10.24: Claude designs for every new text (the owner's choice); keys only work after activation
 [IO.File]::WriteAllText((Join-Path $app 'config.json'), ($cfg | ConvertTo-Json -Depth 4), (New-Object Text.UTF8Encoding $false))

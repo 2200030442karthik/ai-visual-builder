@@ -29,7 +29,7 @@ registerPack('lesson2', '10.27.0', () => {
   /* the point's icon: in its colour, or white on a solid shape (inv); a logo keeps its colours on a white plate */
   function icon(key, x, y, s, c, g, inv) {
     if (/^L:/.test(String(key))) {
-      if (inv && iconIsLogo(key)) return [box('roundRect', x - s * 0.04, y - s * 0.04, s * 1.08, s * 1.08, { fill: W, grp: g }), ...comp(key, x + s * 0.1, y + s * 0.1, s * 0.8, c).map(p => Object.assign(p, { grp: g }))];
+      if (inv && iconIsBrand(key)) return [box('roundRect', x - s * 0.04, y - s * 0.04, s * 1.08, s * 1.08, { fill: W, grp: g }), ...comp(key, x + s * 0.1, y + s * 0.1, s * 0.8, c).map(p => Object.assign(p, { grp: g }))];
       return comp(key, x, y, s, inv ? W : c).map(p => Object.assign(p, { grp: g }));
     }
     return comp(key || 'none', x, y, s, c).map(p => Object.assign(p, { grp: g }));

@@ -166,6 +166,11 @@ def unlock(bundle, key):
         return None, 'This access key is not valid for this installation. Check it, or ask your administrator.'
     g = json.loads(raw.decode('utf-8'))
     g['id'] = kid
+    hv = A.hub_verdict(kid, 'features')            # 10.28: the administrator's list (hub.py)
+    if hv and hv['state'] == 'revoked':
+        return None, hv['message']
+    if hv and hv.get('expires'):
+        g['expires'] = hv['expires']
     if A._expired(g.get('expires')):
         return None, f'This access key expired on {g.get("expires")}.'
     return g, ''
@@ -245,10 +250,22 @@ def status(data_dir, bundle_path, clean=True, locked_addin=None):
         return no('other-user', 'This access belongs to another user or PC. Enter your own access key.')
     if rec.get('id') in (bundle.get('revoked') or []):
         return no('revoked', 'Your access to SL Design and SL Animation was withdrawn by the administrator.')
-    if A._expired(rec.get('expires')):
+    hv = A.hub_verdict(rec.get('id'), 'features')  # 10.28: the administrator's list (hub.py)
+    if hv and hv['state'] == 'revoked':
+        return no('revoked', hv['message'])
+    expires = (hv or {}).get('expires') or rec.get('expires')
+    if hv and (hv['state'] in ('pending', 'offline') or A._expired(expires)):
+        # locked again (the locked copy goes back), but the record stays: an approval or a new date opens it again
+        msg = hv['message'] if hv['state'] in ('pending', 'offline') else f'Your access to SL Design and SL Animation expired on {expires}. Ask your administrator to extend it.'
+        if clean and locked_addin:
+            cur = _readb(addin_path())
+            if cur is not None and not is_locked(cur):
+                _put(addin_path(), locked_addin)
+        return {'ok': False, 'reason': hv['state'] if hv['state'] != 'ok' else 'expired', 'message': msg, 'hub': True}
+    if A._expired(expires):
         return no('expired', f'Your access to SL Design and SL Animation expired on {rec.get("expires")}.')
-    left = (dt.date.fromisoformat(rec['expires']) - A._today()).days if rec.get('expires') else None
-    out = {'ok': True, 'reason': '', 'label': rec.get('label') or '', 'expires': rec.get('expires') or '', 'days_left': left}
+    left = (dt.date.fromisoformat(expires) - A._today()).days if expires else None
+    out = {'ok': True, 'reason': '', 'label': rec.get('label') or '', 'expires': expires or '', 'days_left': left, 'id': rec.get('id')}
     cur = _readb(addin_path())
     if clean and (cur is None or is_locked(cur)):            # activated, but the locked copy is in place: the real one
         addin = A.unseal(d, bundle['payload'])

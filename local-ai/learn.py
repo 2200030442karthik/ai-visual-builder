@@ -53,7 +53,14 @@ def _save(data_dir, d):
     tmp = p + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(d, f, ensure_ascii=False, separators=(',', ':'))
-    os.replace(tmp, p)
+    for i in range(5):              # 10.28: a virus scanner can hold the file for a moment ("access denied"): try again
+        try:
+            os.replace(tmp, p)
+            return
+        except PermissionError:
+            if i == 4:
+                raise
+            time.sleep(0.1 * (i + 1))
 
 
 def record(data_dir, ev):

@@ -40,7 +40,7 @@ registerPack('reference', '10.26.0', () => {
   function icon(key, x, y, s, c, g, inv) {
     // 10.27: a library icon (iconlib.js) in white on its colour, or in its colour; a logo on a white plate
     if (/^L:/.test(String(key))) {
-      if (inv && iconIsLogo(key)) return [box('roundRect', x - s * 0.04, y - s * 0.04, s * 1.08, s * 1.08, { fill: W, grp: g }), ...comp(key, x + s * 0.1, y + s * 0.1, s * 0.8, c).map(p => Object.assign(p, { grp: g }))];
+      if (inv && iconIsBrand(key)) return [box('roundRect', x - s * 0.04, y - s * 0.04, s * 1.08, s * 1.08, { fill: W, grp: g }), ...comp(key, x + s * 0.1, y + s * 0.1, s * 0.8, c).map(p => Object.assign(p, { grp: g }))];
       return comp(key, x, y, s, inv ? W : c).map(p => Object.assign(p, { grp: g }));
     }
     const flip = q => (q && String(q).toUpperCase() === W ? c : q ? W : q);

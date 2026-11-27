@@ -172,6 +172,109 @@ BRANDS = {
 }
 
 
+# 10.28: the colour icons of every outline icon the matcher uses, best first.
+#   F:<name>  icons_fluent\<name>.svg       Microsoft Fluent colour icons with soft gradients (MIT)
+#   E:<name>  iconsets\fluent-emoji-flat    Microsoft Fluent flat colour icons (MIT)
+#   C:<name>  iconsets\flat-color-icons     flat colour business icons (MIT)
+# The matcher still decides what a point means (outline names, tags, vocabulary); the colour icon is its picture.
+COLOR = {
+    'accessibility': 'E:wheelchair-symbol', 'activity': 'F:chart_increasing C:line-chart', 'adjustments': 'E:level-slider E:control-knobs',
+    'alarm-clock': 'F:alarm_clock', 'alert-octagon': 'F:stop_sign', 'alert-triangle': 'F:warning', 'align-center-vertical': 'F:compass F:bullseye',
+    'app-window': 'E:window C:template', 'archive': 'E:card-file-box F:file_cabinet', 'arrow-down-wide-narrow': 'C:generic-sorting-desc',
+    'audio-lines': 'E:studio-microphone C:audio-file', 'award': 'F:sports_medal E:rosette', 'badge': 'E:name-badge E:rosette',
+    'badge-check': 'F:check_mark_button C:approval', 'badge-dollar-sign': 'F:money_bag E:heavy-dollar-sign', 'bell': 'F:bell', 'bell-ring': 'F:bell',
+    'blocks': 'F:puzzle_piece E:brick', 'book-open': 'F:open_book', 'book-open-text': 'F:open_book F:books', 'bookmark': 'F:bookmark_tabs E:bookmark',
+    'bot': 'F:robot', 'bot-message-square': 'F:robot C:assistant', 'boxes': 'F:package E:card-file-box', 'brain': 'F:brain',
+    'brain-circuit': 'F:brain F:robot', 'briefcase': 'E:briefcase C:briefcase', 'browser': 'E:window F:globe_with_meridians',
+    'building': 'F:office_building', 'building-2': 'F:office_building E:department-store', 'building-bank': 'E:bank E:classical-building',
+    'bulb': 'F:light_bulb', 'calculator': 'C:calculator E:abacus', 'calendar': 'F:spiral_calendar F:calendar',
+    'calendar-clock': 'F:calendar F:alarm_clock', 'calendar-range': 'F:spiral_calendar C:timeline', 'camera': 'E:camera C:camera',
+    'car': 'E:automobile', 'chart-column': 'F:bar_chart', 'chart-column-big': 'F:bar_chart C:statistics', 'chart-line': 'F:chart_increasing C:line-chart',
+    'chart-no-axes-combined': 'F:chart_increasing C:combo-chart', 'chart-pie': 'C:pie-chart C:doughnut-chart', 'chart-scatter': 'C:scatter-plot',
+    'chart-spline': 'F:chart_increasing C:area-chart', 'check-check': 'F:check_mark_button C:checkmark', 'chess-knight': 'E:chess-pawn',
+    'circle-alert': 'F:warning E:red-exclamation-mark', 'circle-check': 'F:check_mark_button', 'circle-dot': 'F:bullseye E:radio-button',
+    'circle-help': 'E:red-question-mark C:questions', 'circle-x': 'F:cross_mark', 'clipboard-check': 'F:clipboard C:inspection',
+    'clipboard-list': 'F:clipboard C:todo-list', 'clipboard-pen': 'F:clipboard F:memo', 'clock': 'F:stopwatch C:clock', 'cloud': 'F:cloud',
+    'code': 'C:command-line F:laptop', 'code-xml': 'C:command-line F:laptop', 'coins': 'E:coin F:money_bag', 'compass': 'F:compass',
+    'contact': 'C:business-contact C:contacts', 'copy': 'E:card-index F:card_index_dividers', 'cpu': 'C:electronics C:circuit',
+    'credit-card': 'E:credit-card', 'crosshair': 'F:bullseye', 'crown': 'E:crown', 'database': 'C:database', 'download': 'C:download E:inbox-tray',
+    'earth': 'E:globe-showing-europe-africa F:globe_with_meridians', 'eraser': 'E:broom C:clear-filters', 'eye': 'F:eyes E:eye',
+    'eye-off': 'C:privacy', 'factory': 'E:factory C:factory', 'file': 'F:page_facing_up C:file', 'file-chart-column': 'C:data-sheet F:bar_chart',
+    'file-code': 'C:command-line F:page_facing_up', 'file-input': 'C:import E:inbox-tray', 'file-json': 'C:data-sheet F:page_facing_up',
+    'file-lock': 'E:locked-with-pen C:data-encryption', 'file-output': 'C:export E:outbox-tray', 'file-pen': 'F:memo',
+    'file-pen-line': 'F:memo E:fountain-pen', 'file-question': 'C:faq E:red-question-mark', 'file-search': 'F:magnifying_glass_tilted_left C:search',
+    'file-spreadsheet': 'C:data-sheet', 'file-text': 'F:page_facing_up F:memo', 'files': 'F:card_index_dividers C:document', 'filter': 'C:filled-filter',
+    'flag': 'F:triangular_flag F:chequered_flag', 'flask-conical': 'F:test_tube E:alembic', 'folder': 'E:file-folder C:folder',
+    'folder-kanban': 'E:open-file-folder C:opened-folder', 'funnel': 'C:filled-filter', 'gauge': 'C:sales-performance F:stopwatch', 'gem': 'E:gem-stone',
+    'gift': 'E:wrapped-gift', 'git-compare': 'F:balance_scale E:left-right-arrow', 'git-fork': 'C:make-decision C:decision',
+    'globe': 'F:globe_with_meridians', 'graduation-cap': 'F:graduation_cap', 'hand-coins': 'F:money_bag E:money-with-wings', 'handshake': 'F:handshake',
+    'hard-drive': 'E:computer-disk C:data-backup', 'hard-hat': 'E:rescue-workers-helmet', 'headset': 'C:customer-support E:headphone',
+    'heart': 'F:red_heart', 'heart-handshake': 'F:handshake F:red_heart', 'heart-pulse': 'E:anatomical-heart E:stethoscope',
+    'help-circle': 'E:red-question-mark', 'history': 'F:hourglass_done', 'house': 'F:house', 'id-card': 'E:identification-card E:name-badge',
+    'image': 'E:framed-picture C:picture', 'images': 'C:stack-of-photos E:framed-picture', 'inbox': 'E:inbox-tray', 'info': 'E:information C:info',
+    'key-round': 'F:key', 'landmark': 'E:classical-building E:bank', 'languages': 'F:globe_with_meridians F:speech_balloon', 'laptop': 'F:laptop',
+    'layers': 'F:bookmark_tabs F:card_index_dividers', 'layout-dashboard': 'C:combo-chart F:desktop_computer', 'layout-grid': 'E:card-index C:grid',
+    'layout-template': 'C:template', 'library-big': 'F:books C:library', 'life-buoy': 'E:ring-buoy', 'lightbulb': 'F:light_bulb', 'link': 'F:link',
+    'list': 'C:list C:todo-list', 'list-checks': 'C:todo-list E:check-box-with-check', 'list-collapse': 'F:memo', 'list-ordered': 'C:list C:numerical-sorting-12',
+    'list-todo': 'C:todo-list', 'lock': 'F:locked', 'mail': 'E:e-mail E:envelope-with-arrow F:envelope', 'map': 'F:world_map', 'map-pin': 'F:pushpin E:round-pushpin',
+    'maximize-2': 'C:expand', 'megaphone': 'F:megaphone', 'merge': 'C:multiple-inputs', 'message-circle': 'F:speech_balloon',
+    'message-square': 'F:speech_balloon', 'message-square-text': 'F:speech_balloon C:comments', 'messages': 'C:comments F:speech_balloon',
+    'messages-square': 'C:comments', 'mic': 'E:studio-microphone E:microphone', 'microscope': 'F:microscope', 'milestone': 'F:chequered_flag F:triangular_flag',
+    'minimize-2': 'C:collapse', 'monitor': 'F:desktop_computer', 'monitor-check': 'F:desktop_computer', 'mouse-pointer-click': 'F:computer_mouse C:cursor',
+    'music': 'E:musical-notes', 'network': 'C:multiple-devices C:mind-map', 'notebook': 'E:notebook E:spiral-notepad', 'notebook-pen': 'E:spiral-notepad F:memo',
+    'package': 'F:package', 'package-check': 'F:package C:shipped', 'palette': 'E:artist-palette', 'pen-line': 'F:pencil E:fountain-pen',
+    'pen-tool': 'E:fountain-pen F:pencil', 'pencil': 'F:pencil', 'percent': 'C:pie-chart', 'phone': 'E:telephone-receiver C:phone',
+    'piggy-bank': 'F:money_bag', 'plane': 'E:airplane', 'plug': 'E:electric-plug', 'presentation': 'C:podium-with-speaker C:voice-presentation',
+    'printer': 'E:printer', 'puzzle': 'F:puzzle_piece', 'radar': 'E:satellite-antenna C:radar-plot', 'receipt': 'E:receipt', 'receipt-text': 'E:receipt',
+    'recycle': 'E:recycling-symbol C:reuse', 'refresh-cw': 'F:counterclockwise_arrows_button C:synchronize', 'repeat': 'E:repeat-button F:counterclockwise_arrows_button',
+    'rocket': 'F:rocket', 'route': 'E:motorway F:world_map', 'ruler': 'E:straight-ruler E:triangular-ruler', 'save': 'E:floppy-disk', 'scale': 'F:balance_scale',
+    'scaling': 'C:expand', 'scan': 'E:x-ray', 'scan-line': 'E:x-ray', 'school': 'E:school', 'scissors': 'E:scissors', 'scroll-text': 'E:scroll',
+    'search': 'F:magnifying_glass_tilted_left', 'server': 'C:data-configuration C:database', 'settings': 'F:gear', 'settings-2': 'F:gear E:control-knobs',
+    'shapes': 'E:large-orange-diamond', 'share-2': 'C:share', 'sheet': 'C:data-sheet', 'shield': 'F:shield', 'shield-alert': 'F:shield F:warning',
+    'shield-check': 'F:shield C:data-protection', 'shopping-bag': 'E:shopping-bags', 'shopping-cart': 'E:shopping-cart', 'shrink': 'C:collapse',
+    'shuffle': 'E:shuffle-tracks-button', 'signature': 'C:signature E:fountain-pen', 'siren': 'F:warning', 'sliders-horizontal': 'E:level-slider E:control-knobs',
+    'smartphone': 'F:mobile_phone', 'soup': 'E:steaming-bowl', 'sparkles': 'F:sparkles', 'split': 'C:make-decision', 'square-code': 'C:command-line',
+    'square-terminal': 'C:command-line', 'terminal': 'C:command-line', 'stamp': 'C:approval', 'star': 'F:star', 'stethoscope': 'E:stethoscope',
+    'store': 'E:convenience-store C:shop', 'table': 'C:data-sheet C:grid', 'tag': 'E:label', 'target': 'F:bullseye', 'trending-down': 'F:chart_decreasing C:negative-dynamic',
+    'trending-up': 'F:chart_increasing C:positive-dynamic', 'triangle-alert': 'F:warning', 'trophy': 'F:trophy', 'truck': 'E:delivery-truck', 'type': 'F:memo',
+    'upload': 'C:upload E:outbox-tray', 'user': 'C:businessman C:businesswoman', 'user-check': 'C:businessman C:approval', 'user-cog': 'C:manager C:businessman',
+    'user-plus': 'C:invite C:businessman', 'user-round': 'C:businesswoman C:businessman', 'user-search': 'C:conference-call C:businessman',
+    'user-star': 'E:crown C:vip', 'users': 'C:conference-call C:collaboration', 'users-round': 'C:collaboration C:conference-call',
+    'utensils': 'E:fork-and-knife-with-plate', 'video': 'E:video-camera C:video-call', 'wallet': 'E:money-with-wings F:money_bag', 'wand-sparkles': 'E:magic-wand',
+    'warehouse': 'F:package C:in-transit', 'workflow': 'C:workflow C:flow-chart', 'wrench': 'F:wrench F:hammer_and_wrench', 'zap': 'F:high_voltage',
+    'fingerprint': 'C:privacy F:key',
+}
+# colour icons that may also match a point by their own names (professional objects; no faces, food, animals, flags)
+COLOR_EXTRA = ('E:airplane E:ambulance E:hospital E:pill E:syringe E:dna E:atom-symbol E:satellite E:telescope E:toolbox E:magnet E:battery '
+               'E:thermometer E:hammer E:nut-and-bolt E:gear E:hourglass-not-done E:newspaper E:ledger E:spiral-notepad E:paintbrush E:crayon '
+               'E:loudspeaker E:television E:radio E:keyboard E:printer E:fax-machine E:satellite-antenna E:mechanical-arm E:construction '
+               'E:building-construction E:bridge-at-night E:cityscape E:houses E:stadium E:school E:post-office E:passport-control E:customs '
+               'E:ticket E:admission-tickets E:luggage E:fuel-pump E:light-rail E:bus E:ship E:delivery-truck E:articulated-lorry E:tractor '
+               'E:seedling E:potted-plant E:deciduous-tree E:sun E:fire E:droplet E:water-wave E:recycling-symbol E:balance-scale E:judge '
+               'E:teacher E:student E:scientist E:technologist E:office-worker E:health-worker E:mechanic E:farmer E:factory-worker E:artist '
+               'E:detective E:guard E:pilot E:astronaut E:police-officer E:firefighter E:construction-worker E:cook E:singer '
+               'E:1st-place-medal E:military-medal E:ribbon E:rosette E:bookmark E:label E:pushpin E:paperclip E:linked-paperclips E:scissors '
+               'E:straight-ruler E:triangular-ruler E:abacus E:bank E:dollar-banknote E:euro-banknote E:pound-banknote E:yen-banknote E:coin '
+               'E:gem-stone E:crystal-ball E:magic-wand E:game-die E:joystick E:video-game E:jigsaw E:mobile-phone-with-arrow E:envelope-with-arrow '
+               'E:incoming-envelope E:outbox-tray E:inbox-tray E:open-mailbox-with-raised-flag E:postbox E:card-file-box E:file-cabinet E:wastebasket '
+               'E:locked-with-key E:unlocked E:old-key E:shield E:chains E:broken-chain E:link E:hook E:ladder E:microscope E:petri-dish E:test-tube '
+               'E:alembic E:stethoscope E:adhesive-bandage E:x-ray E:lungs E:brain E:anatomical-heart E:eyes E:footprints E:hundred-points '
+               'E:speech-balloon E:thought-balloon E:left-speech-bubble E:speaking-head E:bust-in-silhouette E:busts-in-silhouette E:name-badge '
+               'E:identification-card E:mantelpiece-clock E:watch E:timer-clock E:stopwatch E:alarm-clock E:hourglass-done E:spiral-calendar '
+               'E:tear-off-calendar E:calendar E:world-map E:compass E:globe-with-meridians E:round-pushpin E:triangular-flag E:chequered-flag '
+               'E:direct-hit E:bullseye E:trophy E:sports-medal E:party-popper E:confetti-ball E:wrapped-gift E:balloon E:light-bulb E:flashlight '
+               'E:candle E:high-voltage E:electric-plug E:battery E:low-battery E:desktop-computer E:laptop E:computer-mouse E:trackball '
+               'E:computer-disk E:floppy-disk E:optical-disk E:dvd E:movie-camera E:film-projector E:clapper-board E:camera E:video-camera '
+               'E:studio-microphone E:microphone E:headphone E:musical-notes E:artist-palette E:framed-picture E:books E:open-book E:closed-book '
+               'E:notebook E:page-facing-up E:page-with-curl E:scroll E:memo E:pencil E:fountain-pen E:pen E:clipboard E:bar-chart '
+               'E:chart-increasing E:chart-decreasing E:money-bag E:money-with-wings E:credit-card E:receipt E:shopping-cart E:shopping-bags '
+               'E:package E:convenience-store E:department-store E:office-building E:classical-building E:factory E:house E:robot E:rocket '
+               'E:satellite E:handshake E:wrench E:hammer-and-wrench E:gear E:puzzle-piece E:star E:glowing-star E:sparkles E:warning E:no-entry '
+               'E:prohibited E:check-mark-button E:cross-mark E:red-question-mark E:information E:locked E:key E:bell E:megaphone E:envelope E:e-mail')
+FC_SKIP = set('android-os bbc debian dribbble google linux reddit steam stumbleupon wikipedia vlc kindle nook ipad iphone cd-logo dvd-logo '
+              'icons8-cup entering-heaven-alive do-not-inhale do-not-insert do-not-mix biohazard butting-in copyleft'.split())
+
+
 def svg_parts(text):
     """(viewBox, inner markup) of a one-file SVG, without comments and the outer element."""
     text = re.sub(r'<!--.*?-->', '', text, flags=re.S)
@@ -228,6 +331,53 @@ def main():
             names[iid] = len(icons)
             icons.append([iid, st, phrase.lower(), f'0 0 {w} {h}', body, 'c'])
         brands[phrase] = iid
+    # 10.28: colour icons (Fluent with gradients, Fluent flat, flat business icons) and the outline -> colour map
+    fe = json.load(open(os.path.join(src, 'iconsets', 'fluent-emoji-flat.json'), encoding='utf-8'))
+    fc = json.load(open(os.path.join(src, 'iconsets', 'flat-color-icons.json'), encoding='utf-8'))
+    f3dir = os.path.join(src, 'icons_fluent')
+
+    def colour(ref):
+        """the library id of a colour icon (added on first use), or None when the share does not have it"""
+        kind, nm = ref.split(':', 1)
+        iid = {'F': 'fl-', 'E': 'fe-', 'C': 'fc-'}[kind] + nm.replace('_', '-')
+        if iid in names:
+            return iid
+        if kind == 'F':
+            p = os.path.join(f3dir, nm + '.svg')
+            if not os.path.exists(p):
+                return None
+            vb, body = svg_parts(open(p, encoding='utf-8').read())
+            st = 'fluent3d'
+        else:
+            d = fe if kind == 'E' else fc
+            ic = d['icons'].get(nm)
+            if not ic or (kind == 'C' and nm in FC_SKIP):
+                return None
+            w, h = ic.get('width', d.get('width', 32)), ic.get('height', d.get('height', 32))
+            vb, body = f'0 0 {w} {h}', re.sub(r'\s+', ' ', ic['body'])
+            st = 'fluent' if kind == 'E' else 'flatcolor'
+        if not body:
+            return None
+        names[iid] = len(icons)
+        icons.append([iid, st, nm.replace('_', ' ').replace('-', ' ').lower(), vb, body, 'c'])
+        return iid
+
+    color, cmiss = {}, []
+    for outline, spec in COLOR.items():
+        got = [i for i in (colour(r) for r in spec.split()) if i]
+        if got and outline in names:
+            color[outline] = got
+        else:
+            cmiss.append(outline if outline not in names else spec)
+    for r in COLOR_EXTRA.split():
+        colour(r)
+    for nm in fc['icons']:
+        colour('C:' + nm)
+    for fn in os.listdir(f3dir):
+        if fn.endswith('.svg'):
+            colour('F:' + fn[:-4])
+    if cmiss:
+        print('colour map entries left out:', '; '.join(cmiss))
     # the maps, with only icons that exist
     def keep(spec, where):
         out = [n for n in spec.split() if n in names]
@@ -236,8 +386,10 @@ def main():
         return out
     concept = {k: keep(v, 'concept ' + k) for k, v in CONCEPT.items()}
     words = {k: keep(v, 'word ' + k) for k, v in WORDS.items()}
-    lib = {'version': 1, 'made': 'deploy/make-iconlib.py',
+    lib = {'version': 2, 'made': 'deploy/make-iconlib.py', 'color': color,
            'sets': {'lucide': 'Lucide (ISC licence)', 'tabler': 'Tabler Icons (MIT licence)',
+                    'fluent3d': 'Microsoft Fluent colour icons (MIT licence)', 'fluent': 'Microsoft Fluent Emoji, flat (MIT licence)',
+                    'flatcolor': 'Flat Color Icons by Icons8 (MIT licence)',
                     'logos': 'SVG Logos by Gil Barbara (CC0; the logos are trademarks of their owners)',
                     'simple': 'Simple Icons (CC0; the logos are trademarks of their owners)'},
            'concept': {k: v for k, v in concept.items() if v}, 'words': {k: v for k, v in words.items() if v},
@@ -256,7 +408,8 @@ def main():
                 f.write('\n==== ' + fn + '\n' + open(p, encoding='utf-8', errors='replace').read())
     size = os.path.getsize(os.path.join(OUT, 'iconlib.json'))
     print(f'{len(icons)} icons ({sum(1 for i in icons if i[1] == "lucide")} Lucide, {sum(1 for i in icons if i[1] == "tabler")} Tabler, '
-          f'{len(brands)} brand names), {size / 1e6:.2f} MB')
+          f'{sum(1 for i in icons if i[1] in ("fluent3d", "fluent", "flatcolor"))} colour, {len(brands)} brand names; '
+          f'{len(color)} outline icons have colour versions), {size / 1e6:.2f} MB')
     if missing:
         print('not in the library (left out of the maps):', '; '.join(missing))
 

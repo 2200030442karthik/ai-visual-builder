@@ -27,6 +27,9 @@ foreach ($dir in 'packs', 'assets', 'vendor') {
 # 2b. the SL Design and SL Animation access bundle (encrypted; deploy\team-keys), so the access page works here
 $fb = Join-Path $PSScriptRoot 'team-keys\features-bundle.json'
 if (Test-Path $fb) { Copy-Item $fb (Join-Path $App 'features-bundle.json') -Force }
+# 2c. 10.28: the access hub's settings (the share and the administrator's public key)
+$hc = Join-Path $PSScriptRoot 'hub.json'
+if (Test-Path $hc) { Copy-Item $hc (Join-Path $App 'hub.json') -Force }
 
 # 3. the ribbon manifest (new buttons or a new version), with this installation's add-in Id and port
 $py = Join-Path $AppDir 'runtime\python.exe'

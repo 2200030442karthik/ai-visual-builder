@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SL Editor access</title>
+<style>
+  :root { --ink:#1f2937; --mute:#6b7280; --line:#e5e7eb; --bg:#f6f7f9; --card:#fff; --blue:#1f6fd1; --red:#b42318; --amber:#9a6700; --green:#1e7d45; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.45 "Segoe UI", system-ui, sans-serif; color:var(--ink); background:var(--bg); }
+  header { padding:20px 24px 8px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:var(--mute); }
+  main { padding:8px 24px 32px; }
+  .bar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:14px; }
+  .bar label { display:flex; gap:6px; align-items:center; }
+  .stats { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 14px; min-width:120px; }
+  .stat b { display:block; font-size:20px; }
+  .stat span { color:var(--mute); font-size:12px; }
+  input[type=search], input[type=date], input[type=number] { font:inherit; padding:5px 8px; border:1px solid #cfd4dc; border-radius:6px; }
+  button { font:inherit; padding:5px 10px; border:1px solid #cfd4dc; background:#fff; border-radius:6px; cursor:pointer; }
+  button:hover { background:#f0f3f7; }
+  button.danger { color:var(--red); border-color:#f1c0bb; }
+  button.go { color:#fff; background:var(--blue); border-color:var(--blue); }
+  .wrap { background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:auto; }
+  table { border-collapse:collapse; width:100%; min-width:980px; }
+  th, td { text-align:left; padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  th { font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--mute); background:#fafbfc; position:sticky; top:0; }
+  tr:last-child td { border-bottom:0; }
+  .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+  .active { background:#e5f4ea; color:var(--green); } .revoked { background:#fde8e6; color:var(--red); }
+  .pending { background:#fff3dc; color:var(--amber); } .expired { background:#eef0f3; color:#475467; }
+  .mono { font-family: Consolas, monospace; }
+  .muted { color:var(--mute); }
+  .acts { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  #msg { margin:0 0 12px; min-height:20px; }
+  #msg.err { color:var(--red); }
+  input[data-act=name]:hover, input[data-act=name]:focus { border-color:#cfd4dc !important; background:#fff; }
+</style>
+</head>
+<body>
+<header>
+  <h1>SL Editor access</h1>
+  <div class="sub" id="where">Loading…</div>
+</header>
+<main>
+  <p id="msg"></p>
+  <div class="stats" id="stats"></div>
+  <div class="bar">
+    <label><input type="checkbox" id="approval"> Approval mode: a key works only after you approve it</label>
+    <label>Offline grace <input type="number" id="grace" min="1" max="60" style="width:64px"> days</label>
+    <span style="flex:1"></span>
+    <input type="search" id="q" placeholder="Search name, PC, user, key">
+    <button id="reload">Refresh</button>
+  </div>
+  <div class="wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Key</th><th>For</th><th>Status</th><th>Expires</th><th>Last used</th><th>User · PC</th><th>Actions</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="8" class="muted">Loading…</td></tr></tbody>
+    </table>
+  </div>
+  <p class="muted">Changes are signed on this PC and published to the share at once. Every PC picks them up within 30 minutes, or when SL Editor starts. Users never see this page; only this PC can change the list.</p>
+</main>
+<script>
+const H = { 'X-AIVB-Client': '1', 'Content-Type': 'application/json' };
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+let DATA = null;
+function say(t, err) { const m = $('msg'); m.textContent = t || ''; m.className = err ? 'err' : ''; }
+async function call(body) {
+  const r = await fetch('/api/hub/admin', body ? { method: 'POST', headers: H, body: JSON.stringify(body) } : { headers: H });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || j.message || ('HTTP ' + r.status));
+  return j;
+}
+const when = s => { if (!s) return '<span class="muted">never</span>'; const d = new Date(s); const days = Math.floor((Date.now() - d) / 864e5);
+  return esc(d.toLocaleDateString()) + ' <span class="muted">' + (days < 1 ? 'today' : days === 1 ? 'yesterday' : days + ' days ago') + '</span>'; };
+function render() {
+  const D = DATA, q = $('q').value.trim().toLowerCase();
+  $('where').textContent = `Share: ${D.share} · list ${D.seq}, published ${new Date(D.issued).toLocaleString()}`;
+  $('approval').checked = D.approval; $('grace').value = D.grace_days;
+  const n = s => D.rows.filter(r => r.status === s).length, used = D.rows.filter(r => r.last).length;
+  $('stats').innerHTML = [['Keys', D.rows.length], ['In use', used], ['Active', n('active')], ['Waiting', n('pending')], ['Withdrawn', n('revoked')], ['Expired', n('expired')]]
+    .map(([k, v]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join('');
+  const rows = D.rows.filter(r => !q || [r.name, r.user, r.pc, r.tail, r.id].join(' ').toLowerCase().includes(q));
+  $('rows').innerHTML = rows.map(r => `<tr data-id="${esc(r.id)}">
+    <td><input type="text" value="${esc(r.name)}" placeholder="Add a name" data-act="name" style="font:inherit;border:1px solid transparent;border-radius:6px;padding:4px 6px;width:150px" title="Kept on this PC only"></td>
+    <td class="mono">${r.tail ? '…' + esc(r.tail) : '<span class="muted">' + esc(r.id.slice(0, 8)) + '</span>'}</td>
+    <td>${r.kind === 'features' ? 'SL Design &amp; Animation' : r.kind === 'ai' ? 'AI Smart Design' : '<span class="muted">?</span>'}</td>
+    <td><span class="pill ${esc(r.status)}">${{ active: 'Active', revoked: 'Withdrawn', pending: 'Waiting', expired: 'Expired' }[r.status] || esc(r.status)}</span></td>
+    <td><input type="date" value="${esc(r.expires)}" data-act="expires"></td>
+    <td>${when(r.last)}</td>
+    <td>${esc(r.user)}${r.pc ? ' · ' + esc(r.pc) : ''}${r.version ? ' <span class="muted">v' + esc(r.version) + '</span>' : ''}</td>
+    <td class="acts">${r.status === 'revoked' ? '<button data-act="restore">Restore</button>' : r.status === 'pending' ? '<button class="go" data-act="approve">Approve</button> <button class="danger" data-act="revoke">Withdraw</button>' : '<button class="danger" data-act="revoke">Withdraw</button>'}</td>
+  </tr>`).join('') || '<tr><td colspan="8" class="muted">No keys yet.</td></tr>';
+}
+async function load() { try { DATA = await call(); render(); say(''); } catch (e) { say(e.message, true); } }
+async function change(action, key, value, done) {
+  try { DATA = await call({ action, key, value }); render(); say(done); } catch (e) { say(e.message, true); }
+}
+$('rows').addEventListener('click', e => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const tr = b.closest('tr'), id = tr.dataset.id, r = DATA.rows.find(x => x.id === id), who = r.name || r.user || ('key …' + r.tail);
+  if (b.dataset.act === 'revoke' && !confirm(`Withdraw access for ${who}? It stops working on their PC within 30 minutes.`)) return;
+  change(b.dataset.act, id, null, { revoke: `Withdrawn: ${who}.`, restore: `Restored: ${who}.`, approve: `Approved: ${who}.` }[b.dataset.act]);
+});
+$('rows').addEventListener('change', e => {
+  const nm = e.target.closest('input[data-act=name]');
+  if (nm) { change('name', nm.closest('tr').dataset.id, nm.value, 'Name saved (on this PC only).'); return; }
+  const i = e.target.closest('input[data-act=expires]'); if (!i || !i.value) return;
+  const id = i.closest('tr').dataset.id; change('expires', id, i.value, `New expiry ${i.value} published.`);
+});
+$('approval').addEventListener('change', e => {
+  if (e.target.checked && !confirm('Approval mode: keys already in use stay active; any new key waits until you approve it here. Switch on?')) { e.target.checked = false; return; }
+  change('approval', null, e.target.checked ? 'on' : 'off', 'Approval mode ' + (e.target.checked ? 'on.' : 'off.'));
+});
+$('grace').addEventListener('change', e => change('grace', null, e.target.value, `Offline grace: ${e.target.value} days.`));
+$('q').addEventListener('input', () => DATA && render());
+$('reload').addEventListener('click', load);
+load();
+</script>
+</body>
+</html>

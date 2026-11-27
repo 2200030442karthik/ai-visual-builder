@@ -210,7 +210,10 @@
     }
     if (!desc) { note('Describe the icon first.', true); return; }
     // 10.27: the icon library's best matches first (iconlib.js, 5,700 icons from the team's asset share), then the catalogue's
-    const seen = new Set(), lib = typeof ICONLIB !== 'undefined' && ICONLIB.ready ? iconCandidates(desc, '').slice(0, 12).map(c => ({ key: iconKeyOf(c.i), name: ICONLIB.icons[c.i].name.replace(/^(logos|simple)-/, '').replace(/-/g, ' ') })) : [];
+    // 10.28: each match as its colour picture(s), each picture once
+    const seen = new Set(), libSeen = new Set(), lib = typeof ICONLIB !== 'undefined' && ICONLIB.ready
+      ? iconCandidates(desc, '').slice(0, 12).flatMap(c => iconViews(c.i).slice(0, 2)).filter(i => !libSeen.has(i) && libSeen.add(i)).slice(0, 14)
+        .map(i => ({ key: iconKeyOf(i), name: ICONLIB.icons[i].name.replace(/^(logos|simple|fl|fe|fc)-/, '').replace(/-/g, ' ') })) : [];
     const found = lib.concat(conceptScores(desc, '').filter(x => CMP[x.key] && !seen.has(x.key) && seen.add(x.key)).slice(0, lib.length ? 2 : 5));
     const pick = (key, name) => `<button type="button" class="iconPick" data-key="${esc2(key)}" data-name="${esc2(name)}" title="${esc2(name)}">${thumbOf(key)}<span>${esc2(name)}</span></button>`;
     picks.innerHTML = (found.length ? '<div class="iconSrc">Icon library <span class="badge src builtin">Built-in</span></div>' + found.map(x => pick(x.key, x.name)).join('') : '');

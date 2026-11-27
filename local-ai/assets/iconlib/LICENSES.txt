@@ -1,6 +1,9 @@
 Icons in iconlib.json (from the team asset share, \\sl-dns-gd-006\D\elearning-video\assets):
  - Lucide (ISC licence)
  - Tabler Icons (MIT licence)
+ - Microsoft Fluent colour icons (MIT licence)
+ - Microsoft Fluent Emoji, flat (MIT licence)
+ - Flat Color Icons by Icons8 (MIT licence)
  - SVG Logos by Gil Barbara (CC0; the logos are trademarks of their owners)
  - Simple Icons (CC0; the logos are trademarks of their owners)
 

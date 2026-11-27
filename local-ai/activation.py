@@ -314,6 +314,19 @@ def _add(bundle, d, count, expires, labels, first):
     return rows
 
 
+# 10.28: the access hub (hub.py), set by the service when the package has one: hub(key id, kind) -> {'state', 'expires',
+# 'message'}. The administrator's list then decides: withdrawn, waiting for approval, a new expiry date; without a hub
+# everything works as before (the dates and withdrawals in the bundle).
+HUB = None
+
+
+def hub_verdict(kid, kind='ai'):
+    try:
+        return HUB(kid, kind) if HUB else None
+    except Exception:
+        return None
+
+
 def unlock(bundle, key):
     """(grant, '') for a valid key, else (None, message for the user)."""
     norm = normalize(key)
@@ -328,6 +341,11 @@ def unlock(bundle, key):
         return None, 'This activation key is not valid for this package. Check it, or ask your manager.'
     g = json.loads(raw.decode('utf-8'))
     g['id'] = kid
+    hv = hub_verdict(kid, 'ai')
+    if hv and hv['state'] == 'revoked':
+        return None, hv['message']
+    if hv and hv.get('expires'):
+        g['expires'] = hv['expires']          # the administrator's date (extended or shortened)
     if _expired(g.get('expires')):
         return None, f'This activation key expired on {g.get("expires")}. Ask your manager for a new one.'
     return g, ''
@@ -388,11 +406,22 @@ def status(data_dir, bundle_path, clean=True):
         return no('revoked', 'Your activation key was withdrawn by the administrator. Ask your manager for a new one.')
     if unseal(d, bundle['payload']) is None:
         return no('new-keys', 'This version of AI Visual Builder comes with new AI keys. Enter your activation key again.')
-    if _expired(rec.get('expires')):
+    # 10.28: the administrator's list (hub.py): withdrawn -> removed; waiting, offline or expired -> kept, so an approval
+    # or a new date works again without the key
+    hv = hub_verdict(rec.get('id'), 'ai')
+    wait = lambda reason, message: {'ok': False, 'reason': reason, 'message': message, 'hub': True}   # noqa: E731
+    if hv and hv['state'] == 'revoked':
+        return no('revoked', hv['message'])
+    if hv and hv['state'] in ('pending', 'offline'):
+        return wait(hv['state'], hv['message'])
+    expires = (hv or {}).get('expires') or rec.get('expires')
+    if _expired(expires):
+        if hv:
+            return wait('expired', f'Your access expired on {expires}. Ask your administrator to extend it; it works again as soon as they do.')
         return no('expired', f'Your activation expired on {rec.get("expires")}. Ask your manager for a new activation key.')
-    left = (dt.date.fromisoformat(rec['expires']) - _today()).days if rec.get('expires') else None
-    return {'ok': True, 'reason': '', 'label': rec.get('label') or '', 'expires': rec.get('expires') or '', 'days_left': left,
-            'activated': rec.get('activated')}
+    left = (dt.date.fromisoformat(expires) - _today()).days if expires else None
+    return {'ok': True, 'reason': '', 'label': rec.get('label') or '', 'expires': expires or '', 'days_left': left,
+            'activated': rec.get('activated'), 'id': rec.get('id')}
 
 
 # ---------------------------------------------------------------- command line

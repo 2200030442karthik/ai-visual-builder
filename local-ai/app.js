@@ -169,6 +169,19 @@ const appSay = (msg, err) => { setStatus0(msg, err); if (typeof galPublish === '
     $('devLog').addEventListener('click', () => setStatus0(ORCH.log.slice(-25).map(x => `${x.at} ${x.what}`).join('\n') || 'Nothing generated yet.'));
     $('devLeave').addEventListener('click', () => { location.href = location.pathname + '?dev=0'; });
   }
+  // 10.28: the administrator's PC (it holds the access hub's signing key) gets a link to the team access page
+  (async () => {
+    try {
+      const r = await fetch('/api/hub/me', { headers: { 'X-AIVB-Client': '1' } });
+      if (!r.ok || !(await r.json()).admin) return;
+      const b = document.createElement('button');
+      b.type = 'button'; b.id = 'appAdmin'; b.className = 'applarge'; b.textContent = 'Manage team access';
+      b.addEventListener('click', () => { const u = location.origin + '/admin.html';
+        try { if (window.Office && Office.context && Office.context.ui && Office.context.ui.openBrowserWindow) { Office.context.ui.openBrowserWindow(u); return; } } catch (e) { /* the window below */ }
+        window.open(u, '_blank'); });
+      af.appendChild(b);
+    } catch (e) { /* no hub here */ }
+  })();
 })();
 document.addEventListener('keydown', e => {
   if (e.ctrlKey && e.altKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) {

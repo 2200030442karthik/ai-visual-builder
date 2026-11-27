@@ -34,7 +34,7 @@ function iconLibLoad() {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const d = await r.json();
       ICONLIB.icons = d.icons.map(([name, set, words, vb, body, mode]) => {
-        const nameT = (name.match(/[a-z0-9]+/g) || []).map(iconStem);
+        const nameT = (name.replace(/^(fl|fe|fc|logos|simple)-/, '').match(/[a-z0-9]+/g) || []).map(iconStem);
         return { name, set, vb, body, mode, nameT, tagT: [...new Set(iconToks(words))].filter(w => !nameT.includes(w)) };
       });
       ICONLIB.icons.forEach((ic, i) => {
@@ -47,6 +47,8 @@ function iconLibLoad() {
         if (n.includes(' ')) ICONLIB.wordsM.push([' ' + n + ' ', v]); else ICONLIB.words1.set(n, v);
       });
       ICONLIB.concept = d.concept || {};
+      // 10.28: each outline icon's colour versions (best first), as library indexes
+      ICONLIB.color = new Map(Object.entries(d.color || {}).map(([k, v]) => [ICONLIB.byName.get(k), v.map(n => ICONLIB.byName.get(n)).filter(i => i != null)]).filter(([k, v]) => k != null && v.length));
       ICONLIB.brands = Object.entries(d.brands || {}).map(([k, v]) => [new RegExp('(?:^|[^a-z0-9])' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![a-z0-9])', 'i'), v]);
       ICONLIB.ready = true;
     } catch (e) { console.warn('icon library not loaded', e); }
@@ -90,32 +92,58 @@ function iconCandidates(label, detail) {
   return [...S.entries()].map(([i, s]) => ({ i, s, why: why.get(i) || '' })).sort((a, b) => b.s - a.s).slice(0, 10);
 }
 const ICON_NEUTRAL = ['sparkles', 'lightbulb', 'star', 'target', 'rocket', 'bookmark', 'badge-check', 'compass', 'gem', 'puzzle'];
-/* Icons for the points of one visual (each icon once; the strongest match first). topic: the visual's title. */
+/* 10.28: colour icons by default (realistic Fluent icons); localStorage aivb.icon_style = 'outline' brings back the
+   one-colour outline icons. */
+const iconStyle = () => { try { return localStorage.getItem('aivb.icon_style') === 'outline' ? 'outline' : 'color'; } catch (e) { return 'color'; } };
+/* the pictures one candidate can be drawn as, best first: its colour versions (colour style), else itself */
+function iconViews(i) {
+  const ic = ICONLIB.icons[i];
+  if (!ic) return [];
+  if (iconStyle() !== 'color' || ic.mode === 'c') return [i];
+  return ICONLIB.color.get(i) || [];
+}
+/* Icons for the points of one visual (each picture once; the strongest match first). topic: the visual's title.
+   The meaning is matched on the words (iconCandidates); the picture is the candidate's colour version. A point whose
+   good matches have no colour version keeps the accurate outline icon rather than a colour icon that means less. */
 function iconLibPick(items, topic) {
   if (!ICONLIB.ready) return items.map(() => null);
   const lists = items.map(it => iconCandidates(it.label, [it.hint, it.detail].filter(Boolean).join(' ')));
   const pick = items.map(() => null), used = new Set(), pairs = [];
+  const take = (k, i) => { const v = iconViews(i).find(j => !used.has(j)); if (v == null) return false; pick[k] = v; used.add(v); return true; };
   lists.forEach((L, k) => { const best = L[0] ? L[0].s : 0; L.forEach(c => { if (c.s >= 2.5 && c.s >= best * 0.55) pairs.push({ k, c, d: best - c.s }); }); });
   pairs.sort((a, b) => b.c.s - a.c.s || a.d - b.d || a.k - b.k);
-  pairs.forEach(p => { if (!pick[p.k] && !used.has(p.c.i)) { pick[p.k] = p.c; used.add(p.c.i); } });
-  // nothing distinct: the topic's icons, then a neutral icon - never the empty marker
+  pairs.forEach(p => { if (pick[p.k] == null) take(p.k, p.c.i); });
+  // a weaker match of the point's own words, the topic's icons, then a neutral icon - never the empty marker
   const T = topic ? iconCandidates(topic, '') : [];
+  const neutral = ICON_NEUTRAL.map(x => ICONLIB.byName.get(x)).filter(i => i != null);
   pick.forEach((p, k) => {
-    if (p) return;
-    const alt = (lists[k].find(c => c.s >= 2.5 && !used.has(c.i))) || T.find(c => !used.has(c.i));
-    const n = alt ? alt.i : ICON_NEUTRAL.map(x => ICONLIB.byName.get(x)).find(i => i != null && !used.has(i));
-    if (n != null) { pick[k] = alt || { i: n, s: 0, why: 'neutral' }; used.add(n); }
+    if (p != null) return;
+    if (lists[k].some(c => c.s >= 2.5 && take(k, c.i))) return;
+    const own = lists[k].find(c => c.s >= 2.5 && !used.has(c.i));      // accurate, though it has no colour version
+    if (own) { pick[k] = own.i; used.add(own.i); return; }
+    if (T.some(c => take(k, c.i))) return;
+    neutral.some(i => take(k, i)) || (() => { const n = neutral.find(i => !used.has(i)); if (n != null) { pick[k] = n; used.add(n); } })();
   });
-  return pick.map(p => (p ? iconKeyOf(p.i) : null));
+  return pick.map(i => (i != null ? iconKeyOf(i) : null));
+}
+/* the picture for an icon chosen by name (Claude's choice, a learned one): its colour version not yet used, else itself */
+function iconPictureKey(name, used) {
+  const i = ICONLIB.byName.get(name);
+  if (i == null) return null;
+  const v = iconViews(i).find(j => !used.has(j));
+  const n = v != null ? v : i;
+  used.add(n);
+  return iconKeyOf(n);
 }
 const iconKeyOf = i => { const k = 'L:' + ICONLIB.icons[i].name; iconRegister(k); return k; };
 /* the best single icon for a phrase (a topic, a hub), or null */
 function iconLibBest(text, neutral) {
   if (!ICONLIB.ready) return null;
   const c = String(text || '').trim() ? iconCandidates(text, '')[0] : null;
-  if (c && c.s >= 2.5) return iconKeyOf(c.i);
+  const pic = i => iconKeyOf(iconViews(i)[0] != null ? iconViews(i)[0] : i);
+  if (c && c.s >= 2.5) return pic(c.i);
   const n = neutral && ICONLIB.byName.get(neutral);
-  return n != null ? iconKeyOf(n) : null;
+  return n != null ? pic(n) : null;
 }
 
 /* ---------- drawing ---------- */
@@ -132,10 +160,21 @@ function iconSvg(key, color) {
   return svg;
 }
 const iconIsLogo = key => { const ic = ICONLIB.icons[ICONLIB.byName.get(String(key).slice(2))]; return !!ic && ic.mode === 'c'; };
+/* 10.28: a brand logo (keeps its white plate on a coloured shape); colour icons are not brands */
+const iconIsBrand = key => { const ic = ICONLIB.icons[ICONLIB.byName.get(String(key).slice(2))]; return !!ic && (ic.set === 'logos' || ic.set === 'simple'); };
 /* CMP entry for a library icon: (x, y, s, c) -> one picture prim in colour c */
 function iconFn(key) {
   if (!/^L:/.test(String(key)) || !ICONLIB.ready || !ICONLIB.byName.has(String(key).slice(2))) return null;
   return (x, y, s, c) => {
+    // 10.28: a colour icon asked for in white (it sits on a coloured badge) goes on a white disc, so it always reads
+    if (iconIsLogo(key) && /^#?f{3}(f{3})?$/i.test(String(c || ''))) {
+      const ic = ICONLIB.icons[ICONLIB.byName.get(String(key).slice(2))], [vx, vy, vw, vh] = String(ic.vb).split(/[\s,]+/).map(Number), m = Math.max(vw, vh);
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="96" height="96"><circle cx="50" cy="50" r="50" fill="#FFFFFF"/>` +
+        `<svg x="13" y="13" width="74" height="74" viewBox="${vx} ${vy} ${m} ${m}">${ic.body}</svg></svg>`;
+      // the disc fills most of the badge around the icon's place; the icon itself keeps the size asked for
+      const S = s * 1.36, o = (S - s) / 2;
+      return [{ t: 'image', svg, href: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), x: x - o, y: y - o, w: S, h: S, icon: true, libIcon: key }];
+    }
     const svg = iconSvg(key, c || '#404040');
     return svg ? [{ t: 'image', svg, href: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), x, y, w: s, h: s, icon: true, libIcon: key }] : [];
   };
