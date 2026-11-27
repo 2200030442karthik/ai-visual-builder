@@ -2439,7 +2439,7 @@
       const placed = d.rect, empties = fit.empties.filter(x => overlaps(x, placed));
       {
         for (const p of d.prims.filter(q => q.t === 'image' && q.under)) await insertSvgAt(p.svg, p);   // behind the shapes
-        await drawOnSlide(context, slide, d.prims.filter(p => p.t !== 'image'), KIND_NAMES[d.kind], meta);
+        await drawOnSlide(context, slide, d.prims.filter(p => !(p.t === 'image' && p.under)), KIND_NAMES[d.kind], meta);
       }
       // Only now that the visual is in: an empty placeholder under it ("Click to add text") is no longer needed.
       empties.forEach(x => slide.shapes.getItem(x.id).delete());
@@ -2725,7 +2725,27 @@
 
     /* Draws the primitives as native shapes, all or nothing: if PowerPoint refuses the batch, everything it added is
        removed and the shapes go in one at a time; a decorative shape that still fails is left out, failing text undoes it all. */
+    /* 10.27.1: native shapes and text, then the pictures (library icons, logos) on top of them. A picture primitive is
+       never drawn as a shape (it would be an empty, invisible rectangle): it goes in as an SVG graphic through the
+       selection, at its place, and carries the visual's tag like the shapes. */
     async function drawOnSlide(context, slide, prims, name, meta) {
+      const pics = prims.filter(p => p.t === 'image' && p.svg);
+      await drawShapesOnSlide(context, slide, prims.filter(p => p.t !== 'image'), name, meta);
+      if (!pics.length) return;
+      slide.load('id');
+      await context.sync();
+      const before = new Set(await shapeIds(context, slide));
+      context.presentation.setSelectedSlides([slide.id]);        // pictures go in through the selection
+      await context.sync();
+      for (const p of pics) await insertSvgAt(p.svg, p);
+      const added = (await shapeIds(context, slide)).filter(id => !before.has(id));
+      if (!added.length) throw new Error('PowerPoint did not add the icons to this slide');
+      try {
+        added.forEach(id => { const s = slide.shapes.getItem(id); s.name = 'Icon (AI Visual)'; if (meta) s.tags.add('AIVB_V', meta.id); });
+        await context.sync();
+      } catch (e) { console.warn('Could not name the icons', e); }
+    }
+    async function drawShapesOnSlide(context, slide, prims, name, meta) {
       const shapes = slide.shapes, before = new Set(await shapeIds(context, slide));
       const newIds = async () => (await shapeIds(context, slide)).filter(id => !before.has(id));
       const removeNew = async keep => { const k = new Set(keep || []); (await newIds()).filter(id => !k.has(id)).forEach(id => shapes.getItem(id).delete()); await context.sync(); };
@@ -2892,6 +2912,7 @@
     })();
   </script>
   <script src="/gallery.js"></script>
+  <script src="/iconlib.js"></script>
   <script src="/understand.js"></script>
   <script src="/brand.js"></script>
   <script src="/svg2ppt.js"></script>
@@ -2909,6 +2930,9 @@
 <script src="/packs/spotlight-10.23.js"></script>
 <script src="/packs/infographics-10.24.js"></script>
 <script src="/packs/library-10.26.js"></script>
+<script src="/packs/reference-10.26.js"></script>
+<script src="/packs/lesson2-10.27.js"></script>
+<script src="/packs/showcase-10.28.js"></script>
 <script src="/vendor/antv-infographic.min.js"></script>
 <script src="/antv.js"></script>
   <script src="/original.js"></script>

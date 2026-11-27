@@ -42,7 +42,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import access as A
 import activation as ACT
+import features as FEAT
 import claude_visual as C
+import learn as L
+import hub as H
 
 VERSION = '10.22'
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -55,7 +58,9 @@ DATA_DIR = os.environ.get('AIVB_DATA_DIR') or os.path.join(os.environ.get('LOCAL
 STATIC = {'/': ('v10.html', 'text/html; charset=utf-8'), '/v10.html': ('v10.html', 'text/html; charset=utf-8'),
           '/gallery-dialog.html': ('gallery-dialog.html', 'text/html; charset=utf-8'),
           '/slsd-notice.html': ('slsd-notice.html', 'text/html; charset=utf-8'),
-          **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'sections', 'original', 'faithful', 'napkin', 'studio', 'orchestrator', 'app', 'bridge', 'slsd', 'gate', 'antv', 'stylekit', 'sleditor')},
+          **{f'/{n}.js': (f'{n}.js', 'text/javascript; charset=utf-8') for n in ('gallery', 'understand', 'brand', 'svg2ppt', 'pptx', 'rebuild', 'plan', 'sections', 'original', 'faithful', 'napkin', 'studio', 'orchestrator', 'app', 'bridge', 'slsd', 'gate', 'antv', 'stylekit', 'sleditor', 'iconlib')},
+          # 10.27: the icon library of the visuals (deploy/make-iconlib.py, from the team's asset share)
+          '/assets/iconlib/iconlib.json': ('assets/iconlib/iconlib.json', 'application/json'),
           # the ribbon's icons (manifest-v10.xml), served by this host like the panel itself
           **{f'/assets/icon-{n}.png': (f'assets/icon-{n}.png', 'image/png') for n in (16, 32, 64, 80)},
           # 10.20.1: the SL Smart Design tab's icons (manifest-slsd.xml; made by sl-smart-design/make_icons.py)
@@ -125,12 +130,13 @@ ACT_LOCK = threading.Lock()
 ACT_TRIES = []
 NOT_ACTIVATED = 'AI Visual Builder is not activated on this PC. Open AI Visual Builder and enter the activation key from your manager.'
 STATIC['/activate.html'] = ('activate.html', 'text/html; charset=utf-8')
+STATIC['/admin.html'] = ('admin.html', 'text/html; charset=utf-8')      # 10.28: the access hub's page (its API checks the admin key)
 # Pages and scripts are always served: the panel page is also the SL Smart Design tab's function file (one runtime), and
 # gate.js shows the activation form over the panel. Without activation only these APIs answer: status, the activation
 # itself, and SL Smart Design's own commands and the panel opening (SL Smart Design has its own licence check).
-ACT_FREE_GET = ('/api/status', '/api/activation', '/api/slsd/status', '/api/bridge/next', '/api/bridge/status')
+ACT_FREE_GET = ('/api/status', '/api/activation', '/api/features', '/api/slsd/status', '/api/bridge/next', '/api/bridge/status')
 # 10.24: /api/claude/icon is no longer free of activation - it can spend Claude credits
-ACT_FREE_POST = ('/api/activate', '/api/slsd/run', '/api/bridge/open', '/api/bridge/ack')
+ACT_FREE_POST = ('/api/activate', '/api/features/activate', '/api/slsd/run', '/api/bridge/open', '/api/bridge/ack')
 
 
 def activation_state(force=False):
@@ -143,6 +149,7 @@ def activation_state(force=False):
         if force or not v or not v['ok'] or now - ACT_STATE['t'] > 60:
             v = dict(ACT.status(DATA_DIR, ACT_BUNDLE), required=True)
             ACT_STATE.update(t=now, v=v)
+            hub_checkin(v, 'ai')
         return v
 
 
@@ -160,6 +167,72 @@ def activation_try(b):
     log('activation ' + ('done' if res.get('ok') else 'refused (' + str(res.get('reason')) + ')'))
     activation_state(force=True)
     return {k: res.get(k) for k in ('ok', 'reason', 'message', 'label', 'expires', 'days_left', 'services') if k in res}
+# ---------------------------------------------------------------- 10.26: SL Design and SL Animation access (features.py)
+FEAT_BUNDLE = os.environ.get('AIVB_FEATURES') or os.path.join(HERE, FEAT.BUNDLE_NAME)
+FEAT_TRIES, FEAT_LOCK = [], threading.Lock()
+
+
+def feat_locked():
+    """The package's LOCKED SL_Audomation (put back when access ends), or None."""
+    for p in (os.path.join(HERE, '..', 'addins', FEAT.ADDIN + '.ppam'), os.path.join(HERE, 'addins', FEAT.ADDIN + '.ppam')):
+        try:
+            with open(p, 'rb') as f:
+                b = f.read()
+            if FEAT.is_locked(b):
+                return b
+        except OSError:
+            pass
+    return None
+
+
+def features_state(clean=False):
+    if not os.path.exists(FEAT_BUNDLE):
+        return {'ok': False, 'reason': 'not-in-package', 'message': 'SL Design and SL Animation are not part of this installation.'}
+    try:
+        v = FEAT.status(DATA_DIR, FEAT_BUNDLE, clean=clean, locked_addin=feat_locked() if clean else None)
+        hub_checkin(v, 'features')
+        return v
+    except Exception as e:      # never stops the service
+        log(f'features: {type(e).__name__}')
+        return {'ok': False, 'reason': 'error', 'message': 'The access could not be checked.'}
+
+
+def _addin_live(on):
+    if sys.platform != 'win32' or TEST_NO_PAID:
+        return False
+    try:
+        import slsd_com
+        return slsd_com.set_addin_loaded(FEAT.ADDIN, on)
+    except Exception:
+        return False
+
+
+def features_try(b):
+    """The panel's access page: at most 10 attempts a minute; the key is never logged. PowerPoint keeps running: the
+    add-in is unloaded, replaced by the real one and loaded again."""
+    now = time.time()
+    with FEAT_LOCK:
+        FEAT_TRIES[:] = [x for x in FEAT_TRIES if now - x < 60]
+        if len(FEAT_TRIES) >= 10:
+            raise NapkinError('Too many attempts. Wait a minute, then try again.', 429)
+        FEAT_TRIES.append(now)
+    if not os.path.exists(FEAT_BUNDLE):
+        return features_state()
+    key = str(b.get('key') or '')[:80]
+    g, err = FEAT.unlock(FEAT.load_bundle(FEAT_BUNDLE), key)
+    if not g:
+        log('features: access refused')
+        return {'ok': False, 'reason': 'invalid', 'message': err}
+    was = _addin_live(False)
+    res = FEAT.activate(key, DATA_DIR, FEAT_BUNDLE)
+    live = _addin_live(True) if was else False
+    log('features: access ' + ('given' if res.get('ok') else 'refused'))
+    out = {k: res.get(k) for k in ('ok', 'reason', 'message', 'label', 'expires', 'days_left') if k in res}
+    out['live'] = bool(live and res.get('placed'))
+    out['restart'] = bool(res.get('ok') and not out['live'])
+    return out
+
+
 CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' https://appsforoffice.microsoft.com; "
        "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://appsforoffice.microsoft.com; "
        "font-src 'self' data:; connect-src 'self' https://*.microsoft.com https://*.office.com https://*.office.net; "
@@ -168,6 +241,35 @@ CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' https://appsforoff
 
 def log(*a):
     print(time.strftime('%H:%M:%S'), *a, flush=True)
+
+
+# ---------------------------------------------------------------- 10.28: the access hub (hub.py)
+# A package with hub.json: the administrator's signed list on the team share decides each key (withdrawn, waiting for
+# approval, a new expiry), read in the background; each PC reports its use there. Test hosts never touch the share.
+HUB = None
+if ACTIVATION and not TEST_NO_PAID:
+    _hub_cfg = H.load_config(HERE)
+    if _hub_cfg:
+        HUB = H.Hub(_hub_cfg, DATA_DIR, log)
+        ACT.HUB = HUB.verdict
+        HUB.start()
+
+
+def hub_checkin(v, kind):
+    if HUB and v.get('ok') and v.get('id'):
+        HUB.checkin(v['id'], {'kind': kind, 'label': v.get('label') or '', 'expires': v.get('expires') or '', 'version': VERSION})
+
+
+def hub_admin(b=None):
+    """The administrator's view and changes (only on the PC that holds the hub's private key)."""
+    if TEST_NO_PAID or not H.is_admin(DATA_DIR):
+        raise NapkinError('This PC does not manage the access hub.', 403)
+    try:
+        if b is None:
+            return H.admin_overview(DATA_DIR)
+        return H.admin_change(DATA_DIR, str(b.get('action') or ''), str(b.get('key') or '') or None, b.get('value'))
+    except (ValueError, OSError) as e:
+        raise NapkinError(f'The access list could not be changed: {e}', 400)
 
 
 # ---------------------------------------------------------------- Napkin AI (https://api.napkin.ai/)
@@ -575,6 +677,19 @@ def claude_icons(b, who=None):
     return C.generate_icons(C.settings(DATA_DIR), items, timeout_s=max(60, CONFIG.get('claude_timeout_s', 30)), style=str(b.get('style') or '3d'))
 
 
+def icons_pick(b, who=None):
+    """10.27: Claude chooses each point's icon among the library's candidates (with this user's earlier choices as examples)."""
+    items = b.get('items') if isinstance(b.get('items'), list) else []
+    if not items:
+        raise NapkinError('No points given.', 400)
+    if TEST_NO_PAID or CONFIG['paid_policy'] == 'never':
+        return {'ok': False, 'source': 'off', 'error': 'Claude is switched off by the administrator.', 'icons': [None] * min(10, len(items))}
+    res = C.pick_icons(C.settings(DATA_DIR), items, str(b.get('topic') or ''), L.examples(DATA_DIR))
+    if res.get('source') == 'off':
+        log('icons pick: ' + res.get('error', ''))
+    return res
+
+
 def claude_icon(b, who=None):
     desc = str(b.get('description') or b.get('prompt') or '').strip()
     if not desc:
@@ -946,6 +1061,15 @@ class Handler(BaseHTTPRequestHandler):
         act = activation_state()
         if path == '/api/activation':
             return self.send(200, act)
+        if path == '/api/features':
+            return self.send(200, features_state())
+        if path == '/api/hub/admin':           # 10.28: the administrator's access page (own guard: the hub's private key)
+            try:
+                return self.send(200, hub_admin())
+            except NapkinError as e:
+                return self.fail(e.code, str(e))
+        if path == '/api/hub/me':
+            return self.send(200, {'admin': not TEST_NO_PAID and H.is_admin(DATA_DIR), 'hub': bool(HUB)})
         if not act['ok'] and path not in ACT_FREE_GET:
             return self.fail(403, NOT_ACTIVATED)
         try:
@@ -970,6 +1094,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, {'server': VERSION, 'access': access, 'napkin': napkin, 'claude': claude, 'orchestrate': orchestrate,
                                        'brand': {'soft_tints': CONFIG['soft_tints'] is True, 'sme_space': CONFIG['sme_space'] is True}, 'slsd': {'mac_bridge': mac_bridge_on()},
                                        'activation': act})
+            if path == '/api/learn':      # 10.27: a test host neither reads nor writes this PC's learning
+                return self.send(200, {'icons': {}, 'layouts': {}, 'recent': []} if TEST_NO_PAID else L.state(DATA_DIR))
             if path == '/api/gallery':
                 return self.send(200, gallery_get(arg('k')))
             if path == '/api/bridge/next':
@@ -1016,6 +1142,10 @@ class Handler(BaseHTTPRequestHandler):
             b = json.loads(self.rfile.read(n) or b'{}')
             if path == '/api/activate':
                 return self.send(200, activation_try(b))
+            if path == '/api/features/activate':
+                return self.send(200, features_try(b))
+            if path == '/api/hub/admin':
+                return self.send(200, hub_admin(b))
             if path not in ACT_FREE_POST and not activation_state()['ok']:
                 return self.fail(403, NOT_ACTIVATED)
             # a test panel host never makes a paid request (the tests use saved results and stand-ins)
@@ -1031,6 +1161,11 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/claude/visual':
                 who = self.authorized()
                 return who and self.send(200, claude_create(b, who))
+            if path == '/api/learn':
+                return self.send(200, {'ok': True, 'test': True} if TEST_NO_PAID else L.record(DATA_DIR, b))
+            if path == '/api/icons/pick':
+                who = self.authorized()
+                return who and self.send(200, icons_pick(b, who))
             if path == '/api/claude/icons':
                 who = self.authorized()
                 return who and self.send(200, claude_icons(b, who))
@@ -1116,6 +1251,8 @@ def main():
         ctx.load_cert_chain(cert, key)
         # the handshake happens in each request's own thread (Handler.setup), not in the accept loop
         srv.socket = ctx.wrap_socket(srv.socket, server_side=True, do_handshake_on_connect=False)
+    if not HOSTED and not TEST_NO_PAID:    # expired, withdrawn or copied access: the locked copy back; access given: the real add-in
+        threading.Thread(target=features_state, kwargs={'clean': True}, daemon=True, name='features').start()
     if os.environ.get('AIVB_SLSD_UNIFY') == '1' and not HOSTED and sys.platform == 'win32':
         threading.Thread(target=slsd_tab_loop, daemon=True, name='slsd-tab').start()
     log(f'AI Visual Builder {VERSION} on ' + (f'port {PORT} (hosted for {", ".join(sorted(ALLOWED_HOSTS))})' if HOSTED else f'{SCHEME}://localhost:{PORT}/') + '  (Ctrl+C to stop)')

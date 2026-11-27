@@ -89,8 +89,43 @@
       `<button type="button" id="sledBack" class="sled-back" hidden title="Back to AI SL Smart Design">AI SL Smart Design ›</button>`;
     document.body.classList.add('sled');
     const mk = (id, html) => { const d = document.createElement('div'); d.id = id; d.className = 'sled-pane'; d.hidden = true; d.innerHTML = html; document.body.insertBefore(d, document.querySelector('footer')); wire(d); return d; };
-    mk('sledDesign', `<p class="sled-lead">Brand shapes, text, layouts and notes for the selected slide.</p>` + cards(DESIGN, 'sd'));
-    mk('sledAnim', `<p class="sled-lead">Animations, timing, audio and video for this presentation.</p>` + cards(ANIM, 'sa'));
+    // 10.26: SL Design and SL Animation are the add-in's own ribbon tabs again, locked until access is given (features.py)
+    const acc = mk('sledAccess', `<section class="sled-card sled-access">
+        <div class="sled-lock" id="sledLockIc">🔒</div>
+        <h3 id="sledAccTitle">SL Design and SL Animation</h3>
+        <p class="sled-note" id="sledAccText">Checking your access…</p>
+        <div id="sledAccForm" hidden>
+          <label class="sled-key">Access key<input id="sledKey" type="text" autocomplete="off" spellcheck="false" placeholder="SLDA-XXXXX-XXXXX-XXXXX-XXXXX" maxlength="40"></label>
+          <button type="button" class="sled-primary" id="sledKeyGo">Activate SL Design and SL Animation</button>
+          <p class="sled-note">This is a separate key from your AI SL Smart Design activation key. Ask your administrator for it.</p>
+        </div>
+        <div class="sled-status" id="sledAccMsg" role="status" aria-live="polite" hidden></div>
+      </section>
+      <section class="sled-card"><h3>Where are the tools?</h3><p class="sled-note">In the ribbon, on the <b>SL Design</b> and <b>SL Animation</b> tabs next to SL Editor. Until access is given they are visible but greyed out.</p></section>`);
+    const say = (m, k) => { const s = $('sledAccMsg'); s.textContent = m; s.className = 'sled-status ' + (k || ''); s.hidden = !m; };
+    async function access() {
+      const j = await fetch('/api/features', { headers: H, cache: 'no-store' }).then(r => r.json()).catch(() => null);
+      const on = !!(j && j.ok);
+      $('sledLockIc').textContent = on ? '✅' : '🔒';
+      $('sledAccTitle').textContent = on ? 'SL Design and SL Animation are active' : 'SL Design and SL Animation are locked';
+      $('sledAccText').textContent = !j ? 'The SL Editor service is not answering.' : on ? `Use them on the SL Design and SL Animation tabs in the ribbon.${j.expires ? ` Access until ${j.expires}.` : ''}`
+        : j.reason === 'not-in-package' ? j.message : (j.reason && j.reason !== 'not-activated' ? j.message + ' ' : '') + 'Enter the access key from your administrator to use them.';
+      $('sledAccForm').hidden = on || !j || j.reason === 'not-in-package';
+    }
+    $('sledKeyGo').addEventListener('click', async () => {
+      const key = $('sledKey').value.trim();
+      if (!key) { say('Enter the access key first.', 'bad'); return; }
+      $('sledKeyGo').classList.add('busy'); say('Checking the key…', '');
+      try {
+        const r = await fetch('/api/features/activate', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, H), body: JSON.stringify({ key }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j.ok) { say(j.message || j.error || 'The key was not accepted.', 'bad'); return; }
+        $('sledKey').value = '';
+        say(j.live ? 'Activated. The SL Design and SL Animation tabs work now.' : 'Activated. Close and reopen PowerPoint once to use the SL Design and SL Animation tabs.', 'ok');
+        await access();
+      } finally { $('sledKeyGo').classList.remove('busy'); }
+    });
+    acc.__refresh = access;
     // the SL Smart Design tools, under the AI visuals
     const tools = document.createElement('details'); tools.className = 'panel sled-tools'; tools.id = 'sledTools';
     tools.innerHTML = `<summary><span class="num">3</span> SL Smart Design tools</summary>` + cards(SLSD_TOOLS, 'st');
@@ -102,16 +137,18 @@
     try { want = want || sessionStorage.getItem('sled.tab'); } catch (e) { /* none */ }
     if (want) show(want);
   }
-  const MODES = { ai: 'AI SL Smart Design', design: 'SL Design', anim: 'SL Animation' };
+  const MODES = { ai: 'AI SL Smart Design', access: 'SL Design and SL Animation access' };
   let shownAt = 0;
   function show(tab) {
-    if (!['ai', 'design', 'anim'].includes(tab)) tab = 'ai';
+    if (tab === 'design' || tab === 'anim') tab = 'access';      // the ribbon's SL Design / SL Animation buttons: the access page
+    if (!['ai', 'access'].includes(tab)) tab = 'ai';
     document.body.dataset.tab = tab;
     if ($('sledMode')) $('sledMode').textContent = MODES[tab];
     if ($('sledBack')) $('sledBack').hidden = tab === 'ai';
     shownAt = Date.now();
-    if (!$('sledDesign')) return;
-    $('sledDesign').hidden = tab !== 'design'; $('sledAnim').hidden = tab !== 'anim';
+    if (!$('sledAccess')) return;
+    $('sledAccess').hidden = tab !== 'access';
+    if (tab === 'access' && $('sledAccess').__refresh) $('sledAccess').__refresh();
     try { sessionStorage.setItem('sled.tab', tab); } catch (e) { /* none */ }
     window.scrollTo(0, 0);
   }
@@ -144,6 +181,11 @@
     body.simple #status { max-height:40px; }
     .appgrid .gcard { border-color:#e3e8f2 !important; border-radius:12px !important; }
     .sled-pane { padding-bottom:12px; }
+    .sled-access { text-align:center; padding:18px 14px; }
+    .sled-access h3 { justify-content:center; font-size:15px; } .sled-access h3::before { display:none; }
+    .sled-lock { font-size:34px; line-height:1; margin-bottom:6px; }
+    .sled-key { display:flex; flex-direction:column; gap:4px; text-align:left; font-size:11.5px; font-weight:600; color:var(--muted); margin:10px 0 8px; }
+    .sled-key input { border:1px solid #d5dcea; border-radius:9px; padding:8px 10px; font:inherit; font-size:13px; letter-spacing:.5px; text-transform:uppercase; }
     .sled-lead { margin:0 2px 10px; color:var(--muted); font-size:12.5px; }
     .sled-card { background:#fff; border-radius:14px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(20,30,60,.06), 0 6px 18px rgba(20,30,60,.05); }
     .sled-card h3 { margin:0 0 8px; font-size:13px; display:flex; align-items:center; gap:7px; }

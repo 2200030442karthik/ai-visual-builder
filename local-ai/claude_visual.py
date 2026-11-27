@@ -20,10 +20,12 @@ import os
 import re
 import time
 
+IMPORT_ERROR = ''
 try:
     import anthropic
-except ImportError:          # Claude stays off; Napkin and the built-in suggestions are unaffected
+except Exception as _e:      # Claude stays off; Napkin and the built-in suggestions are unaffected (10.27: any import failure, named)
     anthropic = None
+    IMPORT_ERROR = f'{type(_e).__name__}: {_e}'[:160]
 
 DEFAULT_MODEL = 'claude-opus-5-5'
 # The template's content area (v10.html TEMPLATE.contentArea, points): the SVG uses it 1:1, so 1 SVG unit = 1 pt.
@@ -569,7 +571,7 @@ def generate_icon(s, description, timeout_s=30, client=None, style='flat'):
         fb = _match_fallback_icon(desc, generic=False)
         return {'ok': bool(fb), 'source': 'template', 'icon': fb, 'error': '' if fb else f'Claude could not design this icon ({err}).'}
     fb = _match_fallback_icon(desc, generic=False)
-    return {'ok': bool(fb), 'source': 'template', 'icon': fb, 'error': '' if fb else 'Claude is not set up on this PC; choose one of the library icons.'}
+    return {'ok': bool(fb), 'source': 'template', 'icon': fb, 'reason': why_off(s), 'error': '' if fb else f'Claude is not available ({why_off(s)}); the matching library icons are shown instead.'}
 
 
 
@@ -587,7 +589,7 @@ def generate_icons(s, items, timeout_s=60, client=None, style='3d'):
         raise ValueError('No points given.')
     key = s.get('key') if isinstance(s, dict) else ''
     if not (isinstance(s, dict) and s.get('enabled') and key and anthropic is not None):
-        return {'ok': False, 'source': 'off', 'error': 'Claude is not set up on this PC.', 'icons': [None] * len(pts)}
+        return {'ok': False, 'source': 'off', 'error': f'Claude is not available ({why_off(s)}).', 'icons': [None] * len(pts)}
     try:
         client = client or anthropic.Anthropic(api_key=key, timeout=timeout_s, max_retries=0)
         listing = '\n'.join(f'{n + 1}. {p["label"]}' + (f' - {p["detail"]}' if p['detail'] else '') for n, p in enumerate(pts))
@@ -636,3 +638,55 @@ def _clean_icon_elements(els):
             continue
     return out
 
+
+# ---------------------------------------------------------------- 10.27: icons chosen from the library
+PICK_MODEL = 'claude-haiku-5-5'
+PICK_SYSTEM = """You choose icons for the points of one presentation slide. For each point you get its name, its description
+and up to 12 candidate icon names from an icon library (Lucide / Tabler outline icons, brand logos). Choose the candidate
+that a learner would recognise at once as THIS point's meaning in this slide's context (the slide's topic and the other
+points help: "Who" on a slide about customers is a person, "Format" on a slide about prompts is a table). Prefer the
+literal object over a vague symbol; a brand logo only when the point names that brand. Two points never share an icon.
+You may answer any icon name of these libraries that is not in the list when none of the candidates fits; use exact
+kebab-case names. Return ONLY JSON: {"icons": ["name", ...]} - one per point, in order."""
+
+
+def why_off(s):
+    """Why Claude cannot be used on this PC, in plain words (no secrets)."""
+    if anthropic is None:
+        return f'the Claude library is missing from this installation ({IMPORT_ERROR or "not installed"}); reinstall SL Editor'
+    if not (isinstance(s, dict) and s.get('key')):
+        return 'no Claude key on this PC - enter your activation key again (SL Editor > activation), or ask your administrator'
+    if not s.get('enabled'):
+        return 'Claude is switched off in claude.json on this PC'
+    return ''
+
+
+def pick_icons(s, items, topic='', examples=None, timeout_s=40, client=None):
+    """{'ok', 'icons': [name or None per point]}: Claude's choice among the library's candidates (one small request)."""
+    pts = [i for i in (items or [])[:10] if isinstance(i, dict) and i.get('label')]
+    if not pts:
+        raise ValueError('No points given.')
+    off = why_off(s)
+    if off:
+        return {'ok': False, 'source': 'off', 'error': 'Claude is not available: ' + off + '.', 'icons': [None] * len(pts)}
+    try:
+        client = client or anthropic.Anthropic(api_key=s['key'], timeout=timeout_s, max_retries=0)
+        lines = []
+        for n, p in enumerate(pts):
+            c = [str(x)[:60] for x in (p.get('cands') or [])[:12]]
+            lines.append(f'{n + 1}. {str(p["label"])[:80]}' + (f' - {str(p.get("detail") or "")[:160]}' if p.get('detail') else '') + f'\n   candidates: {", ".join(c)}')
+        ex = ''
+        if examples:
+            ex = '\nIcons this user accepted before (their taste): ' + '; '.join(f'{a} -> {b}' for a, b in examples[:12]) + '\n'
+        msg = _stream(client, s, model=PICK_MODEL, max_tokens=600, system=PICK_SYSTEM,
+                      messages=[{'role': 'user', 'content': f'Slide topic: {str(topic or "")[:120]}\n{ex}Points:\n' + '\n'.join(lines)}])
+        text = ''.join(b.text for b in msg.content if b.type == 'text')
+        m = re.search(r'\{[\s\S]*\}', text)
+        data = json.loads(m.group(0)) if m else {}
+        got = [re.sub(r'[^a-z0-9-]', '', str(x or '').lower())[:60] or None for x in (data.get('icons') or [])][:len(pts)]
+        got += [None] * (len(pts) - len(got))
+        usage = getattr(msg, 'usage', None)
+        return {'ok': any(got), 'source': 'claude', 'icons': got,
+                'usage': {'input_tokens': getattr(usage, 'input_tokens', 0), 'output_tokens': getattr(usage, 'output_tokens', 0)}}
+    except Exception as e:
+        return {'ok': False, 'source': 'claude', 'error': f'Claude could not choose the icons ({type(e).__name__}).', 'icons': [None] * len(pts)}

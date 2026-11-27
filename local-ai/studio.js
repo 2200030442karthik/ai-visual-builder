@@ -408,6 +408,29 @@ async function visualParts(context, slide, id) {
   const tv = shapes.items.map(s => { const t = s.tags.getItemOrNullObject('AIVB_V'); t.load('value'); return t; });
   await context.sync();
   const tops = shapes.items.filter((s, i) => !tv[i].isNullObject && tv[i].value === id), leaves = [];
+  // 10.26: a group without the tag whose shapes carry it (an object group of the visual, "Definition (AI Visual)", or a
+  // group made in PowerPoint around its shapes, "Group 145") is part of the visual, not an object in its way
+  if (state.canGroup) {
+    for (const [i, s] of shapes.items.entries()) {
+      if (s.type !== 'Group' || (!tv[i].isNullObject && tv[i].value === id)) continue;
+      try {
+        const cs = s.group.shapes; cs.load('items/id'); await context.sync();
+        const ct = cs.items.map(c => { const t = c.tags.getItemOrNullObject('AIVB_V'); t.load('value'); return t; });
+        await context.sync();
+        if (ct.some(t => !t.isNullObject && t.value === id) && ct.every(t => t.isNullObject || t.value === id)) tops.push(s);
+      } catch (e) { /* not readable as a group: left as it is */ }
+    }
+    // an icon the add-in drew into the visual before 10.26 without its tag (Replace icon): named "... (AI Visual)" and
+    // lying inside the visual's own area
+    const T = tops.map(s => ({ x: s.left, y: s.top, w: s.width, h: s.height }));
+    if (T.length) {
+      const x0 = Math.min(...T.map(r => r.x)) - 4, y0 = Math.min(...T.map(r => r.y)) - 4, x1 = Math.max(...T.map(r => r.x + r.w)) + 4, y1 = Math.max(...T.map(r => r.y + r.h)) + 4;
+      shapes.items.forEach((s, i) => {
+        if (!tv[i].isNullObject || tops.includes(s) || !/\(AI Visual\)$/.test(String(s.name || ''))) return;
+        if (s.left >= x0 && s.top >= y0 && s.left + s.width <= x1 && s.top + s.height <= y1) tops.push(s);
+      });
+    }
+  }
   for (const s of tops) {
     if (s.type === 'Group' && state.canGroup) {
       try { const cs = s.group.shapes; cs.load('items/id,items/type,items/left,items/top,items/width,items/height'); await context.sync(); cs.items.forEach(c => leaves.push({ s: c, parent: s.id })); continue; }

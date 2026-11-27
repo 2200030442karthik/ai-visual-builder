@@ -69,6 +69,7 @@ const PROVIDERS = {
 const PANELS = {};
 /* The panel's own analysis as a plan (the free layout check before a request). */
 function planFromPrep(prep) {
+  if (typeof PLAN_TOPIC !== 'undefined') PLAN_TOPIC = prep.title || '';
   // 10.15: content written as labelled sections ("What you learn" / "Best for"): one named group per section
   if (prep.sections && prep.sections.length && typeof sectionsPlan === 'function') return sectionsPlan({ title: prep.title, full: prep.full || prep.title, short: prep.short, sections: prep.sections, statement: prep.statement, paragraph: prep.paragraph, lead: prep.lead, intro: prep.intro });
   const sc = t => typeof sentenceCase === 'function' && !prep.record ? sentenceCase(t) : t;   // 10.19: LVC sentence case (brand.js); exact records as written

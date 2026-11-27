@@ -34,11 +34,10 @@ GROUPS = [
     ('SLSD.Rename', 'Shape Rename', 'rename-text', [
         ('SLSD.RenText', 'Text', 'Name the selected shapes Text_1, Text_2 ... in the order you selected them.', 'rename-text', 'fn', 'slsdRenameText'),
         ('SLSD.RenHead', 'Heading', 'Name the selected shapes T_Text_1, T_Text_2 ... in the order you selected them.', 'rename-heading', 'fn', 'slsdRenameHeading')]),
-    # 10.25 SL Editor: the SL Design and SL Animation commands (SL_Audomation) in the panel's own tabs
-    ('SLED.Design', 'SL Design', 'sldesign', [
-        ('SLED.OpenDesign', 'SL Design', 'Brand shapes, text boxes, bullets, layout templates, brandlines and speaker notes.', 'sldesign', 'fn', 'sledOpenDesign')]),
-    ('SLED.Anim', 'SL Animation', 'slanimation', [
-        ('SLED.OpenAnim', 'SL Animation', 'Entrance and exit animations, bulk timing shift, transitions, audio and video export.', 'slanimation', 'fn', 'sledOpenAnimation')]),
+    # 10.26: SL Design and SL Animation are the SL_Audomation add-in's own tabs again, locked until access is given;
+    # this button opens the access page (features.py)
+    ('SLED.Access', 'SL Design & Animation', 'sldesign', [
+        ('SLED.OpenDesign', 'SL Design & Animation', 'Access to the SL Design and SL Animation tabs: enter the access key from your administrator.', 'sldesign', 'fn', 'sledOpenDesign')]),
 ]
 
 HEAD = '''<?xml version="1.0" encoding="UTF-8"?>
@@ -129,7 +128,7 @@ def build():
     tab += ['              <Label resid="Tab.Label"/>', '            </CustomTab>']
     short['Group.AISLSD.Label'] = 'SL Editor'
     short['SLEDHome.Label'] = 'SL Editor'
-    long_['SLEDHome.Tip'] = 'Open SL Editor: AI SL Smart Design (AI infographics and editing), SL Design and SL Animation.'
+    long_['SLEDHome.Tip'] = 'Open SL Editor: AI SL Smart Design (AI infographics, editing and the SL Smart Design tools).'
     tab += [
         '            <OfficeTab id="TabHome">',
         '              <Group id="AISLSD.HomeGroup">',
@@ -156,17 +155,6 @@ def build():
     ] + icon('sldesign', '                  ') + [
         '                  <Action xsi:type="ExecuteFunction">',
         '                    <FunctionName>sledOpenDesign</FunctionName>',
-        '                  </Action>',
-        '                </Control>',
-        '                <Control xsi:type="Button" id="AIVB10.HomeEdit">',
-        '                  <Label resid="SLEDOpenAnim.Label"/>',
-        '                  <Supertip>',
-        '                    <Title resid="SLEDOpenAnim.Label"/>',
-        '                    <Description resid="SLEDOpenAnim.Tip"/>',
-        '                  </Supertip>',
-    ] + icon('slanimation', '                  ') + [
-        '                  <Action xsi:type="ExecuteFunction">',
-        '                    <FunctionName>sledOpenAnimation</FunctionName>',
         '                  </Action>',
         '                </Control>',
         '              </Group>',

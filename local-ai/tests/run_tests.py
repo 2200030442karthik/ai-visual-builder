@@ -82,6 +82,9 @@ def main():
         subprocess.run([sys.executable, os.path.join(HERE, 'test_slsd.py')])      # 10.20.1: SL Smart Design tab, Alternative Design, switch
         subprocess.run([sys.executable, os.path.join(HERE, 'test_upgrade.py')])   # 10.21: text analysis, vivid pack, variety, icon order
         subprocess.run([sys.executable, os.path.join(HERE, 'test_activation.py')])  # 10.22: team activation keys, server gate
+        subprocess.run([sys.executable, os.path.join(HERE, 'test_features.py')])    # 10.26: SL Design and SL Animation access keys
+        subprocess.run([sys.executable, os.path.join(HERE, 'test_learn.py')])       # 10.27: learning from earlier visuals
+        subprocess.run([sys.executable, os.path.join(HERE, 'test_hub.py')])         # 10.28: the access hub (signed list on the share)
         if edge:    # Edge hands over to helper processes: stop every Edge process using this run's own profile folder
             ps = f"Get-CimInstance Win32_Process -Filter \"Name='msedge.exe'\" | Where-Object {{ $_.CommandLine -like '*{PROFILE}*' }} | ForEach-Object {{ Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }}"
             subprocess.run(['powershell', '-NoProfile', '-Command', ps], capture_output=True)

@@ -47,7 +47,21 @@ if (-not (Test-Path $BundlePath)) {
 
 # 2. Stage files into Team_Package
 Write-Host 'Staging application files into Build_Stage...' -ForegroundColor Yellow
-& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build-stage.ps1') -Bundle $BundlePath
+# 1b. 10.26: SL Design and SL Animation access keys (separate from the AI activation keys), made once and reused
+$FeatPath = Join-Path $Keys 'features-bundle.json'
+if (-not (Test-Path $FeatPath)) {
+    $orig = $null
+    foreach ($c in (Join-Path $env:LOCALAPPDATA 'AIVisualBuilder\addins-original\SL_Audomation.ppam'), (Join-Path $env:APPDATA 'Microsoft\AddIns\SL_Audomation.ppam')) {
+        if (-not (Test-Path $c)) { continue }
+        & python -I -c "import sys,zipfile;sys.exit(0 if len(zipfile.ZipFile(sys.argv[1]).read('ppt/vbaProject.bin'))>20000 else 1)" $c
+        if ($LASTEXITCODE -eq 0) { $orig = $c; break }          # the real add-in (its macros), not a locked copy
+    }
+    if (-not $orig) { throw 'No original SL_Audomation.ppam on this PC to protect.' }
+    Write-Host "Creating the SL Design and SL Animation access keys (expires: $Expires)..." -ForegroundColor Yellow
+    & python (Join-Path $Root 'local-ai\features.py') issue --addin $orig --count $Count --expires $Expires --out $Keys
+    if ($LASTEXITCODE -ne 0) { throw 'Failed to create the SL Design and SL Animation access keys.' }
+}
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'build-stage.ps1') -Bundle $BundlePath -Features $FeatPath
 if ($LASTEXITCODE -ne 0) { throw 'build-stage.ps1 failed.' }
 
 # 3. Compile single installer using Inno Setup
@@ -75,6 +89,7 @@ if (Test-Path $OutExe) {
     Write-Host " 1. Share ONLY this one file with users: $OutExe" -ForegroundColor White
     Write-Host " 2. Give each user ONE personal activation key from: $Keys\activation-keys.csv" -ForegroundColor White
     Write-Host '    (Keep activation-keys.csv private - never share that file directly!)' -ForegroundColor Yellow
+    Write-Host " 3. SL Design and SL Animation: give an access key from $Keys\sled-keys.csv only to users who may use them." -ForegroundColor White
     Write-Host ''
     Write-Host 'WHAT THE USER EXPERIENCES:' -ForegroundColor Cyan
     Write-Host ' - User double-clicks SL-Editor-Setup.exe to install.' -ForegroundColor White

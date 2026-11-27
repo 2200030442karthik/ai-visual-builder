@@ -157,7 +157,8 @@ class Dispatch:
                 v.vt, v.u.ptr = VT_DISPATCH, None
             else:
                 raise TypeError(f'unsupported argument type {type(a).__name__}')
-        dp = DISPPARAMS(argv if n else None, None, n, 0)
+        put = ctypes.c_long(-3)                           # DISPID_PROPERTYPUT: the value of a property put is a named argument
+        dp = DISPPARAMS(argv if n else None, ctypes.pointer(put) if flags == 4 else None, n, 1 if flags == 4 else 0)
         res, exc, argerr = VARIANT(), EXCEPINFO(), ctypes.c_uint()
         try:
             hr = self._retry(lambda: _vcall(self.ptr, 6, [ctypes.c_long, ctypes.POINTER(GUID), ctypes.c_ulong, ctypes.c_ushort, ctypes.POINTER(DISPPARAMS),
@@ -200,6 +201,9 @@ class Dispatch:
 
     def get(self, name, *args):
         return self.invoke(name, DISPATCH_PROPERTYGET, *args)
+
+    def put(self, name, value):
+        return self.invoke(name, 4, value)                # DISPATCH_PROPERTYPUT
 
 
 def init_thread():
@@ -265,6 +269,26 @@ def loaded_addins(app):
             with ais.call('Item', i) as a:
                 out.append((str(a.get('Name') or ''), bool(a.get('Loaded'))))
     return out
+
+
+def set_addin_loaded(name, on, progid='PowerPoint.Application'):
+    """10.26: unloads or loads one VBA add-in of the running PowerPoint (SL Design and SL Animation access swaps the
+    file while it is unloaded). False when PowerPoint is not running or does not list it."""
+    init = init_thread()
+    try:
+        try:
+            app = active(progid)
+        except COMError:
+            return False
+        with app, app.get('AddIns') as ais:
+            for i in range(1, (ais.get('Count') or 0) + 1):
+                with ais.call('Item', i) as a:
+                    if str(a.get('Name') or '').lower() == name.lower():
+                        a.put('Loaded', bool(on))
+                        return True
+        return False
+    finally:
+        done_thread(init)
 
 
 NULL_OBJECT = object()      # passed as VBA's Nothing (an object argument the macro does not use)
