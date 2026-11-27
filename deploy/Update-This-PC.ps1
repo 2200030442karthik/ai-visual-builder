@@ -39,10 +39,6 @@ if (Get-Process POWERPNT -ErrorAction SilentlyContinue) {
     $r = & $rt (Join-Path $App 'addin_tabs.py') install --src (Join-Path $AppDir 'addins') --data (Join-Path $env:LOCALAPPDATA 'AIVisualBuilder')
     Write-Host "Add-ins: $r"
 }
-# 2e. 10.28.1: right-click a presentation > Send to > "SL Editor - clean copy for sharing"
-$cleanBat = Join-Path $AppDir 'Clean copy for sharing.bat'
-[IO.File]::WriteAllText($cleanBat, "@echo off`r`n""%~dp0runtime\python.exe"" -I ""%~dp0app\pres_clean.py"" %*`r`necho.`r`necho Share the ""(clean)"" copy with colleagues who do not have SL Editor. Your own file was not changed.`r`npause`r`n", (New-Object Text.ASCIIEncoding))
-try { $ws = New-Object -ComObject WScript.Shell; $l = $ws.CreateShortcut((Join-Path ([Environment]::GetFolderPath('SendTo')) 'SL Editor - clean copy for sharing.lnk')); $l.TargetPath = $cleanBat; $l.WorkingDirectory = $AppDir; $l.Save() } catch { }
 
 # 3. the ribbon manifest (new buttons or a new version), with this installation's add-in Id and port
 $py = Join-Path $AppDir 'runtime\python.exe'

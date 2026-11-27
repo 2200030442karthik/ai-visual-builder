@@ -16,7 +16,6 @@ if ((Test-Path $py) -and (Test-Path $tabsPy)) {
 
 $WefKey = 'HKCU:\Software\Microsoft\Office\16.0\WEF\Developer'
 Remove-ItemProperty -Path $WefKey -Name '2f01d600-c9ec-4d94-ade9-69b8b6f0bfa7' -ErrorAction SilentlyContinue
-Remove-Item (Join-Path ([Environment]::GetFolderPath('SendTo')) 'SL Editor - clean copy for sharing.lnk') -ErrorAction SilentlyContinue
 $startup = [Environment]::GetFolderPath('Startup')
 Remove-Item (Join-Path $startup 'AI SL Smart Design Service.lnk'), (Join-Path $startup 'SL Editor Service.lnk') -ErrorAction SilentlyContinue
 foreach ($f in 'activation.json', 'claude.json', 'napkin.json') { Remove-Item (Join-Path $DataDir $f) -ErrorAction SilentlyContinue }

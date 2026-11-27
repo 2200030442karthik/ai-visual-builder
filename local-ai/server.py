@@ -260,27 +260,6 @@ def hub_checkin(v, kind):
         HUB.checkin(v['id'], {'kind': kind, 'label': v.get('label') or '', 'expires': v.get('expires') or '', 'version': VERSION})
 
 
-def clean_copy(b):
-    """The open presentation's saved file -> '<name> (clean).pptx' next to it, without SL Editor's (or any sideloaded
-    add-in's) pane record, so PCs without SL Editor open it without an add-in error. The original is never written."""
-    import pres_clean
-    if TEST_NO_PAID:
-        raise NapkinError('Not on a test panel host.', 403)
-    u = str(b.get('url') or '')
-    if u.lower().startswith('file:'):
-        u = urllib.parse.unquote(urllib.parse.urlparse(u).path).lstrip('/') if os.name == 'nt' else urllib.parse.unquote(urllib.parse.urlparse(u).path)
-    if not u or re.match(r'^https?:', u, re.I):
-        raise NapkinError('This presentation is not saved on this PC (or it is in OneDrive/SharePoint). Save it to a folder on this PC first, or right-click the file > Send to > "SL Editor - clean copy for sharing".', 400)
-    if not u.lower().endswith(pres_clean.EXTS) or not os.path.isfile(u):
-        raise NapkinError('Save the presentation first (File > Save), then press this button again.', 400)
-    try:
-        r = pres_clean.clean_copy(u)
-    except (OSError, ValueError) as e:
-        raise NapkinError(f'The clean copy could not be made: {e}', 400)
-    log('clean copy ' + ('made' if r['copy'] else 'not needed'))
-    return {'ok': True, 'copy': r['copy'], 'removed': len(r['removed'])}
-
-
 def hub_admin(b=None):
     """The administrator's view and changes (only on the PC that holds the hub's private key)."""
     if TEST_NO_PAID or not H.is_admin(DATA_DIR):
@@ -1167,8 +1146,6 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, features_try(b))
             if path == '/api/hub/admin':
                 return self.send(200, hub_admin(b))
-            if path == '/api/clean-copy':        # 10.28.1: a copy for PCs without SL Editor (the original is only read)
-                return self.send(200, clean_copy(b))
             if path not in ACT_FREE_POST and not activation_state()['ok']:
                 return self.fail(403, NOT_ACTIVATED)
             # a test panel host never makes a paid request (the tests use saved results and stand-ins)

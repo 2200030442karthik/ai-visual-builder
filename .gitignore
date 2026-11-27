@@ -49,4 +49,3 @@ deploy/runtime-win/
 
 # 10.28.1: the access hub (signed list and check-ins with user and PC names) - private
 access-hub/
-clean-copies/
