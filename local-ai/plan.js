@@ -703,6 +703,15 @@ function planFromClaude(raw) {
   items.forEach((it, i) => { if (ids.has(it.id)) it.id = it.id + '_' + i; ids.add(it.id); });
   const groups = (Array.isArray(raw && raw.groups) ? raw.groups : []).map(g => ({ id: String(g.id || ''), name: planClean(g.name), role: String(g.role || 'category') })).filter(g => g.id && g.name && items.some(i => i.group === g.id));
   items.forEach(it => { if (it.group && !groups.some(g => g.id === it.group)) { it.group = ''; problems.push(`group of "${it.label}" unknown`); } });
+  // 10.29: a "point" that is its group's own heading ("Internal Customers – Expectations" in the group "Internal Customers")
+  // is not a point: it is left out (the group's name is drawn as the heading)
+  const hn = t => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(), esc = t => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  for (let k = items.length - 1; k >= 0; k--) {
+    const g = groups.find(x => x.id === items[k].group);
+    if (!g || items.filter(o => o.group === g.id).length < 2 || items[k].detail) continue;
+    const same = hn(items[k].label) === hn(g.name), sub = new RegExp('^\\s*' + esc(g.name.trim()) + '\\s*[–—:-]\\s*\\S', 'i').test(items[k].label);
+    if (same || sub) { problems.push(`"${items[k].label}" is the heading of its group`); ids.delete(items[k].id); items.splice(k, 1); }
+  }
   const flow = [...new Set((Array.isArray(raw && raw.flow) ? raw.flow : []).map(String))].filter(id => ids.has(id));
   const layouts = (Array.isArray(raw && raw.layouts) ? raw.layouts : []).map(String).filter(k => PLAN_LAYOUTS[k]);
   // 10.28.2: with the colour icon library (iconlib.js) Claude's object is a hint for the library's match (the point keeps a
@@ -878,7 +887,8 @@ function planChunked(P, items, R, o) {
   for (let k = Math.max(1, o.min || 1); k <= Math.min(6, items.length); k++) {
     let at = o.start || 0;
     const parts = planChunks(items, k).map((c, j) => {
-      const name = o.seq && k > 1 ? `${o.name ? o.name + ', ' : ''}steps ${at + 1}${c.length > 1 ? '-' + (at + c.length) : ''}` : k > 1 ? `${o.name ? o.name + ' ' : ''}(${j + 1} of ${k})` : (o.name || '');
+      // 10.29: a part's slide number ("(1 of 2)") is never drawn in the visual (it read as "Customers: (1 of 2)" in a hub)
+      const name = o.seq && k > 1 ? `${o.name ? o.name + ', ' : ''}steps ${at + 1}${c.length > 1 ? '-' + (at + c.length) : ''}` : (o.name || '');
       const q = planPart(P, c, { relation: o.relation, start: o.seq ? at : 0, name, layouts: o.seq ? PLAN_SEQ_FIRST : null });
       at += c.length;
       return q;

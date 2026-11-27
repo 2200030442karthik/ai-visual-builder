@@ -101,6 +101,10 @@ function sectionsRead(text) {
     if (m && (known || m[1].split(/\s+/).length <= 4) && (m[2].trim() || known || bulletNext(li))) {
       cur = { name: m[1].trim(), kind: sectionKind(m[1]), body: m[2].trim(), known };
       secs.push(cur);
+    } else if (!m && !/^(?:[-*•▪●◦]|\d+[.)])\s/.test(l) && l.length <= 80 && l.split(/\s+/).length <= 8 && !/[.!?]$/.test(l) && bulletNext(li) && (secs.length || before.length)) {
+      // 10.29: a heading line without a colon ("Internal Customers – Expectations") with bullets under it, below the title
+      cur = { name: l.replace(/[:\s]+$/, ''), kind: sectionKind(l), body: '', known: false };
+      secs.push(cur);
     } else if (cur) cur.body += '\n' + l;
     else before.push(l);
   }
@@ -268,9 +272,10 @@ function statementRead(text) {
    ("three main service models" -> "Service models"). Same shape as sectionsRead; nothing is added. */
 const PA_COUNT = /^(?:the\s+)?(?:two|three|four|five|six|seven|eight|nine|ten|several|many|various|\d+)\s+/i;
 const PA_QUAL = /^(?:main|key|major|core|primary|basic|important|common|different|essential)\s+/i;
-const PA_INCL = /^(.{3,70}?)\s+(?:include|includes|including|are|cover|covers|consist of|consists of|comprise|comprises|span|spans|range from|ranges from)\s+(.+)$/i;
+const PA_INCL = /^(.{3,70}?)\s+(?:include|includes|including|are|cover|covers|consist of|consists of|comprise|comprises|span|spans|range from|ranges from|can be|could be|may be|can include|is either|are either)\s+(.+)$/i;
 const PA_TAIL = /\s+(?:depending|based|according|for|to|in|on|that|which|so|because|when|if|across|within|with)\b/i;
-const paSentences = t => t.replace(/\s+/g, ' ').trim().split(/(?<=[a-z0-9)\]][.!?])\s+(?=[A-Z(])/).map(s => s.trim()).filter(Boolean);
+// 10.29: a sentence also ends after a word in capitals ("... IaaS, PaaS and SaaS. Key benefits ..."); "U.S." does not end one
+const paSentences = t => t.replace(/\s+/g, ' ').trim().split(/(?<=(?:[a-z0-9)\]]|[A-Za-z]{2})[.!?])\s+(?=[A-Z(])/).map(s => s.trim()).filter(Boolean);
 function paName(t) {
   t = String(t).replace(/^(?:it|they|this|these|the course|the program(?:me)?|you|we|there)\s+/i, '').replace(ST_VERB, ' ').trim();
   const v = ST_VERB.exec(' ' + t + ' ');

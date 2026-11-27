@@ -380,41 +380,24 @@ async function appInsert(opts) {
     // slide only when the user asks for it (opts.newSlide, from the offer below)
     if (opts.newSlide) state.forceNew = true;
     try { ok = await c.insert(); } finally { state.forceNew = false; }
-    if (!ok && state.lastFull && !$('newSlide').checked && !opts.newSlide) { appFitOffer(c); return false; }
+    // 10.29 (owner's choice): laid out again or scaled for the slide's free part first; when even that cannot keep the
+    // text readable, the visual goes on a new slide after this one at once (the slide's own content is never covered)
+    if (!ok && state.lastFull && !$('newSlide').checked && !opts.newSlide) {
+      state.forceNew = true; moved = 'auto';
+      try { ok = await c.insert(); } finally { state.forceNew = false; }
+    }
     if (ok) {
       APP.lastIns = { ref: state.lastInsert, id: c.id }; APP.dupOk = '';
       if (c.family) ORCH.recent = [c.family].concat((ORCH.recent || []).filter(f => f !== c.family)).slice(0, 4);   // 10.21.1: deck variety
       // 10.27: what was chosen teaches the next visuals (learn.py): this layout and the icons of its points
       if (typeof learnSend === 'function') learnSend({ kind: 'insert', layout: typeof orchLayoutKey === 'function' ? orchLayoutKey(c) : c.family, icons: (c.points || []).filter(p => /^L:/.test(String(p[1]))) });
       const extra = state.lastInsert && (state.lastInsert.extraSlides || []).length, k = state.lastFit || 1;
-      appSay(`Inserted “${appName(c)}”${moved ? ' on a new slide after this one, as you chose' : state.lastInsert && state.lastInsert.newSlide ? ' on a new slide' : ' on this slide'}` +
+      appSay(`Inserted “${appName(c)}”${moved === 'auto' ? ' on a new slide after this one: this slide has no room for it beside its content at a readable size' : moved ? ' on a new slide after this one, as you chose' : state.lastInsert && state.lastInsert.newSlide ? ' on a new slide' : ' on this slide'}` +
         `${extra ? ` and ${extra} more slide${extra > 1 ? 's' : ''}` : ''}${k < 0.995 ? `, scaled to ${Math.round(k * 100)} % to fit beside the text` : ''}. Every text and shape is editable in PowerPoint. Undo last insert takes it out.`);
     } else appSay('Nothing was inserted. ' + friendly($('status').textContent), true);
   } catch (e) { appSay('Nothing was inserted: ' + friendly(errText(e)), true); }
   finally { APP.busy = false; appButtons(); updateButtons(); }
   return ok;
-}
-
-/* 10.21.1: the chosen design does not fit the selected slide's free part. Nothing was inserted; say so, and offer the
-   best-ranked designs that do fit there (same content, laid out for that space) and a new slide - each only on a click. */
-function appFitOffer(c) {
-  const R = state.lastFree, box = $('appFit'), cur = APP.list.indexOf(c), alts = [];
-  if (R) for (const [x, i] of APP.list.map((x, i) => [x, i])) {
-    if (alts.length >= 2) break;
-    if (x !== c && x.fit && x.slides === 1 && x.complete !== false) { let ok = false; try { ok = x.fit(R); } catch (e) { ok = false; } if (ok) alts.push(i); }
-  }
-  const room = R ? `${Math.round(R.w)} × ${Math.round(R.h)} pt` : '';
-  const msg = R ? `Design ${cur + 1} (“${appName(c)}”) needs more room than this slide has free (${room} beside or below its text) to keep every text at ${TEMPLATE.minBody} pt or larger, so nothing was inserted.`
-    : 'This slide has no free space beside or below its text, so nothing was inserted and nothing on the slide was covered.';
-  box.innerHTML = `<div>${esc(msg)}${alts.length ? ' These designs show the same content and fit this space:' : R ? ' No other design fits this space at a readable size.' : ''}</div>` +
-    alts.map(i => `<button type="button" class="alt" data-i="${i}">Insert design ${i + 1} here: “${esc(appName(APP.list[i]))}”</button>`).join('') +
-    `<button type="button" data-new="1">Insert design ${cur + 1} on a new slide after this one</button>`;
-  box.hidden = false;
-  box.querySelectorAll('button').forEach(b => b.addEventListener('click', async () => {
-    if (b.dataset.new) { appSelect(cur); await appInsert({ newSlide: true }); } else { appSelect(+b.dataset.i); await appInsert(); }
-  }));
-  appSay(msg + (alts.length ? ` Design${alts.length > 1 ? 's' : ''} ${alts.map(i => i + 1).join(' and ')} fit${alts.length > 1 ? '' : 's'} here.` : ''), true);
-  APP.fitOffer = { cur, alts, room };
 }
 
 /* ---------- several slides and editing (step 5's panel) ---------- */

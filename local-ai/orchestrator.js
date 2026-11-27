@@ -24,7 +24,7 @@
    Ranking: content accuracy, editability, design richness (measured: objects, a focal element, type hierarchy, colour)
    and readability; duplicates removed (same layout, same family, or the same composition - where its shapes are -
    with small changes); variety enforced (categories in turn); 10-20 shown, the best first. */
-const ORCH_MAX = 24, ORCH_MIN = 20;   // 10.17: every distinct design up to 24 at once (V10.16: 20)
+const ORCH_MAX = 80, ORCH_MIN = 20, ORCH_TARGET = 72;   // 10.29: 70+ visuals per content (10.17: 24)
 const ORCH = { engines: [], memo: new Map(), run: 0, last: null, log: [] };
 const PAID_STORE = 'aivb.paid.v1';
 function registerEngine(e) { ORCH.engines = ORCH.engines.filter(x => x.id !== e.id).concat([Object.assign({ kind: 'native', order: 50 }, e)]).sort((a, b) => a.order - b.order); }
@@ -120,7 +120,7 @@ function orchScore(c) {
    with a stray rule (poster), a small grey hub (ecosystem). Kept in the packs for editing visuals already inserted. */
 // 10.26: the scenes pack and the concept tiles / bento grid ("Ring and cards", "Split panel", "Icon band", "Folder tabs",
 // "Device links", "Circuit board", ...) are set aside: the built-in infographic library (packs/library-10.26.js) replaces them
-const ORCH_RETIRED = /^(isostack|poster|ecosystem|concepttiles|bento|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|sectionrows|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|mindmap|circleheads|avletters|avgrouprows)$/;
+const ORCH_RETIRED = /^(isostack|poster|ecosystem|concepttiles|bento|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|sectionrows|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|mindmap|circleheads|avletters|avgrouprows|quadrant|quadrant-25d)$/;   // 10.29: quadrant framework (grey hub) retired
 /* 10.25: the sentence in a box ("Key message", "Statement banner", "Statement with icon", "Key statement"): not an
    infographic. Shown only when no other design exists for the text (Claude breaks a paragraph into its key ideas). */
 const ORCH_PLAIN = /^(statement|key_message|s-key|s-banner|s-icon)$/;
@@ -247,11 +247,59 @@ async function orchGenerate(text, o, onStage) {
   }
   memo.paidChecked = true;
   if (requests) memo.paidTried = true;
-  const list = orchRank(memo.cands.slice(), ORCH_MAX);
+  // 10.29 (owner: 70+ visuals for one content): every distinct layout the engines can draw for this text at once ...
+  for (let k = 0; k < 2 && orchRank(memo.cands.slice(), ORCH_MAX).length < ORCH_TARGET; k++) {
+    let added = 0;
+    for (const e of ORCH.engines.filter(x => x.kind === 'native' && x.more && x.available(ctx))) {
+      try { const got = await e.more(ctx); added += got.length; memo.cands.push(...got); } catch (err) { orchNote(`${e.id} more failed: ${errText(err)}`); }
+    }
+    if (run !== ORCH.run) return null;
+    if (!added) break;
+  }
+  let list = orchRank(memo.cands.slice(), ORCH_MAX);
+  // ... then the leading designs in other colour schemes and spacing, after every distinct layout and said in their name
+  if (list.length < ORCH_TARGET) list = list.concat(orchVariants(list, ORCH_TARGET - list.length, ctx.R));
   memo.list = list;
   if (typeof learnSend === 'function') learnSend({ kind: 'shown', layouts: [...new Set(list.map(orchLayoutKey))] });
   ORCH.last = { text, list, policy, log: ORCH.log.slice(-20) };
   return { list, note: list.length ? note : '', paid: { used: paidUsed, from: memo.paidFrom } };
+}
+/* 10.29: colour and spacing versions of designs already in the list (their plan and layout redrawn with another colour
+   scheme, and with more white space), each once and never identical to a design shown; after every distinct layout. */
+const ORCH_VARIANT_STYLES = [{ accent: 3 }, { accent: 6 }, { accent: 1, spacing: 'open' }, { accent: 8 }, { accent: 4, spacing: 'open' }, { accent: 2 }, { accent: 5 }, { accent: 7, spacing: 'open' }, { accent: 9 }, { accent: 0, spacing: 'open' }];
+// a design's look: its shapes and their colours (orchSig alone treats two colour schemes as the same design)
+const orchLook = prims => orchSig(prims) + '|' + prims.map(p => (p.fill || '') + (p.line || '') + (p.color || '')).join(',');
+function orchVariants(list, need, R) {
+  const out = [], sigs = new Set(list.map(c => orchLook(c.prims)));
+  for (const st of ORCH_VARIANT_STYLES) for (const c of list) {
+    if (out.length >= need) return out;
+    if (c.split && !c.own) {
+      const parts = c.split.parts.map(q => { try { const r = planRender(Object.assign({}, q.plan, { style: Object.assign({}, q.plan.style, { accent: st.accent, spacing: st.spacing || 'fill' }) }), q.key, R); return r && r.ok ? { r, plan: q.plan } : null; } catch (e) { return null; } });
+      if (parts.some(q => !q)) continue;
+      const sig = orchLook(parts[0].r.prims);
+      if (sigs.has(sig)) continue;
+      sigs.add(sig);
+      const say = planStyleName(parts[0].r.style) || (st.spacing === 'open' ? 'more white space' : 'other colours'), sp = c.split;
+      out.push(Object.assign({}, c, { id: c.id + ':v' + st.accent + (st.spacing || ''), title: String(c.title).split(' · ').slice(0, 2).join(' · ') + ' · ' + say, prims: parts[0].r.prims, nextPrims: parts.slice(1).map(q => q.r.prims),
+        variant: true, score: (c.score || 0) - 30, footprint: null, shapeprint: null, split: null,
+        insert: async () => { ST.designs = [{ r: parts[0].r, parts, plan: parts[0].plan, full: sp.full, density: 'full', from: sp.from }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } }));
+      continue;
+    }
+    const s = c.src;
+    if (!s || !s.plan || !s.key || c.own) continue;
+    const Ps = Object.assign({}, s.plan, { style: Object.assign({}, s.plan.style, { accent: st.accent, spacing: st.spacing || 'fill' }) });
+    let r;
+    try { r = planRender(Ps, s.key, R); } catch (e) { continue; }
+    if (!r || !r.ok) continue;
+    const sig = orchLook(r.prims);
+    if (sigs.has(sig)) continue;
+    sigs.add(sig);
+    const say = planStyleName(r.style) || (st.spacing === 'open' ? 'more white space' : 'other colours');
+    out.push(Object.assign({}, c, { id: c.id + ':v' + st.accent + (st.spacing || ''), title: String(c.title).split(' · ')[0] + ' · ' + say, prims: r.prims, variant: true,
+      score: (c.score || 0) - 30, footprint: null, shapeprint: null, src: Object.assign({}, s, { plan: Ps }),
+      insert: async () => { ST.designs = [{ r, plan: Ps, full: s.full, density: s.density, from: s.from }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } }));
+  }
+  return out;
 }
 /* More visuals for the text: the next designs of the free engines (new layouts, then colour and spacing variants). */
 async function orchMore(text, onStage) {
@@ -362,7 +410,7 @@ async function orchReference(ctx, max) {
     out.push({ id: 'R:' + key + ':' + r.style.accent + (names ? ':n' : ''), engine: 'designs', ref: L.key, lib: 'ref:' + L.key, title: r.name + (names ? ' · point names only' : ''), family: key + ':' + r.style.accent,
       category: 'Reference: ' + L.name, prims: r.prims, edit: r.prims.some(p => p.t === 'image' && !p.icon) ? 'partial' : 'full', complete: !names && !orchMissing(r.prims, facts).length, slides: 1, rich: true,
       relevant: true, base: 110 + (L.boost || (L.lesson2 ? 6 : 0)) - (names ? 6 : 0), why: r.kind, points: plan.items.map(i => [i.label, i.icon]),
-      fit: orchFits(orchPlanBuild(m.plan, r.key, r.style, names ? 'names' : 'full')),
+      fit: orchFits(orchPlanBuild(m.plan, r.key, r.style, names ? 'names' : 'full')), src: { plan, full: m.plan, density: names ? 'names' : 'full', from: 'your text', key: r.key },
       insert: async () => { ST.designs = [{ r, plan, full: m.plan, density: names ? 'names' : 'full', from: 'your text' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });
   }
   return out;
@@ -399,7 +447,7 @@ async function orchLibrary(ctx, max) {
     out.push({ id: 'L:' + key + ':' + r.style.accent + (names ? ':n' : ''), engine: 'designs', lib: L.key, title: r.name + (names ? ' · point names only' : ''), family: key,
       category: 'Library: ' + L.name, prims: r.prims, edit: r.prims.some(p => p.t === 'image' && !p.icon) ? 'partial' : 'full', complete: !names && !orchMissing(r.prims, facts).length, slides: 1, rich: true,
       relevant: L.cat !== 'List' && L.cat !== 'Concept', base: 90 + (L.cat === 'Cycle' || L.cat === 'Hierarchy' ? 8 : L.cat === 'Process' ? 4 : 0) - (names ? 6 : 0), why: r.kind,
-      fit: orchFits(orchPlanBuild(m.plan, r.key, r.style, names ? 'names' : 'full')),
+      fit: orchFits(orchPlanBuild(m.plan, r.key, r.style, names ? 'names' : 'full')), src: { plan, full: m.plan, density: names ? 'names' : 'full', from: 'your text', key: r.key },
       insert: async () => { ST.designs = [{ r, plan, full: m.plan, density: names ? 'names' : 'full', from: 'your text' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });
   }
   return out;
@@ -427,7 +475,7 @@ async function orchDesigns(ctx, max) {
     prims: r.prims, edit: r.prims.some(p => p.t === 'image' && !p.icon) ? 'partial' : 'full', complete: m.d.density === 'full' && !orchMissing(r.prims, orchFacts(m.plan)).length, slides: 1, rich: /modern|pro|showcase|learning|concepts|scenes|antv|infographics/.test(packOf(r)),
     relevant: orchRelevance(r.key, m.d.plan) >= 30,
     base: 62 + orchPackBonus(r.key) + orchAppeal(r.key) + orchRelevance(r.key, m.d.plan) + orchVariety(ctx.text, r.family) - (m.d.density === 'names' ? 6 : 0) - (sec && !/learning|concepts|scenes/.test(packOf(r)) && orchRelevance(r.key, m.d.plan) <= 0 ? 8 : 0), why: r.kind,
-    fit: orchFits(orchPlanBuild(m.plan, r.key, r.style, m.d.density)),
+    fit: orchFits(orchPlanBuild(m.plan, r.key, r.style, m.d.density)), src: { plan: m.d.plan, full: m.plan, density: m.d.density, from: 'your text', key: r.key },
     insert: async () => { ST.designs = [{ r, plan: m.d.plan, full: m.plan, density: m.d.density, from: 'your text' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } }));
   // 10.19: large content. When every description fits only few compositions on one slide, the gallery still offers 20+:
   // (1) the same design on two slides (every point and description, split where the content divides: by section, else
@@ -454,7 +502,7 @@ async function orchDesigns(ctx, max) {
         const c = planRender(p, 'cap:' + key, ctx.R); return c.ok && !orchMissing(c.prims, need(q, k)).length ? c : null; };
       let added = 0;
       first.forEach(r1x => {
-        if (out.length >= max + ORCH_MIN || added >= target + 2 - complete) return;
+        if (out.length >= max + ORCH_MIN || added >= ORCH_TARGET - complete) return;   // 10.29: as many as fit (70+ per content)
         const r1 = draw(m.split[0], 0, r1x.key, r1x.style);
         if (!r1) return;
         const rest = m.split.slice(1).map((q, j) => draw(q, j + 1, r1x.key, r1x.style));
@@ -466,6 +514,7 @@ async function orchDesigns(ctx, max) {
         out.push({ id: `d${n}:` + planDesignKey(r1), engine: 'designs', title: `${r1.name} · ${n} slides`, family: r1.family + ':' + n, category: orchCategory(r1.family + ' ' + r1.key),
           prims: r1.prims, nextPrims: rest.map(r => r.prims), edit: 'full', complete: true, slides: n, rich: /modern|pro|showcase|learning|concepts|scenes|antv|infographics/.test(packOf(r1)),
           base: 50 + orchPackBonus(r1.key) + orchAppeal(r1.key) - 2 * (n - 2), why: `every point and description, on ${n} slides`,   // one-slide designs first
+          split: { parts: parts.map(q => ({ plan: q.plan, key: q.r.key })), full: m.plan, from: 'your text' },
           insert: async () => { ST.designs = [{ r: r1, parts, plan: m.split[0], full: m.plan, density: 'full', from: 'your text' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });
       });
     }
@@ -626,7 +675,7 @@ function orchRefDesigns(key, plan) {
     out.push({ id: `${key}:ref:${r.key}`, engine: key, ref: L.key, lib: 'ref:' + L.key, title: r.name, family: r.key + ':0', category: 'Reference: ' + L.name,
       prims: r.prims, edit: 'full', complete: d.density === 'full', slides: 1, rich: true, base: 112 + (L.boost || (L.lesson2 ? 6 : 0)) - (d.density === 'names' ? 6 : 0),
       why: 'Claude read the text (points, order, groups, icons); drawn in a reference layout as editable shapes', points: P.items.map(i => [i.label, i.icon]),
-      fit: orchFits(orchPlanBuild(plan, r.key, r.style, d.density)),
+      fit: orchFits(orchPlanBuild(plan, r.key, r.style, d.density)), src: { plan: P, full: plan, density: d.density, from: 'AI design', key: r.key },
       insert: async () => { ST.designs = [{ r, plan: P, full: plan, density: d.density, from: 'AI design' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });
   });
   return out;
@@ -638,7 +687,7 @@ function orchPlanDesigns(key, plan) {
     // 10.16: above the built-in suggestions (base 70): where the AI's plan and the built-in analysis give the same picture,
     // the look-alike check keeps the AI-designed one
     prims: r.prims, edit: 'full', complete: d.density === 'full', slides: 1, rich: true, base: 72 + orchPackBonus(r.key) + orchAppeal(r.key) + orchRelevance(r.key, d.plan) - (d.density === 'names' ? 6 : 0), why: 'designed with AI, drawn as editable shapes',
-    fit: orchFits(orchPlanBuild(plan, r.key, r.style, d.density)),
+    fit: orchFits(orchPlanBuild(plan, r.key, r.style, d.density)), src: { plan: d.plan, full: plan, density: d.density, from: 'AI design', key: r.key },
     insert: async () => { ST.designs = [{ r, plan: d.plan, full: plan, density: d.density, from: 'AI design' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } }));
 }
 /* 10.24: where a design comes from, shown on every card: Claude (its own composition, or its reading of the text drawn

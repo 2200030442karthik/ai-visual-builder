@@ -46,7 +46,9 @@ async function run() {
   await gate();
   const edu = []; for (let i = 0; i < 4; i++) edu.push(await fx(`napkin-edu-${i}.svg`));
   W.__cfg.napkinFiles = edu; W.__cfg.claudePlan = await fx('claude-dataeng-plan.json');
-  const gen = async text => { d.getElementById('content').value = text; d.getElementById('content').dispatchEvent(new W.Event('input')); await A.appGenerate(); return A.APP.list; };
+  // 10.29: the distinct designs (a design's colour and spacing versions follow them in the gallery, said in their names)
+  const gen = async text => { d.getElementById('content').value = text; d.getElementById('content').dispatchEvent(new W.Event('input')); await A.appGenerate(); return A.APP.list.filter(c => !c.variant); };
+  const genAll = async text => { await gen(text); return A.APP.list; };
   const fresh = () => { A.ORCH.memo.clear(); try { W.localStorage.removeItem('aivb.paid.v1'); } catch (e) {} W.__calls = []; ev('state.runText = ""; state.sections = []; 1');
     ['napkin', 'claude'].forEach(k => { W['__' + k].N.result = null; }); };
   const paidCalls = () => W.__calls.filter(u => /\/api\/(napkin|claude)\/visual/.test(u)).length;
@@ -60,7 +62,7 @@ async function run() {
   {
     const L = await gen(samples['ML workflow (5 stages, intro)']);
     const sigs = L.map(c => ev('p => signature(p)')(c.prims));
-    res.gen.ml = { n: L.length, cats: [...new Set(L.map(c => c.category))], families: L.map(c => c.family), uniqueLayouts: new Set(sigs).size === sigs.length, analysed: ev('state.sections.length') > 0 && ev('state.runText') === samples['ML workflow (5 stages, intro)'].trim(),
+    res.gen.ml = { n: L.length, all: A.APP.list.length, cats: [...new Set(L.map(c => c.category))], families: L.map(c => c.family), uniqueLayouts: new Set(sigs).size === sigs.length, analysed: ev('state.sections.length') > 0 && ev('state.runText') === samples['ML workflow (5 stages, intro)'].trim(),
       analyseClicked: d.getElementById('analyse').textContent !== 'Analyze content' ? 'analysis ran (button text changed)' : 'not run', cards: d.querySelectorAll('#appGrid .gcard').length, thumbs: 0, editable: L.filter(c => c.edit === 'full' || /^av/.test(c.family)).length,   // 10.24: an AntV 3D structure keeps its 3D bodies as pictures (said on its card)
       selected: d.querySelectorAll('#appGrid .gcard.sel').length, status: status().slice(0, 160), timingsVisible: vis('perfBox'), providerWords: /request|token|credit/i.test(d.getElementById('appMain').textContent), paid: paidCalls() };
     await wait(400); res.gen.ml.thumbs = d.querySelectorAll('#appGrid .gcard .gthumb svg').length;
@@ -88,7 +90,7 @@ async function run() {
     const tc = d.querySelectorAll('#appGrid .gcard')[1]; tc.dispatchEvent(new W.PointerEvent('pointerenter', { pointerType: 'touch' })); await wait(300);
     res.gen.hover.touchIgnored = !hv.classList.contains('on');
     // the richer compositions first, and no two of the same composition
-    const L0 = A.APP.list, fps = L0.map(c => ev('p => orchFootprint(p)')(c.prims));
+    const L0 = A.APP.list.filter(c => !c.variant), fps = L0.map(c => ev('p => orchFootprint(p)')(c.prims));   // 10.29: the distinct designs
     res.gen.rich = { top6: L0.slice(0, 6).map(c => `${c.family}:${c.richness}`), showcaseInTop10: L0.slice(0, 10).filter(c => /^ref_|^lib_|spotlight|callout|storyboard|journey|devicelinks|discgrid|hubcorners|treedown|mirrorlinks|splitpanel|zigzag|target|quadcircle|iconband|tabcards|callouts|chipboard|ribbontags|sectionrows|mindmap|circleheads/.test(c.family)).length,   // 10.17: or the scenes pack's
       nearDuplicates: fps.reduce((n, f, i) => n + fps.slice(i + 1).filter((g, j) => !(/^ref_/.test(L0[i].family) && /^ref_/.test(L0[i + 1 + j].family)) && ev('(a, b) => orchSame(a, b)')(f, g)).length, 0) };   // 10.26: the reference layouts are distinct styles by design
     // filters by kind
@@ -104,6 +106,14 @@ async function run() {
     // other content kinds
     for (const [k, t] of [['edu', 'Educational content'], ['de', 'Data engineering platform (8 concepts)'], ['facts', 'Quick facts'], ['records', 'Project scores'], ['genai', 'Generative AI (list)']]) {
       const L2 = await gen(samples[t]); res.gen[k] = { n: L2.length, cats: [...new Set(L2.map(c => c.category))].length, err: d.getElementById('appErr').textContent };
+    }
+    // 10.29: 70+ visuals for one content - a list, a paragraph and grouped content (headings without a colon read as groups)
+    {
+      const cust = 'Customers\nInternal Customers – Expectations\n- Receive efficient support\n- Access adequate resources\n- Obtain timely information\nExternal Customers – Expectations\n- Have needs fulfilled\n- Receive promised services\n- Have requirements exceeded';
+      const para = 'Cloud computing delivers computing services over the internet. Its service models are IaaS, PaaS and SaaS. Key benefits include lower upfront costs, on-demand scalability, global availability and faster innovation. Deployments can be public, private or hybrid.';
+      const Lc = await genAll(cust), groups = (A.ORCH.memo.get(ev('hashText')(cust)) || { free: {} }).free;
+      res.gen.many = { list: (await genAll(samples['ML workflow (5 stages, intro)'])).length, paragraph: (await genAll(para)).length, grouped: Lc.length,
+        headingsAsGroups: !!(groups && groups.d && (groups.d.plan.groups || []).length === 2) };
     }
     // nothing to show: meaningless text is refused, nothing drawn, said plainly
     const L3 = await gen(samples['Meaningless text']);
@@ -183,7 +193,7 @@ async function run() {
     const fr = d.createElement('iframe'); fr.style.cssText = 'width:1300px;height:900px'; fr.src = '/gallery-dialog.html?k=' + W.eval('galKey()'); d.body.appendChild(fr);
     let dw = null; for (let i = 0; i < 60; i++) { await new Promise(r => setTimeout(r, 200)); dw = fr.contentWindow; if (dw && dw.document && dw.document.querySelectorAll('.card').length) break; }
     const cards = dw.document.querySelectorAll('.card');
-    res.v16.gallery.cards = cards.length; res.v16.gallery.n = L.length;
+    res.v16.gallery.cards = cards.length; res.v16.gallery.n = A.APP.list.length;
     res.v16.gallery.thumbs = [...cards].filter(c => c.querySelector('svg')).length;
     { const kd = k => dw.document.dispatchEvent(new dw.KeyboardEvent('keydown', { key: k, bubbles: true }));   // 10.21: numbers, arrow keys
       kd('Home'); kd('ArrowRight'); await new Promise(r => setTimeout(r, 300));
@@ -305,15 +315,6 @@ async function run() {
       return { newSlides: M.slides.length - n0, onThisSlide: mine.length, top: mine.length ? Math.round(Math.min(...boxes.map(b => b[0]))) : null, bottom: mine.length ? Math.round(Math.max(...boxes.map(b => b[1]))) : null,
         note: d.getElementById('status').textContent.slice(0, 260), fit: W.eval('state.lastFit'), minPt: sizes.length ? Math.min(...sizes) : null, offer: !box.hidden, offerButtons: box.hidden ? [] : [...box.querySelectorAll('button')].map(b => b.textContent) };
     };
-    // 10.21.1: after an offer, a click on one of its buttons (a design that fits here, or a new slide) - only then is anything inserted
-    const takeOffer = async which => {
-      const n0 = M.slides.length, before = new Set(M.slides.flatMap(sl => sl.items).map(x => x.id)), b = [...d.querySelectorAll('#appFit button')].find(x => which === 'new' ? x.dataset.new : !x.dataset.new);
-      if (!b) return { clicked: false };
-      b.click(); await new Promise(r => setTimeout(r, 300)); for (let k = 0; k < 60 && A.APP.busy; k++) await new Promise(r => setTimeout(r, 100)); await new Promise(r => setTimeout(r, 300));
-      const mine = M.slides[0].items.filter(x => !before.has(x.id)), sizes = flatG(M.slides.flatMap(sl => sl.items).filter(x => !before.has(x.id))).filter(x => x.textFrame && String(x.textFrame.textRange.text || '').trim()).map(x => x.textFrame.textRange.font.size).filter(v => v > 0);
-      return { clicked: true, newSlides: M.slides.length - n0, onThisSlide: mine.length, top: mine.length ? Math.round(Math.min(...mine.map(x => x.top))) : null, bottom: mine.length ? Math.round(Math.max(...mine.map(x => x.top + x.height))) : null,
-        minPt: sizes.length ? Math.min(...sizes) : null, note: d.getElementById('status').textContent.slice(0, 200) };
-    };
     // 10.26: the first design that fits the room below the text (the library's tall layouts rank high and need more)
     let di = L.findIndex(c => c.engine === 'designs' && c.fit && c.fit({ x: 102, y: 310, w: 1079, h: 330 }));
     if (di < 0) di = L.findIndex(c => c.engine === 'designs');
@@ -322,9 +323,7 @@ async function run() {
     // 10.21: a slide whose text leaves room for the visual only below 70 % (5 lines): kept on this slide now
     res.v21tight = await sameSlide(Array.from({ length: 5 }, (_, k) => 'Line ' + (k + 1) + ' of the text that fills part of the content placeholder').join('\n'), di);
     res.v21tight.textBottom = Math.round(205 + ev('textUsedHeight')(Array.from({ length: 5 }, (_, k) => 'Line ' + (k + 1) + ' of the text that fills part of the content placeholder').join('\n'), 1079, 24));
-    if (res.v21tight.offer) res.v21tight.alt = await takeOffer('alt');
     res.v19.full = await sameSlide(Array.from({ length: 14 }, (_, k) => 'Line ' + (k + 1) + ' of the text that fills the whole content placeholder of this slide').join('\n'), di);
-    if (res.v19.full.offer) res.v19.full.asked = await takeOffer('new');
     await W.eval('removeLast()');
     // the large gallery closes after Insert (back to PowerPoint); "Open large gallery" opens it again
     M.reset(); await gate(); fresh(); L = await gen(kT);
@@ -467,7 +466,7 @@ async function run() {
   res.acceptance = [
     ['A1 Normal UI: no version, host status, setup, analysis step, timings, provider sections, "how many", credit tick, re-check buttons, plan source, raw insert controls', U.before.simple && !U.before.technicalVisible.length && !U.before.version && !U.before.sub && U.before.gen === 'Generate visuals' && U.before.empty && U.before.insertBar && !U.before.stPanel && !U.after.technicalVisible.length,
       JSON.stringify(U)],
-    ['A2 One button: Generate runs the analysis itself and gives 10-24 varied, editable visuals (10.17: up to 24) (no duplicates), no provider words, no timings', Gn.ml.n >= 10 && Gn.ml.n <= 24 && Gn.ml.cats.length >= 5 && Gn.ml.uniqueLayouts && Gn.ml.analysed && Gn.ml.cards === Gn.ml.n && Gn.ml.thumbs >= Math.min(8, Gn.ml.n) && Gn.ml.editable === Gn.ml.n && Gn.ml.selected === 1 && !Gn.ml.timingsVisible && !Gn.ml.providerWords && Gn.ml.paid === 0,
+    ['A2 One button: Generate runs the analysis itself and gives 10-80 distinct, varied, editable visuals (10.29: up to 80) (no duplicates), no provider words, no timings', Gn.ml.n >= 10 && Gn.ml.n <= 80 && Gn.ml.cats.length >= 5 && Gn.ml.uniqueLayouts && Gn.ml.analysed && Gn.ml.cards === Gn.ml.all && Gn.ml.thumbs >= Math.min(8, Gn.ml.n) && Gn.ml.editable === Gn.ml.n && Gn.ml.selected === 1 && !Gn.ml.timingsVisible && !Gn.ml.providerWords && Gn.ml.paid === 0,
       JSON.stringify(Gn.ml)],
     ['A13 Hover preview: the design large after a short rest, beside (not over) its card, closed on leaving; touch ignored; selection unchanged', Gn.hover.shown && Gn.hover.svg && Gn.hover.sameAsCard && Gn.hover.wider && !Gn.hover.coversCard && Gn.hover.closed && Gn.hover.touchIgnored && Gn.hover.selectedUnchanged,
       JSON.stringify(Gn.hover)],
@@ -478,8 +477,9 @@ async function run() {
       JSON.stringify(Object.assign({}, res.sec.ai, { notSections: res.sec.notSections }))],
     ['A3 Gallery: selection state, no separate preview area (hover is the preview), plain design names, the insert button names the choice, kind filters, More visuals (new first, nothing repeated), out-of-date content blocks insert', Gn.pick.sel === 3 && Gn.pick.pressed === 1 && Gn.pick.noPreviewArea && Gn.pick.noVariantSuffix && Gn.pick.insertNames && (!Gn.filter || Gn.filter.all) && Gn.more.unique && Gn.more.fresh >= 1 && Gn.stale.note && Gn.stale.insertDisabled,
       JSON.stringify({ pick: Gn.pick, filter: Gn.filter, more: Gn.more, stale: Gn.stale })],
-    ['A4 Other content: 10-24 visuals for lists, prose-like items, records; meaningless text refused plainly; empty content cannot generate', ['edu', 'de', 'facts', 'genai'].every(k => Gn[k].n >= 6 /* 10.26: basic designs retired */ && Gn[k].n <= 24 && Gn[k].cats >= 4) && Gn.records.n >= 1 && Gn.meaningless.n === 0 && Gn.meaningless.errShown && Gn.empty.genDisabled,
+    ['A4 Other content: 6-80 distinct visuals for lists, prose-like items, records; meaningless text refused plainly; empty content cannot generate', ['edu', 'de', 'facts', 'genai'].every(k => Gn[k].n >= 6 /* 10.26: basic designs retired */ && Gn[k].n <= 80 && Gn[k].cats >= 4) && Gn.records.n >= 1 && Gn.meaningless.n === 0 && Gn.meaningless.errShown && Gn.empty.genDisabled,
       JSON.stringify({ edu: Gn.edu, de: Gn.de, facts: Gn.facts, genai: Gn.genai, records: Gn.records, meaningless: Gn.meaningless })],
+    ['A35 70+ visuals for one content (10.29): a list, a paragraph and grouped content; heading lines without a colon read as the groups', Gn.many.list >= 70 && Gn.many.paragraph >= 70 && Gn.many.grouped >= 70 && Gn.many.headingsAsGroups, JSON.stringify(Gn.many)],
     ['A5 Insert selected: built-in and design visuals go in as native, tagged objects, insert = preview; a repeat asks first; undo takes it out', ['builtin', 'designs'].every(k => I[k] && I[k].objects > 0 && I[k].insertEqualsPreview && I[k].tagged && I[k].undone && (I[k].edit === 'partial' || I[k].pictures === 0)) && I.dup && I.dup.warned && I.dup.objects,
       JSON.stringify(I)],
     ['A6 AI services by policy and content: never -> none; when-needed -> none for records, one (Napkin first) for concepts; always -> one request, its designs editable, not named in the status; 10.24: each card names its source (Napkin)', Pd.never.paid === 0 && Pd.notNeeded.paid === 0 && Pd.whenNeeded.paid === 1 && Pd.whenNeeded.napkinFirst && Pd.whenNeeded.napkin >= 1 && Pd.always.paid === 1 && Pd.always.napkin >= 1 && Pd.always.editable && !Pd.always.providerNamed && Pd.always.srcShown,
@@ -521,22 +521,20 @@ async function run() {
     ['A28 Large text: one Generate gives 20+ designs with every point (one-slide designs first, then the same design on 2-3 slides, condensed names-only versions said in their name); a multi-slide design inserts here and on new slides, Undo removes all',
       res.v19.cloud.n >= 10 /* 10.26: the scenes that fitted it are retired */ && !res.v19.cloud.incomplete.length && res.v19.cloud.multi > 0 && res.v19.lifecycle.n >= 16 /* 10.27: one design per layout; 10.21.1: relevance and quality over quantity (text-only designs left out) */ && !res.v19.lifecycle.incomplete.length &&
       res.v19.multiInsert.offered && res.v19.multiInsert.slidesAdded === 2 && res.v19.multiInsert.undone, JSON.stringify({ cloud: res.v19.cloud, lifecycle: res.v19.lifecycle, multi: res.v19.multiInsert })],
-    ['A29 Same slide by default: a slide with text gets the visual below its text (never over it, said); a slide without room: nothing inserted, explained, a new slide only when the user clicks for it (10.21.1)',
+    ['A29 Same slide by default: a slide with text gets the visual below its text (never over it, said); a slide without room: the visual goes on a new slide after it at once, said (10.29)',
       res.v19.same.newSlides === 0 && res.v19.same.onThisSlide > 0 && res.v19.same.top >= res.v19.same.textBottom && res.v19.same.bottom <= 720 && /on this slide/.test(res.v19.same.note) && res.v19.same.minPt >= 20 &&
-      res.v19.full.newSlides === 0 && res.v19.full.onThisSlide === 0 && res.v19.full.offer && /nothing was inserted/.test(res.v19.full.note) &&
-      res.v19.full.asked && res.v19.full.asked.newSlides === 1 && /new slide after this one, as you chose/.test(res.v19.full.asked.note), JSON.stringify({ same: res.v19.same, full: res.v19.full })],
+      res.v19.full.newSlides === 1 && res.v19.full.onThisSlide === 0 && /new slide after this one: this slide has no room/.test(res.v19.full.note), JSON.stringify({ same: res.v19.same, full: res.v19.full })],
     ['A30 The large gallery closes after Insert (the visual goes in, back to PowerPoint)', res.v19.gallery.inserted && res.v19.gallery.closed, JSON.stringify(res.v19.gallery)],
     ['A31 Icons stay in front: a card drawn before its icon stays behind it after grouping (restacked in the designed order); a container drawn after its contents is moved behind them',
       res.v19.layers.iconAboveCard && res.v19.layers.restacked && res.v19.paint === 'roundRect,ellipse,text', JSON.stringify({ layers: res.v19.layers, paint: res.v19.paint })],
-    ['A33 Same slide first, readable (10.21.1): little room left by the text - the design laid out again there, or (when it cannot fit at the template text size) designs that fit offered and inserted on this slide on a click; never below 20 pt, never a new slide unasked',
+    ['A33 Same slide first, readable (10.29): little room left by the text - the design laid out again or scaled there; when it cannot fit at the template text size, on a new slide after it (said); never below 20 pt, never over the slide\'s text',
       res.v21tight.newSlides === 0 && (res.v21tight.onThisSlide > 0
         ? res.v21tight.top >= res.v21tight.textBottom && res.v21tight.bottom <= 720 && /on this slide/.test(res.v21tight.note) && res.v21tight.minPt >= 20
-        : res.v21tight.offer && /nothing was inserted/.test(res.v21tight.note) && res.v21tight.alt && res.v21tight.alt.clicked && res.v21tight.alt.newSlides === 0 && res.v21tight.alt.onThisSlide > 0
-          && res.v21tight.alt.top >= res.v21tight.textBottom && res.v21tight.alt.bottom <= 720 && res.v21tight.alt.minPt >= 20),
+        : false) || (res.v21tight.newSlides === 1 && res.v21tight.onThisSlide === 0 && /no room/.test(res.v21tight.note) && res.v21tight.minPt >= 20),
       JSON.stringify(res.v21tight)],
     ['A34 Numbered designs (10.21): every card shows its number (1..N, in order), the selected one is named by number; arrow keys / Home move the choice, in the panel and in the large gallery',
       res.v21nav && res.v21nav.nums.startsWith('1,2,3') && res.v21nav.seq && /^Design 1 of \d+: /.test(res.v21nav.label) && res.v21nav.right === 4 && res.v21nav.home === 0 && res.v21nav.focus
-        && res.v21dlg && res.v21dlg.nums === '1,2,3,4' && res.v21dlg.sel === '1' && res.v21dlg.panelSel === 1 && /^Insert design 2: /.test(res.v21dlg.insert),
+        && res.v21dlg && res.v21dlg.nums === '1,2,3,4' && res.v21dlg.sel === '1' && res.v21dlg.panelSel === 1 && /^Insert “.+”$/.test(res.v21dlg.insert),   /* 10.25: the insert button names the chosen design */
       JSON.stringify({ panel: res.v21nav, dialog: res.v21dlg })],
     ['A32 LVC type: every text 22 pt (24 pt headings), Open Sans; labels in sentence case, acronyms and the names the text capitalises kept',
       res.v19.type.sizes.every(s => s === 22 || s === 24) && res.v19.type.sentence.join('|') === 'What you learn|Hands-On projects with Python|Working with ChatGPT|Neural networks|AI tools for Kubernetes', JSON.stringify(res.v19.type)],

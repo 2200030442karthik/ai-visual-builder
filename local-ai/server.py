@@ -74,7 +74,7 @@ STATIC = {'/': ('v10.html', 'text/html; charset=utf-8'), '/v10.html': ('v10.html
           # design packs (packs/*.js): layout families added without changing the application
           **{f'/packs/{n}': (f'packs/{n}', 'text/javascript; charset=utf-8') for n in os.listdir(os.path.join(HERE, 'packs')) if n.endswith('.js')}}
 MAX_BODY = 256 * 1024
-GALLERY_MAX_BODY = 8 * 1024 * 1024     # the large gallery's thumbnails (V10.16)
+GALLERY_MAX_BODY = 20 * 1024 * 1024    # the large gallery's thumbnails (V10.16; 10.29: up to 120 designs)
 MAX_TEXT = 10000
 
 # paid_policy (10.13, orchestrator.js): whether "Generate visuals" may use the paid providers: never | when-needed | always;
@@ -727,7 +727,7 @@ def gallery_put(b):
     if len(GALLERY) >= 20 and k not in GALLERY:
         GALLERY.pop(min(GALLERY, key=lambda x: GALLERY[x]['at']))
     items = [{'i': int(x.get('i', 0)), 'name': str(x.get('name') or '')[:120], 'category': str(x.get('category') or '')[:60], 'edit': str(x.get('edit') or '')[:20],
-              'slides': int(x.get('slides') or 1), 'ai': bool(x.get('ai')), 'src': str(x.get('src') or '')[:12], 'srcName': str(x.get('srcName') or '')[:30], 'srcWhy': str(x.get('srcWhy') or '')[:200], 'svg': str(x.get('svg') or '')} for x in (b.get('items') or [])[:60] if isinstance(x, dict)]
+              'slides': int(x.get('slides') or 1), 'ai': bool(x.get('ai')), 'src': str(x.get('src') or '')[:12], 'srcName': str(x.get('srcName') or '')[:30], 'srcWhy': str(x.get('srcWhy') or '')[:200], 'svg': str(x.get('svg') or '')} for x in (b.get('items') or [])[:120] if isinstance(x, dict)]   # 10.29: 70+ designs
     GALLERY[k] = {'at': now, 'data': {'v': int(b.get('v') or 0), 'items': items, 'sel': int(b.get('sel', -1)), 'note': str(b.get('note') or '')[:400],
                                       'err': bool(b.get('err')), 'busy': bool(b.get('busy')), 'open': b.get('open', True) is not False}}
     return {'ok': True}
