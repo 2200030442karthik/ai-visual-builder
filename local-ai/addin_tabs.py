@@ -2,17 +2,12 @@ r"""SL Editor 10.25 - the company's VBA add-ins behind the one SL Editor ribbon.
 
 SL Editor (the web add-in) shows every command of SL Smart Design (SL_Smart_Design_v2_Key_Dec_25.ppam) and of SL Design /
 SL Animation (SL_Audomation.ppam) and runs their ORIGINAL macros through PowerPoint (server.py /api/slsd/run). Their own
-ribbon tabs would repeat those commands, so PowerPoint loads a COPY of each add-in in which ONLY customUI/customUI.xml
-differs (visible="false" on its tabs; VBA project, forms and licence check byte for byte identical - checked).
+ribbon tabs would repeat those commands, so the installer puts a copy of each add-in in PowerPoint's add-in folder in
+which ONLY customUI/customUI.xml differs (visible="false" on its tabs; VBA project, forms and licence check byte for
+byte identical - checked), registers it to load with PowerPoint, and keeps the original for "restore" (the uninstaller).
 
-10.28.1 (owner's rule: work on copies, never change an original): the copies live in SL Editor's own folder
-(<data>\addins-live, same file names, so the macros keep their names) and PowerPoint's registration of each add-in points
-to the copy while SL Editor is installed. The ORIGINAL files in PowerPoint's add-in folder are never written: anyone who
-copies "SL Smart Design" from this PC to a new laptop gets the untouched original. Earlier versions put the copies in
-the add-in folder itself; install puts the kept originals back there. Uninstall points PowerPoint back to the originals.
-
-    python addin_tabs.py install --src DIR --data DIR     add-ins in DIR (the package), or this PC's own originals
-    python addin_tabs.py restore --data DIR               PowerPoint back to the originals, tabs visible
+    python addin_tabs.py install --src DIR --data DIR     add-ins in DIR (the package), or this PC's own copies
+    python addin_tabs.py restore --data DIR               the originals back, tabs visible
     python addin_tabs.py status
 
 Acts only while PowerPoint is closed (it holds the files). Standard library only. Windows only for the registry part.
@@ -95,38 +90,16 @@ def powerpoint_running():
         return True
 
 
-def live_dir(data_dir):
-    """10.28.1: where SL Editor keeps the copies PowerPoint loads (never PowerPoint's own add-in folder)."""
-    return os.path.join(data_dir, 'addins-live')
-
-
-def register(name, path=None, on=True):
-    """PowerPoint loads the add-ins listed under HKCU\\...\\PowerPoint\\AddIns: Path is a full path (SL Editor's copy) or
-    a name in the AddIns folder (the original). on=False removes the entry."""
+def register(name, on=True):
+    """PowerPoint loads the add-ins listed under HKCU\\...\\PowerPoint\\AddIns (Path relative to the AddIns folder)."""
     if os.name != 'nt':
         return
     import winreg
     key = rf'Software\Microsoft\Office\16.0\PowerPoint\AddIns\{name}'
     if on:
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key) as k:
-            winreg.SetValueEx(k, 'Path', 0, winreg.REG_SZ, path or name + '.ppam')
+            winreg.SetValueEx(k, 'Path', 0, winreg.REG_SZ, name + '.ppam')
             winreg.SetValueEx(k, 'AutoLoad', 0, winreg.REG_DWORD, 1)
-    else:
-        try:
-            winreg.DeleteKey(winreg.HKEY_CURRENT_USER, key)
-        except OSError:
-            pass
-
-
-def registered_path(name):
-    if os.name != 'nt':
-        return None
-    import winreg
-    try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, rf'Software\Microsoft\Office\16.0\PowerPoint\AddIns\{name}') as k:
-            return winreg.QueryValueEx(k, 'Path')[0]
-    except OSError:
-        return None
 
 
 def _read_json(p):
@@ -144,53 +117,30 @@ def _write(path, data):
     os.replace(tmp, path)
 
 
-def _ours(name, here, rec):
-    """True when the file in PowerPoint's add-in folder was written by an earlier SL Editor (a hidden or locked copy),
-    not a company original."""
-    if here is None:
-        return False
-    if sha(here) in (rec.get('hidden_sha'), rec.get('locked_sha')):
-        return True
-    t = tabs(here)
-    if t and not any(v for _, v in t):
-        return True                                             # every tab hidden: a copy, never an original
-    if name == LOCKED:
-        import features as F
-        return F.is_locked(here)
-    return False
-
-
 def install(src, data_dir):
-    """Every known add-in as a COPY in SL Editor's folder, registered for PowerPoint; the originals stay as they are.
-    The copy is made from this PC's own original when it has one (a newer licensed version stays), else the package's."""
-    keep, live = os.path.join(data_dir, 'addins-original'), live_dir(data_dir)
+    """Every known add-in: this PC's own copy when it has one (a newer licensed version stays), else the package's;
+    the original kept in data_dir\\addins-original, the hidden copy installed and registered."""
+    os.makedirs(addin_dir(), exist_ok=True)
+    keep = os.path.join(data_dir, 'addins-original')
     os.makedirs(keep, exist_ok=True)
-    os.makedirs(live, exist_ok=True)
     st = _read_json(os.path.join(data_dir, STATE))
     done = {}
     for name in ADDINS:
-        dst, bak, out = os.path.join(addin_dir(), name + '.ppam'), os.path.join(keep, name + '.ppam'), os.path.join(live, name + '.ppam')
+        dst, bak = os.path.join(addin_dir(), name + '.ppam'), os.path.join(keep, name + '.ppam')
         here = open(dst, 'rb').read() if os.path.exists(dst) else None
         rec = st.get(name, {})
-        # 1. an earlier SL Editor put its copy in PowerPoint's add-in folder: the original goes back there
-        if _ours(name, here, rec):
-            if os.path.exists(bak) and tabs(open(bak, 'rb').read()) and not _ours(name, open(bak, 'rb').read(), rec):
-                _write(dst, open(bak, 'rb').read())
-                here = open(dst, 'rb').read()
-            else:
-                os.remove(dst)                                   # only ever ours: the PC had no original
-                here = None
-        # 2. a safety copy of this PC's original (read only; the original itself is never written)
-        if here is not None and tabs(here) and not os.path.exists(bak):
-            _write(bak, here)
-        # 3. SL Editor's copy, registered for PowerPoint
         if name == LOCKED:
-            done[name] = install_locked(src, out, st)
+            done[name] = install_locked(src, dst, bak, here, st)
             continue
-        if here is not None and tabs(here):
-            orig = here
-        elif os.path.exists(bak) and tabs(open(bak, 'rb').read()):
-            orig = open(bak, 'rb').read()
+        if here is not None and sha(here) == rec.get('hidden_sha') and os.path.exists(bak):
+            orig = open(bak, 'rb').read()                       # installed before: our copy; its original is kept
+        elif here is not None and tabs(here):
+            orig = here                                          # this PC's own add-in (any version)
+            if tabs(orig) and not any(v for _, v in tabs(orig)):
+                # a copy hidden by an earlier installer (slsd_tab.py): its kept original, if any, is the real one
+                old = os.path.join(data_dir, 'slsd-original', name + '.ppam')
+                if os.path.exists(old) and tabs(open(old, 'rb').read()):
+                    orig = open(old, 'rb').read()
         else:
             p = os.path.join(src, name + '.ppam') if src else ''
             if not (p and os.path.exists(p)):
@@ -201,10 +151,13 @@ def install(src, data_dir):
                 done[name] = 'not an add-in'
                 continue
         hid = hidden_copy(orig) if any(v for _, v in tabs(orig)) else orig
-        _write(out, hid)
-        register(name, out)
-        st[name] = {'original_sha': sha(orig), 'hidden_sha': sha(hid), 'live': out, 'at': time.strftime('%Y-%m-%dT%H:%M:%S')}
-        done[name] = 'installed (copy)'
+        _write(bak, orig)
+        if sha(open(bak, 'rb').read()) != sha(orig):
+            raise OSError('the kept original could not be verified')
+        _write(dst, hid)
+        register(name)
+        st[name] = {'original_sha': sha(orig), 'hidden_sha': sha(hid), 'at': time.strftime('%Y-%m-%dT%H:%M:%S')}
+        done[name] = 'installed'
     with open(os.path.join(data_dir, STATE), 'w', encoding='utf-8') as f:
         json.dump(st, f, indent=1)
     return done
@@ -213,50 +166,44 @@ def install(src, data_dir):
 LOCKED = 'SL_Audomation'       # 10.26: SL Design and SL Animation - visible but locked until access is given (features.py)
 
 
-def install_locked(src, out, st):
-    """The LOCKED SL_Audomation copy (tabs visible, every button disabled, no macro code) in SL Editor's folder. Access
-    (features.py, the SL Editor service) puts the real add-in in place of this copy - never in the add-in folder."""
+def install_locked(src, dst, bak, here, st):
+    """The LOCKED SL_Audomation (tabs visible, every button disabled, no macro code); this PC's own original, if it had
+    one, is kept for the uninstaller. Access (features.py, the SL Editor service) puts the real add-in in its place."""
     import features as F
     p = os.path.join(src, LOCKED + '.ppam') if src else ''
     if not (p and os.path.exists(p)):
         return 'not available'
     locked = open(p, 'rb').read()
     if not F.is_locked(locked):
-        if not tabs(locked):
-            raise ValueError('the package must carry the LOCKED SL_Audomation (deploy/build-stage.ps1 makes it)')
-        locked = F.locked_copy(locked)      # an older package (before 10.26) carried the add-in itself: locked here
-    cur = open(out, 'rb').read() if os.path.exists(out) else None
-    if cur is None or F.is_locked(cur):              # access given before: the real copy stays (the service checks it)
-        _write(out, locked)
-    register(LOCKED, out)
-    st[LOCKED] = {'locked_sha': sha(locked), 'live': out, 'at': time.strftime('%Y-%m-%dT%H:%M:%S')}
-    return 'installed (locked copy)'
+        raise ValueError('the package must carry the LOCKED SL_Audomation (deploy/build-stage.ps1 makes it)')
+    if here is not None and not F.is_locked(here) and tabs(here) and not os.path.exists(bak):
+        _write(bak, here)                                      # this PC's own add-in, from before SL Editor
+    _write(dst, locked)
+    register(LOCKED)
+    st[LOCKED] = {'locked_sha': sha(locked), 'hidden_sha': sha(locked), 'at': time.strftime('%Y-%m-%dT%H:%M:%S')}
+    return 'installed (locked)'
 
 
 def restore(data_dir):
-    """PowerPoint back to the originals: each add-in's registration points to its original in the add-in folder (put
-    back from the safety copy only if the folder has none), or is removed; SL Editor's copies are deleted."""
     st, keep, done = _read_json(os.path.join(data_dir, STATE)), os.path.join(data_dir, 'addins-original'), {}
     for name in ADDINS:
-        dst, bak, out = os.path.join(addin_dir(), name + '.ppam'), os.path.join(keep, name + '.ppam'), os.path.join(live_dir(data_dir), name + '.ppam')
+        dst, bak = os.path.join(addin_dir(), name + '.ppam'), os.path.join(keep, name + '.ppam')
         here = open(dst, 'rb').read() if os.path.exists(dst) else None
-        rec = st.get(name, {})
-        if (here is None or _ours(name, here, rec)) and os.path.exists(bak) and tabs(open(bak, 'rb').read()):
-            os.makedirs(addin_dir(), exist_ok=True)
-            _write(dst, open(bak, 'rb').read())
-            here = open(dst, 'rb').read()
-        if here is not None and not _ours(name, here, rec):
-            register(name)                                   # the original, as before SL Editor
-            done[name] = 'original'
-        else:
-            if here is not None:
+        if name == LOCKED:                 # the locked copy, or the real one access put there: back to this PC's own, or none
+            if os.path.exists(bak):
+                shutil.copyfile(bak, dst)
+                done[name] = 'restored'
+            elif here is not None:
                 os.remove(dst)
-            register(name, on=False)
-            done[name] = 'removed (this PC had no original)'
-        try:
-            os.remove(out)
-        except OSError:
-            pass
+                done[name] = 'removed'
+            continue
+        if not os.path.exists(bak):
+            continue
+        if here is not None and sha(here) != (st.get(name) or {}).get('hidden_sha'):
+            done[name] = 'left as it is (changed since)'
+            continue
+        shutil.copyfile(bak, dst)
+        done[name] = 'restored'
     return done
 
 

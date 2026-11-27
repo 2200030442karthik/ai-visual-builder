@@ -197,6 +197,8 @@ function antvDraw(P, tpl, R, o) {
     if (isMark(p)) {
       const m = MARK.exec(String(p.text).trim()), i = +m[1], it = P.items[i] || {}, key = it.icon && CMP[it.icon] ? it.icon : 'none';
       const D = p.size * 0.92, cx = p.x + p.w / 2, cy = p.y + p.h / 2, c = '#' + m[3];
+      // 10.28.2: a colour icon on a coloured badge is asked for in white: it comes on its white disc (iconlib.js)
+      if (/^L:/.test(key)) return comp(key, cx - D / 2, cy - D / 2, D, m[2] === 'w' ? '#FFFFFF' : c);
       let ic = comp(key, cx - D / 2, cy - D / 2, D, c);
       if (m[2] === 'w') ic = ic.map(q => Object.assign(q, q.fill ? { fill: antvLight(q.fill) ? c : '#FFFFFF' } : {}, q.line ? { line: '#FFFFFF' } : {}, q.t === 'line' ? { color: '#FFFFFF' } : {}));
       return ic;

@@ -674,7 +674,7 @@ def claude_icons(b, who=None):
         raise NapkinError('No points given.', 400)
     if TEST_NO_PAID or CONFIG['paid_policy'] == 'never':
         return {'ok': False, 'source': 'off', 'error': 'Claude is switched off by the administrator.', 'icons': [None] * min(8, len(items))}
-    return C.generate_icons(C.settings(DATA_DIR), items, timeout_s=max(60, CONFIG.get('claude_timeout_s', 30)), style=str(b.get('style') or '3d'))
+    return C.generate_icons(C.settings(DATA_DIR), items, timeout_s=max(60, CONFIG.get('claude_timeout_s', 30)), style=str(b.get('style') or 'color'))
 
 
 def icons_pick(b, who=None):
@@ -702,7 +702,7 @@ def claude_icon(b, who=None):
         return {'ok': False, 'source': 'off', 'error': 'Claude is switched off by the administrator; choose one of the library icons.'}
     s = C.settings(DATA_DIR)
     try:
-        return C.generate_icon(s, desc, timeout_s=CONFIG.get('claude_timeout_s', 30), style=str(b.get('style') or 'flat'))
+        return C.generate_icon(s, desc, timeout_s=CONFIG.get('claude_timeout_s', 30), style=str(b.get('style') or 'color'))
     except Exception as e:
         log(f'claude_icon failed: {e}')
         raise NapkinError(f'Icon generation failed: {e}', 500)

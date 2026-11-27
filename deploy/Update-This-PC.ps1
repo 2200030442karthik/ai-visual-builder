@@ -30,15 +30,6 @@ if (Test-Path $fb) { Copy-Item $fb (Join-Path $App 'features-bundle.json') -Forc
 # 2c. 10.28: the access hub's settings (the share and the administrator's public key)
 $hc = Join-Path $PSScriptRoot 'hub.json'
 if (Test-Path $hc) { Copy-Item $hc (Join-Path $App 'hub.json') -Force }
-# 2d. 10.28.1: SL Editor's add-ins as COPIES in its own folder; the originals in PowerPoint's add-in folder untouched
-#     (an earlier version's copies there are replaced by the kept originals). Only while PowerPoint is closed.
-$rt = Join-Path $AppDir 'runtime\python.exe'
-if (Get-Process POWERPNT -ErrorAction SilentlyContinue) {
-    Write-Host 'PowerPoint is open: the add-in copies are switched the next time this runs with PowerPoint closed.' -ForegroundColor Yellow
-} elseif (Test-Path $rt) {
-    $r = & $rt (Join-Path $App 'addin_tabs.py') install --src (Join-Path $AppDir 'addins') --data (Join-Path $env:LOCALAPPDATA 'AIVisualBuilder')
-    Write-Host "Add-ins: $r"
-}
 
 # 3. the ribbon manifest (new buttons or a new version), with this installation's add-in Id and port
 $py = Join-Path $AppDir 'runtime\python.exe'

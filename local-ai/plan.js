@@ -513,7 +513,13 @@ function planConceptFamily(P, i) {
         const x = R.x + num(e.x) * sx, y = R.y + num(e.y) * sy, w = Math.max(1, num(e.w) * sx), h = Math.max(1, num(e.h) * sy), col = conceptCol(e.color);
         const size = Math.max(PLAN_DS, Math.min(48, Math.round(num(e.size) || PLAN_DS))), txt = planClean(e.text || ''), al = e.align === 'left' ? 'left' : 'center';
         if (e.kind === 'line') { out.push(seg(x, y, R.x + num(e.x2) * sx, R.y + num(e.y2) * sy, col || '#7F7F7F', 2.5)); continue; }
-        if (e.kind === 'object') { const D = Math.min(w, h); out.push(...comp(CMP[e.object] ? e.object : 'none', x + (w - D) / 2, y + (h - D) / 2, D, col && col !== '#FFFFFF' ? col : accent(0))); continue; }
+        if (e.kind === 'object') {
+          // 10.28.2: the point's own colour icon (the library's match for that point), the topic's for the hero;
+          // Claude's catalogue object only when no library icon is there
+          const it = e.item && (P0.items || []).find(q => q.id === String(e.item)), libKey = k => (/^L:/.test(String(k || '')) ? k : '');
+          const key = libKey(it && it.icon) || (!e.item ? libKey(P0.hero) : '') || (CMP[e.object] ? e.object : 'none'), D = Math.min(w, h);
+          out.push(...comp(key, x + (w - D) / 2, y + (h - D) / 2, D, col && col !== '#FFFFFF' ? col : accent(0))); continue;
+        }
         if (e.kind === 'text') { if (txt) out.push(label(x, y, w, Math.max(h, linesAt(txt, w * 0.95, size) * size * 1.2 + 8), txt, { size, bold: !!e.bold, color: INK, align: al, valign: 'top' })); continue; }
         out.push(box(GEO[e.shape] ? e.shape : 'roundRect', x, y, w, h, Object.assign({ fill: col || PANEL }, txt ? { text: txt, size, bold: !!e.bold, color: INK, align: al, valign: 'middle' } : {})));
       }
@@ -699,8 +705,12 @@ function planFromClaude(raw) {
   items.forEach(it => { if (it.group && !groups.some(g => g.id === it.group)) { it.group = ''; problems.push(`group of "${it.label}" unknown`); } });
   const flow = [...new Set((Array.isArray(raw && raw.flow) ? raw.flow : []).map(String))].filter(id => ids.has(id));
   const layouts = (Array.isArray(raw && raw.layouts) ? raw.layouts : []).map(String).filter(k => PLAN_LAYOUTS[k]);
+  // 10.28.2: with the colour icon library (iconlib.js) Claude's object is a hint for the library's match (the point keeps a
+  // realistic colour icon); without the library, Claude's catalogue object as before
+  const lib = typeof ICONLIB !== 'undefined' && ICONLIB.ready;
+  if (lib) items.forEach(it => { if (it.pictorial) it.hint = [it.hint, String(it.pictorial).replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()].filter(Boolean).join(' '); });
   planIcons(items);
-  items.forEach(it => { if (it.pictorial && CMP[it.pictorial] && !items.some(o => o !== it && o.icon === it.pictorial)) it.icon = it.pictorial; });   // Claude's object, when the catalogue has it
+  if (!lib) items.forEach(it => { if (it.pictorial && CMP[it.pictorial] && !items.some(o => o !== it && o.icon === it.pictorial)) it.icon = it.pictorial; });   // Claude's object, when the catalogue has it
   // Claude's own composition (zone grid): kept when every zone is on the grid and names known items
   let custom = null;
   const c = raw && raw.custom;
@@ -715,6 +725,12 @@ function planFromClaude(raw) {
   plan.headline = planClean(raw && raw.headline) || plan.title;
   plan.takeaway = planClean(raw && raw.takeaway).replace(/\.$/, '');
   plan.hero = raw && raw.hero && CMP[raw.hero] ? String(raw.hero) : '';
+  plan.short = planClean(raw && raw.short);
+  // 10.28.2: the topic's picture from the colour icon library (Claude's object as a hint), like every point's
+  if (lib && typeof iconLibBest === 'function') {
+    const h = iconLibBest([plan.short, plan.title, String(raw && raw.hero || '').replace(/([a-z])([A-Z])/g, '$1 $2')].filter(Boolean).join(' '), plan.hero ? null : 'layers');
+    if (h) plan.hero = h;
+  }
   // 10.15: labelled sections ("What you learn" / "Best for") as Claude grouped them: drawn under their names
   plan.short = planClean(raw && raw.short);
   // 10.16: Claude's own compositions ("concepts"): drawn as native shapes by planRender under the keys ai:0 .. ai:3

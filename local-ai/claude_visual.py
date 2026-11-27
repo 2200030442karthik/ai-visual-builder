@@ -420,6 +420,9 @@ Rules:
    - "dark": dark charcoal (#2B2B2B) for wheels, tracks, stands, bases
    - "coral": accent coral (#E58F6D) for lights, alerts, indicators
    - "gold": accent gold (#DDB945) for highlights, badges
+   - natural colours for a realistic multicolour icon (like Microsoft Fluent colour icons): "blue" (#2F80ED),
+     "sky" (#7CC4F5), "green" (#2EAE6B), "teal" (#1FA3A3), "orange" (#F2994A), "red" (#E5534B), "purple" (#8E6CEF),
+     "pink" (#F28DB2), "yellow" (#F6C343), "grey" (#A7B1BE), "brown" (#A46A3F), "skin" (#F5C9A6)
    - "none": transparent
 4. Return format:
 {
@@ -532,12 +535,18 @@ def _match_fallback_icon(description, generic=True):
 
 
 ICON_STYLES = {
+    # 10.28.2: the default - realistic multicolour icons that match the colour icon library of the visuals
+    'color': ('Style: realistic multicolour, like a Microsoft Fluent colour icon: every part in its natural colour from the '
+              'natural colours (at least 3 different colours; e.g. a folder yellow with a white paper, a chart with blue, green '
+              'and orange bars, a person with skin and a blue shirt, a shield blue with a white check), a lighter top or '
+              'highlight on the main object ("sky", "tint" or "white"), a darker side or shadow ("shade" or "grey"), no '
+              'outlines, 4 to 10 shapes, centred and filling about 80 % of the grid.'),
     'flat': 'Style: flat - one plane, solid shapes, no depth faces.',
     '3d': 'Style: 3D (2.5D isometric) - give the main object a lighter top face ("tint") and a darker side face ("shade") so it reads as a solid object, like a premium 3D icon.',
 }
 
 
-def generate_icon(s, description, timeout_s=30, client=None, style='flat'):
+def generate_icon(s, description, timeout_s=30, client=None, style='color'):
     """Generates a custom corporate icon representing `description` using Claude API.
     Falls back to smart vector templates if API key is not configured or on connection failure.
     """
@@ -554,7 +563,7 @@ def generate_icon(s, description, timeout_s=30, client=None, style='flat'):
         try:
             client = client or anthropic.Anthropic(api_key=key, timeout=timeout_s, max_retries=0)
             msg = _stream(client, s, model=model, max_tokens=4000, system=ICON_SYSTEM, output_config={'effort': 'low'},
-                          messages=[{'role': 'user', 'content': f'Design a corporate slide icon for: {desc}\n' + ICON_STYLES.get(style, ICON_STYLES['flat'])}])
+                          messages=[{'role': 'user', 'content': f'Design a corporate slide icon for: {desc}\n' + ICON_STYLES.get(style, ICON_STYLES['color'])}])
             text = ''.join(b.text for b in msg.content if b.type == 'text')
             m = re.search(r'\{[\s\S]*\}', text)
             if m:
@@ -581,7 +590,7 @@ ICONS_SYSTEM = ICON_SYSTEM.split('4. Return format:')[0] + """5. Depth (2.5D, li
 Return ONLY JSON: {"icons": [{"name": "snake_case", "label": "Title", "elements": [ ...as above... ]}, ...]} - one per point, in order."""
 
 
-def generate_icons(s, items, timeout_s=60, client=None, style='3d'):
+def generate_icons(s, items, timeout_s=60, client=None, style='color'):
     """10.24: one Claude request designs an icon for every point of a slide (label and description given); returns
     {'ok', 'source': 'claude', 'icons': [icon or None per point]}. Never a stand-in: without Claude, ok is False."""
     pts = [{'label': str(i.get('label') or '')[:80], 'detail': str(i.get('detail') or '')[:160]} for i in (items or [])[:8] if isinstance(i, dict) and i.get('label')]
@@ -594,7 +603,7 @@ def generate_icons(s, items, timeout_s=60, client=None, style='3d'):
         client = client or anthropic.Anthropic(api_key=key, timeout=timeout_s, max_retries=0)
         listing = '\n'.join(f'{n + 1}. {p["label"]}' + (f' - {p["detail"]}' if p['detail'] else '') for n, p in enumerate(pts))
         msg = _stream(client, s, model=s.get('model') or DEFAULT_MODEL, max_tokens=8000, system=ICONS_SYSTEM, output_config={'effort': 'low'},
-                      messages=[{'role': 'user', 'content': 'Design one slide icon for each of these points:\n' + listing + '\n' + ICON_STYLES.get(style, ICON_STYLES['3d'])}])
+                      messages=[{'role': 'user', 'content': 'Design one slide icon for each of these points:\n' + listing + '\n' + ICON_STYLES.get(style, ICON_STYLES['color'])}])
         text = ''.join(b.text for b in msg.content if b.type == 'text')
         m = re.search(r'\{[\s\S]*\}', text)
         data = json.loads(m.group(0)) if m else {}
@@ -613,7 +622,8 @@ def generate_icons(s, items, timeout_s=60, client=None, style='3d'):
 
 ICON_SHAPES = {'rect', 'roundRect', 'ellipse', 'triangle', 'trapezoid', 'diamond', 'cube', 'pill', 'chevron', 'can', 'cloud', 'foldedCorner',
                'gear6', 'hexagon', 'shield', 'blockArc', 'tab', 'donut', 'plus', 'star5', 'rtTriangle', 'parallelogram', 'line'}
-ICON_COLOURS = {'primary', 'tint', 'shade', 'white', 'dark', 'coral', 'gold', 'none'}
+ICON_COLOURS = {'primary', 'tint', 'shade', 'white', 'dark', 'coral', 'gold', 'none',
+                'blue', 'sky', 'green', 'teal', 'orange', 'red', 'purple', 'pink', 'yellow', 'grey', 'brown', 'skin'}   # 10.28.2: multicolour
 
 
 def _clean_icon_elements(els):

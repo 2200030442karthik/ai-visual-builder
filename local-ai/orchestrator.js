@@ -578,7 +578,7 @@ function orchFrom(key, R) {
   const A = PANELS[key].auto, out = [];
   // Claude: its plan in every composition that suits it (the hybrid flow), drawn here as native shapes
   const plan = key === 'claude' && (R.items.plan || (R.items.find(i => i.plan) || {}).plan);
-  if (plan) out.push(...orchConceptDesigns(key, plan), ...orchPlanDesigns(key, plan));
+  if (plan) out.push(...orchRefDesigns(key, plan), ...orchConceptDesigns(key, plan), ...orchPlanDesigns(key, plan));
   R.items.forEach((it, i) => {
     if (plan && it.fmt === 'plan') return;               // its layouts are among the plan's designs above
     const fe = A.feOK(it), ed = A.usable(it);
@@ -606,6 +606,28 @@ function orchConceptDesigns(key, plan) {
       why: 'designed by AI' + (c.idea ? ': ' + c.idea : '') + ' - drawn as editable shapes',
       fit: orchFits(orchPlanBuild(plan, 'ai:' + i, r.style, 'full')),
       insert: async () => { ST.designs = [{ r, plan, full: plan, density: 'full', from: 'AI design' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });
+  });
+  return out;
+}
+/* 10.28.2 (owner's review: the built-in pack's designs looked better than Claude's): Claude's reading of the text (its
+   points, order, groups and the colour icons for them) drawn in the best layouts - the showcase, Lesson 2 and reference
+   designs. Same category and layout as the built-in version, ranked just above it: the gallery shows Claude's version of
+   that layout instead of both. */
+function orchRefDesigns(key, plan) {
+  if (typeof REF === 'undefined' || !REF.layouts.length) return [];
+  const R = Object.assign({}, TEMPLATE.contentArea), d = planAtDensity(plan, R, 'auto'), out = [];
+  // Claude often puts every point in one group: one group is no grouping - the points as a plain list
+  const P = planGroups(d.plan).length < 2 ? Object.assign({}, d.plan, { groups: [], items: d.plan.items.map(i => Object.assign({}, i, { group: '' })) }) : d.plan;
+  REF.layouts.filter(L => !L.why(P)).slice(0, 14).forEach((L, idx) => {
+    const k = `ref_${L.key}_${idx % 3 === 2 ? 'c' : 'm'}`, Ps = Object.assign({}, P, { style: Object.assign({}, P.style, { accent: 0, spacing: 'fill' }) });
+    let r = planRender(Ps, k, R);
+    if (!r.ok) r = planRender(Ps, k.replace(/_[mc]$/, s => (s === '_m' ? '_c' : '_m')), R);
+    if (!r.ok) return;
+    out.push({ id: `${key}:ref:${r.key}`, engine: key, ref: L.key, lib: 'ref:' + L.key, title: r.name, family: r.key + ':0', category: 'Reference: ' + L.name,
+      prims: r.prims, edit: 'full', complete: d.density === 'full', slides: 1, rich: true, base: 112 + (L.boost || (L.lesson2 ? 6 : 0)) - (d.density === 'names' ? 6 : 0),
+      why: 'Claude read the text (points, order, groups, icons); drawn in a reference layout as editable shapes', points: P.items.map(i => [i.label, i.icon]),
+      fit: orchFits(orchPlanBuild(plan, r.key, r.style, d.density)),
+      insert: async () => { ST.designs = [{ r, plan: P, full: plan, density: d.density, from: 'AI design' }]; ST.sel = 0; const L0 = state.lastInsert; await insertDesign(); return !!state.lastInsert && state.lastInsert !== L0; } });
   });
   return out;
 }

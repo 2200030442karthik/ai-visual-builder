@@ -514,9 +514,16 @@ function fitAIIcon(elements) {
 }
 function makeAIIconFn(elements) {
   elements = fitAIIcon(elements);
-  return function (x, y, s, c) {
+  // 10.28.2: realistic multicolour icons (claude_visual.py ICON_STYLES 'color'): natural colours, kept as drawn
+  const NATURAL = { blue: '#2F80ED', sky: '#7CC4F5', green: '#2EAE6B', teal: '#1FA3A3', orange: '#F2994A', red: '#E5534B', purple: '#8E6CEF',
+    pink: '#F28DB2', yellow: '#F6C343', grey: '#A7B1BE', brown: '#A46A3F', skin: '#F5C9A6' };
+  const multi = (elements || []).some(el => NATURAL[el.fill] || NATURAL[el.line]);
+  return function (x, y, s, c0) {
+    // on a coloured badge (asked for in white) a multicolour icon sits on a white disc, in its own colours
+    const onBadge = multi && /^#?f{3}(f{3})?$/i.test(String(c0 || '')), c = onBadge ? '#2F80ED' : c0;
     const resolveCol = col => {
       if (!col || col === 'none') return null;
+      if (NATURAL[col]) return NATURAL[col];
       if (col === 'primary') return c;
       if (col === 'tint') return typeof tint === 'function' ? tint(c, 0.4) : c;
       if (col === 'shade') return typeof shade === 'function' ? shade(c, 0.3) : c;
@@ -528,18 +535,20 @@ function makeAIIconFn(elements) {
       return c;
     };
     const out = [];
+    if (onBadge) out.push(box('ellipse', x - s * 0.18, y - s * 0.18, s * 1.36, s * 1.36, { fill: '#FFFFFF' }));
     (elements || []).forEach(el => {
       const fill = resolveCol(el.fill);
       const line = resolveCol(el.line);
+      const keep = multi ? { keep: true } : {};       // the brand's colour rules leave a multicolour icon as drawn
       if (el.shape === 'line' || (el.x1 !== undefined && el.x2 !== undefined)) {
         const x1 = x + s * (el.x1 / 100), y1 = y + s * (el.y1 / 100);
         const x2 = x + s * (el.x2 / 100), y2 = y + s * (el.y2 / 100);
         const w = Math.max(1.5, s * ((el.lineW || 2) / 100));
-        out.push(seg(x1, y1, x2, y2, line || fill || c, w, el.dash ? { dash: true } : {}));
+        out.push(Object.assign(seg(x1, y1, x2, y2, line || fill || c, w, el.dash ? { dash: true } : {}), keep));
       } else {
         const ex = x + s * (el.x / 100), ey = y + s * (el.y / 100);
         const ew = s * (el.w / 100), eh = s * (el.h / 100);
-        const opts = { fill, line };
+        const opts = Object.assign({ fill, line }, keep);
         if (line && line !== 'none') opts.lineW = Math.max(1, s * ((el.lineW || 2) / 100));
         if (el.rot) opts.rot = el.rot;
         out.push(box(el.shape || 'roundRect', ex, ey, ew, eh, opts));
@@ -666,7 +675,7 @@ function renderEdit() {
       btn.disabled = true;
       say(`${found.length ? found.length + ' library icon' + (found.length > 1 ? 's' : '') + ' found. ' : ''}Asking Claude to design “${desc}”…`);
       try {
-        const res = await api('/api/claude/icon', { description: desc, style: typeof AIVB_ICON_STYLE === 'function' ? AIVB_ICON_STYLE() : 'flat' }, 90000);
+        const res = await api('/api/claude/icon', { description: desc, style: typeof AIVB_ICON_STYLE === 'function' ? AIVB_ICON_STYLE() : 'color' }, 90000);
         if (!res || !res.ok || !res.icon) { say(((res && res.error) || 'Claude could not design this icon.') + (found.length ? ' Pick a library icon above.' : ''), !found.length); return; }
         const iconKey = registerCustomIcon(res.icon);
         saveCustomIcon(iconKey, res.icon);

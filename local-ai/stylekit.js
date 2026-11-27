@@ -9,7 +9,7 @@
    Every change works on what is selected in PowerPoint (groups are opened), so PowerPoint's own Undo (Ctrl+Z) takes it
    back. Loaded after studio.js. */
 (() => {
-  const SK = { target: 'fill', colour: null, style: 'flat', busy: false };
+  const SK = { target: 'fill', colour: null, style: 'color', busy: false };   // 10.28.2: multicolour icons by default
   window.AIVB_ICON_STYLE = () => SK.style;
   const esc2 = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const pane = document.getElementById('stPane_edit');
@@ -33,7 +33,7 @@
       <button type="button" id="skBold">Bold on / off</button></div>
     <div class="sksub">Replace the selected icon</div>
     <div class="skrow"><input type="text" id="skIconDesc" placeholder="Describe it: car with sensors, handshake, rocket…" style="flex:1;min-width:0">
-      <select id="skIconStyle" aria-label="Icon style"><option value="flat">Flat</option><option value="3d">3D</option><option value="3dpic">3D picture</option></select>
+      <select id="skIconStyle" aria-label="Icon style"><option value="color" selected>Colour</option><option value="flat">Flat</option><option value="3d">3D</option><option value="3dpic">3D picture</option></select>
       <button type="button" id="skIconGo" class="skgo">Design icon</button></div>
     <div id="skIconPicks" class="aiIconLib"></div>
     <div id="skNote" class="small"></div>`;
@@ -221,7 +221,7 @@
     const p3 = await find3d(desc, 6);
     if (p3.length) picks.insertAdjacentHTML('beforeend', '<div class="iconSrc">3D pictures <span class="badge src builtin">3dicons · Fluent 3D</span></div>' + p3.map(pick3d).join(''));
     wire();
-    note(`Asking Claude for a ${SK.style === '3d' ? '3D' : 'flat'} “${desc}” icon…`);
+    note(`Asking Claude for a ${SK.style === '3d' ? '3D' : SK.style === 'color' ? 'multicolour' : 'flat'} “${desc}” icon…`);
     try {
       const res = await api('/api/claude/icon', { description: desc, style: SK.style }, 90000);
       if (!res || !res.ok || !res.icon) { note(found.length ? `${lib.length} matching library icons are shown above: select the icon to replace on the slide, then click one.` + (res && res.reason ? ` (A new drawing by Claude is not available: ${res.reason}.)` : '') : ((res && res.error) || 'Claude could not design it.'), !found.length); return; }

@@ -128,7 +128,6 @@ $pilot = [ordered]@{
 }
 [IO.File]::WriteAllText($pilotJson, ($pilot | ConvertTo-Json -Depth 8), (New-Object Text.UTF8Encoding $false))
 
-
 # 6. Start the server
 $pythonw = Join-Path $AppDir 'runtime\pythonw.exe'
 $launcher = Join-Path $AppDir 'app\run_server.pyw'
